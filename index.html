@@ -1,0 +1,1767 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Warmteverlies Tekentafel</title>
+<meta name="description" content="Teken je plattegrond en bereken het warmteverlies per ruimte, de afgifte van radiatoren en vloerverwarming, en welke warmtepomp past.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2316353F'/%3E%3Cpath d='M7 25V11l9-5 9 5v14z' fill='none' stroke='%23E06A12' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>[hidden]:not([hidden=until-found i]){display:none!important}img{max-width:100%}body{margin:0}</style>
+<style>
+/* Layout: drafting table — dark petrol header band | tool rail | plan on gridded paper card | inspector card with tabs.
+   Look: architectural plan (dark walls, orange openings and dimensions) on a soft cool-to-warm wash, white rounded cards. */
+:root{
+  --bg:#EDF2F1; --bg-2:#F6ECE3; --surface:#FFFFFF; --surface-2:#F2F6F6; --ink:#15313A; --muted:#5B6F76;
+  --line:#DCE4E4; --grid:#E8EDEB; --grid-major:#D5DDDA; --paper:#FBFAF7; --room:rgba(255,255,255,.82);
+  --accent:#1D5361; --accent-ink:#FFFFFF; --accent-soft:rgba(29,83,97,.06); --accent-soft-2:rgba(29,83,97,.14);
+  --heat:#E06A12; --heat-soft:rgba(224,106,18,.10); --warn:#B4441F; --ok:#2F7D4A; --glass:#7FB3BE; --under:#BCC7C6;
+  --wall:#1F3B44; --hdr:#16353F; --hdr-ink:#EAF2F2; --hdr-line:rgba(234,242,242,.18);
+  --seg-fabric:#E06A12; --seg-glass:#EFA45E; --seg-air:#9CB3B9; --seg-track:#E3EAEA; --c-loss:#E06A12; --c-hp:#0079B8;
+  --shadow:0 1px 2px rgba(21,49,58,.05),0 10px 28px -6px rgba(21,49,58,.12); --radius:16px;
+  --font-display:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+  --font-body:"Plus Jakarta Sans","Segoe UI",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E191D; --bg-2:#1B1714; --surface:#152429; --surface-2:#1B2D33; --ink:#E3EDEE; --muted:#93A7AC;
+  --line:#253A40; --grid:#132227; --grid-major:#1E3238; --paper:#11201F; --room:rgba(255,255,255,.035);
+  --accent:#72B9C9; --accent-ink:#0A1C21; --accent-soft:rgba(114,185,201,.08); --accent-soft-2:rgba(114,185,201,.20);
+  --heat:#F39446; --heat-soft:rgba(243,148,70,.14); --warn:#F2915F; --ok:#6CC28B; --glass:#5FA3B0; --under:#344A50;
+  --wall:#CFDDE0; --hdr:#0A1417; --hdr-ink:#E3EDEE; --hdr-line:rgba(227,237,238,.14);
+  --seg-fabric:#F39446; --seg-glass:#F6C18A; --seg-air:#6F9099; --seg-track:#24383E; --c-loss:#DB6E22; --c-hp:#2B8FD6;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px -6px rgba(0,0,0,.45); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E191D; --bg-2:#1B1714; --surface:#152429; --surface-2:#1B2D33; --ink:#E3EDEE; --muted:#93A7AC;
+  --line:#253A40; --grid:#132227; --grid-major:#1E3238; --paper:#11201F; --room:rgba(255,255,255,.035);
+  --accent:#72B9C9; --accent-ink:#0A1C21; --accent-soft:rgba(114,185,201,.08); --accent-soft-2:rgba(114,185,201,.20);
+  --heat:#F39446; --heat-soft:rgba(243,148,70,.14); --warn:#F2915F; --ok:#6CC28B; --glass:#5FA3B0; --under:#344A50;
+  --wall:#CFDDE0; --hdr:#0A1417; --hdr-ink:#E3EDEE; --hdr-line:rgba(227,237,238,.14);
+  --seg-fabric:#F39446; --seg-glass:#F6C18A; --seg-air:#6F9099; --seg-track:#24383E; --c-loss:#DB6E22; --c-hp:#2B8FD6;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px -6px rgba(0,0,0,.45); color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg) linear-gradient(115deg,var(--bg) 0%,var(--bg) 40%,var(--bg-2) 100%) fixed;color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.45}
+*{box-sizing:border-box}
+button,input,select{font:inherit;color:inherit}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;gap:10px;padding-block:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0;background:var(--hdr);color:var(--hdr-ink);border-radius:var(--radius);padding:10px 14px;box-shadow:var(--shadow);border-bottom:3px solid var(--heat)}
+.brand{font-family:var(--font-display);font-weight:800;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
+.brand small{display:block;font-family:var(--font-body);font-weight:600;font-size:10.5px;color:var(--heat);letter-spacing:.08em;text-transform:uppercase}
+.top .spacer{flex:1}
+.pill{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--surface);white-space:nowrap}
+.top .pill{background:transparent;border-color:var(--hdr-line);color:var(--hdr-ink);opacity:.85}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)}
+.top .pill.ok,.top .pill.warn{color:var(--hdr-ink)}
+.total{font-family:var(--font-body);font-size:12px;white-space:nowrap;letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:8px;opacity:.95}
+.total b{color:var(--hdr);background:var(--heat);font-family:var(--font-mono);font-weight:600;font-size:15px;letter-spacing:0;text-transform:none;padding:3px 10px;border-radius:999px}
+select.proj{max-width:240px;padding:6px 10px;border:1px solid var(--hdr-line);border-radius:10px;background:transparent;color:var(--hdr-ink);font-weight:600}
+select.proj option{color:#15313A;background:#FFFFFF}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;white-space:nowrap;font-weight:500}
+.top .btn{background:transparent;border-color:var(--hdr-line);color:var(--hdr-ink)}
+.top .btn:hover{border-color:var(--heat)}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--warn)}
+.btn.small{padding:3px 8px;font-size:12.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:focus-visible,.tool:focus-visible,input:focus-visible,select:focus-visible,.tab:focus-visible,.segbtn:focus-visible,.linkrow:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.main{display:grid;grid-template-columns:64px minmax(0,1fr) 390px;gap:10px;min-height:0}
+.tools{display:flex;flex-direction:column;gap:6px}
+.tool{display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 2px 7px;border:1px solid transparent;border-radius:12px;background:var(--surface);cursor:pointer;font-size:10.5px;font-weight:600;color:var(--muted);box-shadow:var(--shadow)}
+.tool svg{width:22px;height:22px;stroke:var(--ink);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.tool[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.tool[aria-pressed="true"] svg{stroke:var(--accent-ink)}
+.tool kbd{font-family:var(--font-mono);font-size:9.5px;opacity:.7}
+.tools .sep{height:1px;background:var(--line);margin:4px 6px}
+.stage{position:relative;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--paper);min-height:0;touch-action:none;box-shadow:var(--shadow)}
+.stage svg{position:absolute;inset:0;width:100%;height:100%;display:block;user-select:none;-webkit-user-select:none}
+.hint{position:absolute;left:10px;top:50px;right:10px;pointer-events:none;display:flex}
+.floorbar{position:absolute;left:10px;top:10px;right:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;pointer-events:none}
+.floorbar > *{pointer-events:auto}
+.floors{display:flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden;max-width:100%;overflow-x:auto}
+.floors button{border:none;background:none;padding:6px 11px;cursor:pointer;font-size:12.5px;color:var(--muted);border-right:1px solid var(--line);white-space:nowrap}
+.floors button:last-child{border-right:none}
+.floors button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:500}
+.floors button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.undbtn[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.hint span{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:5px 9px;font-size:12.5px;color:var(--muted);max-width:640px}
+.hud{position:absolute;left:10px;bottom:10px;display:flex;gap:10px;align-items:flex-end;pointer-events:none;flex-wrap:wrap}
+.coords{font-family:var(--font-mono);font-size:11.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px 8px;font-variant-numeric:tabular-nums}
+.scalebar{font-family:var(--font-mono);font-size:10.5px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.scalebar i{display:block;height:5px;border:1.5px solid var(--muted);border-top:none}
+.legend{position:absolute;right:10px;bottom:52px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:7px 9px;font-size:11.5px;display:flex;flex-direction:column;gap:3px;max-width:240px;pointer-events:none}
+.legend div{display:flex;gap:7px;align-items:center;min-width:0}
+.legend div span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sw{flex:none;width:16px;height:5px;border-radius:2px;display:inline-block}
+.zoom{position:absolute;right:10px;bottom:10px;display:flex;gap:4px}
+.zoom .btn{padding:4px 9px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;min-height:0;min-width:0;box-shadow:var(--shadow);overflow:hidden}
+.tabs{display:flex;flex:none;border-bottom:1px solid var(--line);padding:0 4px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:1 0 auto;font-size:13px;border:none;background:none;padding:12px 6px 10px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;font-weight:600}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--heat)}
+.pbody{flex:1 1 auto;overflow:auto;padding:16px 18px 26px;display:flex;flex-direction:column;gap:18px;min-height:0}
+.pbody > *{flex:none}
+h2{font-family:var(--font-display);font-size:20px;font-weight:800;margin:0;letter-spacing:-.02em;text-wrap:balance}
+h3{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0;font-weight:700;display:flex;align-items:center;gap:8px}
+h3::before{content:"";width:14px;height:2px;background:var(--heat);border-radius:2px;flex:none}
+.sec{display:flex;flex-direction:column;gap:8px}
+.crumb{border:none;background:none;padding:0;color:var(--accent);cursor:pointer;font-size:13px;text-align:left}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px 10px}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+label.f .u{font-family:var(--font-mono);font-size:11px}
+input.in,select.in{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--ink);font-size:13.5px;min-width:0}
+input.in.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+input.title{font-family:var(--font-display);font-size:18px;font-weight:600;border:1px solid transparent;background:none;padding:2px 4px;margin-left:-5px;width:100%;border-radius:6px}
+input.title:hover,input.title:focus{border-color:var(--line);background:var(--surface-2)}
+.big{display:flex;gap:14px;flex-wrap:wrap;align-items:baseline}
+.big .kpi{display:flex;flex-direction:column}
+.big .kpi b{font-family:var(--font-display);font-weight:800;font-size:24px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kcard{border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.kcard .kh{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.kcard .kh span{font-weight:600;color:var(--muted);font-size:13px}
+.kcard .kh b{white-space:nowrap;font-family:var(--font-display);font-weight:800;font-size:28px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.segbar{display:flex;gap:4px;height:7px}
+.segbar i{display:block;border-radius:4px;min-width:3px}
+.seglegend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);font-weight:600}
+.seglegend span{display:inline-flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
+.seglegend span::before{content:"";width:8px;height:8px;border-radius:3px;background:var(--c)}
+.roomcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.roomcard{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:11px 12px;display:flex;flex-direction:column;gap:8px;cursor:pointer;text-align:left;box-shadow:var(--shadow)}
+.roomcard:hover{border-color:var(--heat)}
+.roomcard .rn{font-size:12.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roomcard .rk{font-family:var(--font-display);font-size:20px;font-weight:800;letter-spacing:-.02em}
+.roomcard .rs{font-size:11.5px;color:var(--muted)}
+.big .kpi b.heat{color:var(--heat)}
+.big .kpi span{font-size:11.5px;color:var(--muted)}
+.wallbar{display:flex;height:30px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.segbtn{border:none;border-right:1px solid var(--surface);cursor:pointer;color:#fff;font-size:11px;font-family:var(--font-mono);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 4px;min-width:6px;position:relative}
+.segbtn:last-child{border-right:none}
+.segbtn.none{background:repeating-linear-gradient(45deg,var(--surface-2) 0 6px,var(--line) 6px 12px);color:var(--muted)}
+.segbtn.cur{box-shadow:inset 0 0 0 3px var(--ink)}
+.wallrow{display:flex;flex-direction:column;gap:4px}
+.wallrow .meta{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--muted)}
+.wallrow .meta b{color:var(--ink);font-weight:500}
+.scale{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;color:var(--muted)}
+table.calc{width:100%;border-collapse:collapse;font-size:12.5px}
+table.calc th{font-weight:500;color:var(--muted);font-size:11px;text-align:right;padding:4px 4px;border-bottom:1px solid var(--line)}
+table.calc th:first-child,table.calc td:first-child{text-align:left}
+table.calc td{padding:4px 4px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;vertical-align:top}
+table.calc td:first-child{font-family:var(--font-body);min-width:0}
+table.calc td small{display:block;color:var(--muted);font-size:11px}
+table.calc tr.sum td{font-weight:600;border-bottom:none;color:var(--heat)}
+table.calc tr.miss td{color:var(--warn)}
+.tablewrap{overflow-x:auto}
+.card{border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.card.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row > *{min-width:0}
+.grow{flex:1}
+.note{font-size:12.5px;color:var(--muted)}
+.note a{color:var(--accent)}
+.warnbox{font-size:12.5px;color:var(--warn);border:1px solid var(--warn);background:var(--heat-soft);border-radius:10px;padding:6px 9px}
+.det{display:flex;flex-direction:column;gap:2px;font-size:12.5px;font-family:var(--font-mono);background:var(--surface-2);border-radius:10px;padding:7px 9px}
+.linkrow{display:flex;justify-content:space-between;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;width:100%}
+.linkrow:hover{border-color:var(--accent)}
+.linkrow span:last-child{font-family:var(--font-mono);color:var(--heat);white-space:nowrap}
+.colorin{width:34px;height:30px;padding:0;border:1px solid var(--line);border-radius:8px;background:none;cursor:pointer;flex:none}
+.opgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,.8fr) minmax(0,.8fr) auto;gap:6px;align-items:end}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--hdr);color:var(--hdr-ink);padding:10px 16px;border-radius:12px;box-shadow:var(--shadow);font-size:13px;display:flex;gap:12px;align-items:center;z-index:20;max-width:calc(100% - 32px)}
+.toast button{background:none;border:none;color:var(--heat);cursor:pointer;font-weight:600;padding:0}
+svg text{font-family:var(--font-mono);paint-order:stroke;stroke:var(--paper);stroke-width:3px;stroke-linejoin:round}
+svg .rname{font-family:var(--font-body);font-weight:700;fill:var(--muted);letter-spacing:.09em;text-transform:uppercase}
+svg .rsub{fill:var(--muted);font-family:var(--font-body);font-weight:500}
+svg .rheat{fill:var(--ink);font-family:var(--font-display);font-weight:800;letter-spacing:-.02em}
+svg .dim{fill:var(--heat);font-size:11px;font-weight:600}
+svg .pilltxt{fill:var(--heat);font-size:10.5px;font-weight:600;stroke:none}
+.hit{stroke:transparent;fill:none;cursor:pointer}
+.stage.t-select .room{cursor:move}
+.stage.t-poly,.stage.t-rect,.stage.t-split{cursor:crosshair}
+.stage.panning{cursor:grabbing}
+.hprow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;width:100%}
+.hprow:hover{border-color:var(--c-hp)}
+.hprow.cur{border-color:var(--c-hp);box-shadow:0 0 0 1px var(--c-hp)}
+.hprow .hn{font-weight:700;min-width:0}
+.hprow .hn small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.hprow .hk{font-family:var(--font-mono);font-weight:600;text-align:right;white-space:nowrap}
+.hprow .hs{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.chip.ok{color:var(--ok)} .chip.bad{color:var(--warn)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;touch-action:none}
+.chart svg text{font-family:var(--font-body);stroke:none;fill:var(--muted);font-size:10.5px}
+.tip{position:absolute;pointer-events:none;background:var(--hdr);color:var(--hdr-ink);font-size:11.5px;padding:7px 10px;border-radius:9px;white-space:nowrap;font-family:var(--font-mono);transform:translate(-50%,calc(-100% - 10px));line-height:1.5;z-index:2}
+.chartleg{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);font-weight:600}
+.chartleg span{display:inline-flex;align-items:center;gap:6px}
+.chartleg i{display:inline-block;width:18px;height:3px;border-radius:2px}
+.concard{border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.concard.open{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.consum{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:none;background:none;cursor:pointer;text-align:left}
+.consum .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.consum .val{font-family:var(--font-mono);font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.conbody{padding:0 10px 10px;display:flex;flex-direction:column;gap:9px}
+label.chk{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--muted)}
+.layers{display:flex;flex-direction:column;gap:4px}
+.layside{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.layer{border:1px solid var(--line);border-radius:6px;padding:5px 6px;display:flex;flex-direction:column;gap:5px;background:var(--surface-2)}
+.layer.ign{opacity:.55}
+.lrow{display:grid;grid-template-columns:auto minmax(0,1fr) 78px 58px auto;gap:5px;align-items:center}
+.lmove{display:flex;flex-direction:column}
+.lmove button{border:none;background:none;cursor:pointer;color:var(--muted);font-size:9px;line-height:1;padding:1px 3px}
+.lmove button:disabled{opacity:.3;cursor:default}
+.lrow .in{padding:4px 6px;font-size:12.5px;background:var(--surface)}
+.mmwrap{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted)}
+.rd{font-family:var(--font-mono);font-size:11.5px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.xbtn{border:none;background:none;cursor:pointer;color:var(--muted);padding:2px 4px}
+.xbtn:disabled{opacity:.3;cursor:not-allowed}
+.subrow{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap;padding-left:22px}
+.subrow .in{width:auto;padding:3px 6px;font-size:12px;background:var(--surface)}
+.xsec{border:1px solid var(--line);border-radius:6px;background:var(--paper);overflow:hidden}
+.xsec svg{display:block;width:100%;height:auto}
+.xsec svg text{font-size:10px;fill:var(--muted)}
+.linkbtn{border:none;background:none;color:var(--accent);cursor:pointer;padding:0;font-size:12px}
+.matrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.matrow .in{width:auto}
+@media (max-width:900px){
+  html,body{height:auto}
+  .app{height:auto}
+  .main{grid-template-columns:1fr;grid-template-rows:auto 62vh auto}
+  .tools{flex-direction:row;overflow-x:auto}
+  .tools .sep{width:1px;height:auto;margin:6px 2px}
+  .tool{min-width:58px}
+  .panel{max-height:none}
+  .pbody{overflow:visible}
+  .legend{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">Warmteverlies Tekentafel<small>Plattegrond, wanddelen en transmissieverlies per ruimte</small></div>
+    <select class="proj" id="proj-sel" aria-label="Project"></select>
+    <span class="pill" id="status">Laden…</span>
+    <span class="spacer"></span>
+    <span class="total" id="total"></span>
+    <button class="btn" id="btn-undo" title="Ongedaan maken (Ctrl+Z)">↶ Ongedaan</button>
+    <button class="btn" id="btn-redo" title="Opnieuw (Ctrl+Y)">↷</button>
+  </header>
+  <div class="main">
+    <nav class="tools" id="tools" aria-label="Gereedschap">
+      <button class="tool" data-tool="select" aria-pressed="true" title="Selecteren en verplaatsen (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6 1.6L10 19z"/></svg>Selecteer<kbd>V</kbd></button>
+      <button class="tool" data-tool="rect" aria-pressed="false" title="Rechthoekige ruimte (R)"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12"/></svg>Rechthoek<kbd>R</kbd></button>
+      <button class="tool" data-tool="poly" aria-pressed="false" title="Vrije ruimte tekenen (P)"><svg viewBox="0 0 24 24"><path d="M4 18V6h9v5h7v7z"/><circle cx="4" cy="6" r="1.3"/><circle cx="13" cy="6" r="1.3"/><circle cx="20" cy="18" r="1.3"/></svg>Veelhoek<kbd>P</kbd></button>
+      <button class="tool" data-tool="split" aria-pressed="false" title="Wand splitsen in delen (S)"><svg viewBox="0 0 24 24"><path d="M3 12h7M14 12h7"/><path d="M12 5v14" stroke-dasharray="2 2"/></svg>Splits<kbd>S</kbd></button>
+      <span class="sep"></span>
+      <button class="tool" data-tool="emit" aria-pressed="false" title="Radiator, convector of fancoil tekenen (A)"><svg viewBox="0 0 24 24"><rect x="3.5" y="8.5" width="17" height="7" rx="1.5"/><path d="M8 8.5v7M12 8.5v7M16 8.5v7"/></svg>Radiator<kbd>A</kbd></button>
+      <button class="tool" data-tool="vv" aria-pressed="false" title="Vloerverwarming tekenen (H)"><svg viewBox="0 0 24 24"><path d="M5 5h14v3.5H5V12h14v3.5H5V19h14"/></svg>Vloerverw.<kbd>H</kbd></button>
+      <span class="sep"></span>
+      <button class="tool" id="tool-fit" title="Alles in beeld (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>Passend<kbd>F</kbd></button>
+    </nav>
+    <div class="stage t-select" id="stage">
+      <svg id="cv" role="img" aria-label="Plattegrond"></svg>
+      <div class="floorbar" id="floorbar"></div>
+      <div class="hint"><span id="hint"></span></div>
+      <div class="legend" id="legend" hidden></div>
+      <div class="hud"><div class="scalebar" id="scalebar"></div><div class="coords" id="coords">x –  y –</div></div>
+      <div class="zoom"><button class="btn" id="z-out" aria-label="Uitzoomen">−</button><button class="btn" id="z-in" aria-label="Inzoomen">+</button></div>
+    </div>
+    <aside class="panel">
+      <div class="tabs" role="tablist" id="tabs">
+        <button class="tab" role="tab" data-tab="sel" aria-selected="true">Selectie</button>
+        <button class="tab" role="tab" data-tab="con" aria-selected="false">Constructies</button>
+        <button class="tab" role="tab" data-tab="vent" aria-selected="false">Ventilatie</button>
+        <button class="tab" role="tab" data-tab="res" aria-selected="false">Resultaten</button>
+        <button class="tab" role="tab" data-tab="set" aria-selected="false">Project</button>
+      </div>
+      <div class="pbody" id="pbody"></div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<input type="file" id="file-in" accept=".json,application/json" hidden>
+
+<script type="application/json" id="hp-default">
+{
+  "versie": 1,
+  "toelichting": "Lijst met warmtepompen voor de Warmteverlies Tekentafel. Per warmtepomp geef je in 'punten' het minimale en maximale verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal nodig: een punt bij -10 °C en een punt bij een hogere temperatuur (bij voorkeur +7 of +10 °C). Tussen en buiten de punten rekent de app rechtlijnig door. Voeg een warmtepomp toe door een blok te kopiëren en de waarden aan te passen.",
+  "warmtepompen": [
+    {
+      "id": "weheat-flint",
+      "merk": "WeHeat",
+      "model": "Flint",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        { "buiten": -10, "min": 1.4, "max": 3.7 },
+        { "buiten": 7, "min": 2.5, "max": 6.2 }
+      ]
+    },
+    {
+      "id": "itho-amber-65",
+      "merk": "Itho Daalderop",
+      "model": "Amber 65",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        { "buiten": -10, "min": 1.2, "max": 3.4 },
+        { "buiten": 7, "min": 2.3, "max": 6.7 }
+      ]
+    },
+    {
+      "id": "weheat-sparrow-p60",
+      "merk": "WeHeat",
+      "model": "Sparrow P60",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        { "buiten": -10, "min": 1.4, "max": 6.0 },
+        { "buiten": 7, "min": 2.1, "max": 9.0 }
+      ]
+    },
+    {
+      "id": "itho-hp-s-55",
+      "merk": "Itho Daalderop",
+      "model": "HP-S 55",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        { "buiten": -10, "min": 1.939, "max": 3.545 },
+        { "buiten": 7, "min": 1.569, "max": 5.431 }
+      ]
+    },
+    {
+      "id": "vaillant-vwl-35-6",
+      "merk": "Vaillant",
+      "model": "VWL 35/6",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        { "buiten": -10, "min": 1.4, "max": 4.1 },
+        { "buiten": 7, "min": 2.2, "max": 6.3 }
+      ]
+    },
+    {
+      "id": "vaillant-vwl-55-6",
+      "merk": "Vaillant",
+      "model": "VWL 55/6",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        { "buiten": -10, "min": 1.4, "max": 6.2 },
+        { "buiten": 7, "min": 2.1, "max": 8.0 }
+      ]
+    },
+    {
+      "id": "voorbeeld-4",
+      "merk": "Voorbeeld",
+      "model": "Compact 4 kW (fictief)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "fictief voorbeeld, geen echt product",
+      "punten": [
+        { "buiten": -10, "min": 0.9, "max": 3.0 },
+        { "buiten": 2, "min": 1.1, "max": 3.9 },
+        { "buiten": 10, "min": 1.4, "max": 4.8 }
+      ]
+    },
+    {
+      "id": "voorbeeld-9",
+      "merk": "Voorbeeld",
+      "model": "Midi 9 kW (fictief)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "fictief voorbeeld, geen echt product",
+      "punten": [
+        { "buiten": -10, "min": 2.5, "max": 8.5 },
+        { "buiten": 2, "min": 2.8, "max": 10.0 },
+        { "buiten": 10, "min": 3.3, "max": 11.8 }
+      ]
+    },
+    {
+      "id": "voorbeeld-12",
+      "merk": "Voorbeeld",
+      "model": "Maxi 12 kW (fictief)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "fictief voorbeeld, geen echt product",
+      "punten": [
+        { "buiten": -10, "min": 3.2, "max": 11.2 },
+        { "buiten": 7, "min": 3.9, "max": 14.5 }
+      ]
+    }
+  ]
+}
+</script>
+<script>
+(function(){
+'use strict';
+/* ---------- constants & helpers ---------- */
+const LS_KEY='wvt.projects.v1', LS_LAST='wvt.last.v1';
+const PALETTE=['#C2410C','#0E7490','#7C3AED','#15803D','#B45309','#BE185D','#1D4ED8','#4D7C0F','#9F1239','#0F766E'];
+const ADJ={buiten:'Buiten',grond:'Grond / kruipruimte',onverwarmd:'Onverwarmde ruimte',buurwoning:'Buurwoning',temp:'Ruimte met vaste temperatuur'};
+const DU_TYPES=new Set(['buiten','grond','onverwarmd']);
+const KINDS={wand:'Wand',raam:'Raam / deur',vloer:'Vloer',dak:'Dak / plafond'};
+const RS={wand:[0.13,0.04],raam:[0.13,0.04],vloer:[0.17,0.04],dak:[0.10,0.04]};
+const LET='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const MAT_PRESETS=[
+  ['m-gips','Gipskartonplaat','lambda',0.25,'#D9D4C7'],['m-pleister','Gipspleister','lambda',0.40,'#E6E1D6'],
+  ['m-osb','OSB-plaat','lambda',0.13,'#C9A46A'],['m-multi','Multiplex','lambda',0.13,'#C49A5E'],
+  ['m-hout','Naaldhout (stijlen, regels, bekleding)','lambda',0.13,'#A97B45'],
+  ['m-glaswol','Glaswol','lambda',0.035,'#E8CF5A'],['m-steenwol','Steenwol','lambda',0.035,'#C8B25A'],
+  ['m-pir','PIR-isolatieplaat','lambda',0.022,'#E9E39A'],['m-eps','EPS','lambda',0.035,'#EDEDE6'],['m-xps','XPS','lambda',0.034,'#9EC7E0'],
+  ['m-houtvezel','Houtvezelisolatie','lambda',0.040,'#B88E5A'],['m-cellulose','Cellulose (inblaas)','lambda',0.040,'#BDB7A6'],
+  ['m-baksteen','Baksteen metselwerk','lambda',0.90,'#B5583A'],['m-kzs','Kalkzandsteen','lambda',1.00,'#CFCBC2'],
+  ['m-cellenbeton','Cellenbeton','lambda',0.15,'#DADAD5'],['m-beton','Beton gewapend','lambda',2.30,'#9A9C98'],
+  ['m-dekvloer','Zandcement dekvloer','lambda',1.40,'#B3AFA5'],
+  ['m-dampremmend','Dampremmende folie','R',0,'#3A4A55'],['m-dampopen','Dampopen folie','R',0,'#5C7C8A'],
+  ['m-spouw','Luchtspouw','spouw',0,'#FFFFFF']];
+const presetMaterials=()=>MAT_PRESETS.map(([id,name,type,v,color])=>({id,name,type,lambda:type==='lambda'?v:0,R:type==='R'?v:0,color}));
+// Rλ of unventilated air layers, NEN-EN-ISO 6946 table (thickness mm → m²K/W)
+const AIR={h:[[0,0],[5,0.11],[7,0.13],[10,0.15],[15,0.17],[25,0.18],[300,0.18]],up:[[0,0],[5,0.11],[7,0.13],[10,0.15],[15,0.16],[300,0.16]],down:[[0,0],[5,0.11],[7,0.13],[10,0.15],[15,0.17],[25,0.19],[50,0.21],[100,0.22],[300,0.23]]};
+const DEFAULT_SETTINGS={te:-10,tGround:5,tUnheated:5,tNeighbour:15,dU:0.1,nInf:0.5,tSupply:-10,maxWall:0.35,snap:0.05,height:2.6,
+  ventSys:'D',eta:0.85,tRet:20,infMode:'qv10',qv10:1.0,fInf:1,twSup:35,twRet:30};
+// improvement advice: constructions of this kind facing outside/ground/unheated with U above 'on' get the measure, to U 'to'
+const ADVICE_DEFAULT={
+  raam:{on:1.6,to:1.1,label:'Ramen en deuren vervangen door HR++ glas'},
+  wand:{on:0.7,to:0.4,label:'Gevel of spouw na-isoleren'},
+  vloer:{on:0.7,to:0.29,label:'Vloer of kruipruimte isoleren'},
+  dak:{on:0.6,to:0.2,label:'Dak of zoldervloer isoleren'}};
+const VENT_SYS={A:'A · natuurlijke toe- en afvoer',C:'C · natuurlijke toevoer, mechanische afvoer',D:'D · balansventilatie met WTW'};
+const RHOC=0.335; // W per (m³/h)·K  (1,2 kg/m³ × 1005 J/kgK / 3600)
+
+const rid=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=(v,d=2)=>Number.isFinite(v)?v.toLocaleString('nl-NL',{minimumFractionDigits:d,maximumFractionDigits:d}):'–';
+const fmtW=v=>Number.isFinite(v)?Math.round(v).toLocaleString('nl-NL'):'–';
+const nv=(v,d=3)=>Number.isFinite(v)?v.toLocaleString('nl-NL',{maximumFractionDigits:d,useGrouping:false}):'';
+const num=s=>{if(s==null)return null;const t=String(s).trim().replace(',','.');if(t==='')return null;const v=Number(t);return Number.isFinite(v)?v:null;};
+const r3=v=>Math.round(v*1000)/1000;
+const clone=o=>JSON.parse(JSON.stringify(o));
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const $=id=>document.getElementById(id);
+
+/* ---------- example project ---------- */
+function rectPts(x0,y0,x1,y1){return [{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}];}
+function seg(cid,adj,openings){return {cid:cid||'',adj:adj||'auto',adjT:20,openings:openings||[]};}
+function opening(name,w,h,cid){return {id:rid(),name,w,h,cid};}
+function exampleProject(){
+  const Ly=(mid,d,extra)=>Object.assign({id:rid(),mid,d,vent:'niet',mix:null},extra||{});
+  const C=[
+    {id:'c1',name:'Spouwmuur kalkzandsteen + 100 mm PIR',kind:'wand',U:0.21,color:PALETTE[1],mode:'lagen',
+      layers:[Ly('m-pleister',10),Ly('m-kzs',100),Ly('m-pir',100),Ly('m-spouw',40,{vent:'zwak'}),Ly('m-baksteen',100)]},
+    {id:'c2',name:'Houtskeletwand 140 mm glaswol',kind:'wand',U:0.27,color:PALETTE[4],mode:'lagen',
+      layers:[Ly('m-gips',12.5),Ly('m-dampremmend',0),Ly('m-glaswol',140,{mix:{mid:'m-hout',pct:12}}),Ly('m-osb',12),Ly('m-dampopen',0),Ly('m-spouw',25,{vent:'sterk'}),Ly('m-hout',18)]},
+    {id:'c3',name:'Binnenwand kalkzandsteen 100 mm',kind:'wand',U:2.4,color:PALETTE[6],inner:true,mode:'lagen',
+      layers:[Ly('m-pleister',10),Ly('m-kzs',100),Ly('m-pleister',10)]},
+    {id:'c7',name:'Woningscheidende wand kalkzandsteen',kind:'wand',U:1.9,color:PALETTE[2]},
+    {id:'c4',name:'HR++ glas in houten kozijn',kind:'raam',U:1.8,color:PALETTE[0]},
+    {id:'c8',name:'Geïsoleerde voordeur',kind:'raam',U:1.4,color:PALETTE[5]},
+    {id:'c5',name:'Begane grondvloer Rc 3,7',kind:'vloer',U:0.26,color:PALETTE[3]},
+    {id:'c6',name:'Houten verdiepingsvloer',kind:'dak',U:1.6,color:PALETTE[7]},
+    {id:'c9',name:'Hellend dak 160 mm minerale wol',kind:'dak',U:0.24,color:PALETTE[8]}
+  ];
+  const fl=()=>({cid:'c5',adj:'grond',t:20}), ce=(t)=>({cid:'c6',adj:'temp',t:t});
+  const rooms=[
+    {id:'r1',name:'Woonkamer',temp:20,height:2.6,sup:100,ext:0,pts:rectPts(0,0,6,4.5),floor:fl(),ceil:ce(20),walls:[
+      {cuts:[2.4],segs:[seg('c2','buiten'),seg('c1','buiten',[opening('Raam voorgevel',2.4,1.5,'c4')])]},
+      {cuts:[],segs:[seg('c3','auto')]},
+      {cuts:[],segs:[seg('c1','buiten',[opening('Schuifpui',2.4,2.1,'c4')])]},
+      {cuts:[],segs:[seg('c7','buurwoning')]}]},
+    {id:'r2',name:'Keuken',temp:20,height:2.6,sup:0,ext:100,pts:rectPts(6,0,9,3),floor:fl(),ceil:ce(20),walls:[
+      {cuts:[],segs:[seg('c1','buiten',[opening('Keukenraam',1.2,1.2,'c4')])]},
+      {cuts:[],segs:[seg('c1','buiten')]},
+      {cuts:[],segs:[seg('c3','auto')]},
+      {cuts:[],segs:[seg('c3','auto')]}]},
+    {id:'r3',name:'Hal',temp:15,height:2.6,sup:0,ext:0,pts:rectPts(6,3,9,4.5),floor:fl(),ceil:ce(18),walls:[
+      {cuts:[],segs:[seg('c3','auto')]},
+      {cuts:[],segs:[seg('c1','buiten')]},
+      {cuts:[],segs:[seg('c1','buiten',[opening('Voordeur',1.0,2.3,'c8')])]},
+      {cuts:[],segs:[seg('c3','auto')]}]}
+  ];
+  const up=(id,name,temp,pts,walls)=>({id,name,temp,height:2.5,sup:id==='r5'?0:(id==='r4'?50:25),ext:id==='r5'?75:0,pts,floorId:'f1',floor:{cid:'c6',adj:'temp',t:20},ceil:{cid:'c6',adj:'temp',t:18},walls});
+  rooms.push(
+    up('r4','Slaapkamer 1',18,rectPts(0,0,4.5,4.5),[{cuts:[],segs:[seg('c1','buiten',[opening('Raam',1.6,1.3,'c4')])]},{cuts:[],segs:[seg('c3','auto')]},{cuts:[],segs:[seg('c1','buiten')]},{cuts:[],segs:[seg('c7','buurwoning')]}]),
+    up('r5','Badkamer',22,rectPts(4.5,0,9,2.5),[{cuts:[],segs:[seg('c1','buiten',[opening('Raam',0.8,0.8,'c4')])]},{cuts:[],segs:[seg('c1','buiten')]},{cuts:[],segs:[seg('c3','auto')]},{cuts:[],segs:[seg('c3','auto')]}]),
+    up('r6','Slaapkamer 2',18,rectPts(4.5,2.5,9,4.5),[{cuts:[],segs:[seg('c3','auto')]},{cuts:[],segs:[seg('c1','buiten')]},{cuts:[],segs:[seg('c1','buiten',[opening('Raam',1.2,1.3,'c4')])]},{cuts:[],segs:[seg('c3','auto')]}]));
+  rooms.push({id:'r7',name:'Zolder',temp:18,height:2.4,sup:0,ext:0,floorId:'f2',pts:rectPts(0,0,9,4.5),
+    floor:{cid:'c6',adj:'temp',t:18},ceil:{cid:'c6',adj:'onverwarmd',t:5},
+    roof:{type:'zadel',pitch:45,knee:0.6,edge:0,low:'min',cid:'c9',adj:'buiten',t:20},
+    walls:[{cuts:[],segs:[seg('c1','buiten')]},{cuts:[],segs:[seg('c1','buiten',[opening('Raam topgevel',0.8,1.0,'c4')])]},{cuts:[],segs:[seg('c1','buiten')]},{cuts:[],segs:[seg('c7','buurwoning')]}]});
+  rooms.slice(0,3).forEach(r=>r.floorId='f0');
+  const rad=(name,ax,ay,bx,by,p,kind,dn)=>({id:rid(),kind:kind||'rad',name,a:{x:ax,y:ay},b:{x:bx,y:by},p,n:{rad:1.3,conv:1.4,fan:1}[kind||'rad'],pipe:{mat:'koper',dn:dn||'15'}});
+  const byId=id=>rooms.find(r=>r.id===id);
+  byId('r1').emitters=[{id:rid(),kind:'vv',name:'Vloerverwarming',pts:rectPts(0.3,0.3,5.7,4.2),spacing:15,cover:'tegels',p:0,n:1,pipe:{mat:'pex',dn:'16'}}];
+  byId('r2').emitters=[rad('Radiator keuken',6.6,0.2,8.4,0.2,1400)];
+  byId('r3').emitters=[rad('Convector hal',7.4,4.3,8.2,4.3,600,'conv','12')];
+  byId('r4').emitters=[rad('Radiator onder raam',0.8,0.2,2.6,0.2,1800)];
+  byId('r5').emitters=[rad('Handdoekradiator',8.8,0.5,8.8,1.3,700)];
+  byId('r6').emitters=[rad('Radiator',5.5,4.3,6.9,4.3,1100)];
+  return normalizeProject({id:'p'+rid(),name:'Voorbeeldwoning',example:true,updatedAt:0,settings:{...DEFAULT_SETTINGS},materials:presetMaterials(),
+    floors:[{id:'f0',name:'Begane grond'},{id:'f1',name:'1e verdieping'},{id:'f2',name:'Zolder'}],constructions:C,rooms,
+    transfers:[{id:'t1',from:'r1',to:'r2',q:100},{id:'t2',from:'r4',to:'r5',q:50},{id:'t3',from:'r6',to:'r5',q:25}]});
+}
+function emptyProject(name){
+  const p=exampleProject();
+  return normalizeProject({id:'p'+rid(),name:name||'Nieuw project',example:false,updatedAt:Date.now(),settings:{...DEFAULT_SETTINGS},materials:p.materials,constructions:p.constructions,floors:[{id:'f'+rid(),name:'Begane grond'}],rooms:[]});
+}
+function normalizeProject(p){
+  if(!p||typeof p!=='object')return null;
+  p.id=String(p.id||('p'+rid())).replace(/[^A-Za-z0-9_-]/g,'')||('p'+rid());
+  p.name=String(p.name||'Project');
+  const legacy=p.settings&&!p.settings.ventSys; // projects from before ventilation per room: keep their results
+  p.settings={...DEFAULT_SETTINGS,...(p.settings||{})};
+  const adv=p.settings.advice||{};p.settings.advice={};Object.keys(ADVICE_DEFAULT).forEach(k=>{p.settings.advice[k]={...ADVICE_DEFAULT[k],...(adv[k]||{})};});
+  p.advSel=p.advSel&&typeof p.advSel==='object'?p.advSel:{};
+  if(legacy){const S=p.settings;S.infMode='n';S.ventSys='C';
+    if(S.tSupply>S.te){S.ventSys='D';S.eta=Math.max(0,Math.min(1,Math.round((S.tSupply-S.te)/(S.tRet-S.te)*1000)/1000));}}
+  p.constructions=Array.isArray(p.constructions)?p.constructions:[];
+  p.materials=Array.isArray(p.materials)&&p.materials.length?p.materials:presetMaterials();
+  p.materials.forEach(m=>{m.id=m.id||rid();m.type=['lambda','R','spouw'].includes(m.type)?m.type:'lambda';m.lambda=+m.lambda||0;m.R=+m.R||0;m.color=m.color||'#BBBBBB';m.name=String(m.name||'Materiaal');});
+  p.constructions.forEach((c,i)=>{c.id=c.id||rid();c.kind=KINDS[c.kind]?c.kind:'wand';c.U=Number(c.U)||0;c.color=c.color||PALETTE[i%PALETTE.length];c.name=String(c.name||'Constructie');
+    c.mode=c.mode==='lagen'?'lagen':'U';c.inner=!!c.inner;
+    c.layers=Array.isArray(c.layers)?c.layers.map(l=>({id:l.id||rid(),mid:l.mid||'',d:+l.d||0,vent:['niet','zwak','sterk'].includes(l.vent)?l.vent:'niet',mix:l.mix&&l.mix.mid?{mid:l.mix.mid,pct:+l.mix.pct||0}:null})):[];
+    syncU(c,p);});
+  p.rooms=Array.isArray(p.rooms)?p.rooms.filter(r=>r&&Array.isArray(r.pts)&&r.pts.length>=3):[];
+  p.floors=Array.isArray(p.floors)&&p.floors.length?p.floors.filter(f=>f&&f.id):[];if(!p.floors.length)p.floors=[{id:'f'+rid(),name:'Begane grond'}];
+  p.floors.forEach(f=>f.name=String(f.name||'Verdieping'));
+  const rids=new Set(p.rooms.map(r=>r.id));
+  p.transfers=(Array.isArray(p.transfers)?p.transfers:[]).map(t=>({id:t.id||rid(),from:t.from,to:t.to,q:Math.max(0,+t.q||0)})).filter(t=>rids.has(t.from)&&rids.has(t.to));
+  p.rooms.forEach(r=>{if(!p.floors.some(f=>f.id===r.floorId))r.floorId=p.floors[0].id;});
+  p.rooms.forEach(r=>{
+    r.id=r.id||rid();r.name=String(r.name||'Ruimte');r.temp=Number.isFinite(+r.temp)?+r.temp:20;r.height=+r.height>0?+r.height:p.settings.height;
+    if(r.sup==null&&r.ext==null){r.sup=r3((Number(r.qv)||0)*3.6);r.ext=0;}delete r.qv;r.sup=Math.max(0,+r.sup||0);r.ext=Math.max(0,+r.ext||0);
+    r.floor=r.floor||{cid:'',adj:'grond',t:20};r.ceil=r.ceil||{cid:'',adj:'temp',t:20};
+    const dakC=(p.constructions.find(c=>c.kind==='dak')||{}).id||'';
+    r.emitters=(Array.isArray(r.emitters)?r.emitters:[]).filter(e=>e&&(e.kind==='vv'?Array.isArray(e.pts)&&e.pts.length>=3:e.a&&e.b)).map(e=>{const kind=EM_KINDS[e.kind]?e.kind:'rad';
+      const mat=PIPES[e.pipe&&e.pipe.mat]?e.pipe.mat:(kind==='vv'?'pex':'koper');let dn=String(e.pipe&&e.pipe.dn||(kind==='vv'?'16':'15'));if(!PIPES[mat].d[dn])dn=Object.keys(PIPES[mat].d)[1];
+      return{id:e.id||rid(),kind,name:String(e.name||EM_KINDS[kind]),a:e.a,b:e.b,pts:e.pts,p:Math.max(0,+e.p||0),n:+e.n||EM_N[kind]||1.3,spacing:[10,15,20].includes(+e.spacing)?+e.spacing:15,cover:VV_COVER[e.cover]?e.cover:'tegels',boost:!!e.boost&&(kind==='rad'||kind==='conv'),boostPct:Number.isFinite(+e.boostPct)&&+e.boostPct>=0?+e.boostPct:40,pipe:{mat,dn}};});
+    r.kind=['normaal','trap','vide'].includes(r.kind)?r.kind:'normaal';
+    {const bi=p.floors.findIndex(x=>x.id===r.floorId),ti=p.floors.findIndex(x=>x.id===r.spanTo);if(!(ti>bi))r.spanTo=null;}
+    r.roof=Object.assign({type:'plat',pitch:45,knee:0.6,edge:0,low:'min',cid:dakC,adj:'buiten',t:20},r.roof||{});
+    if(!ROOF_TYPES[r.roof.type])r.roof.type='plat';r.roof.edge=Math.max(0,Math.min(r.pts.length-1,r.roof.edge|0));
+    r.walls=Array.isArray(r.walls)?r.walls:[];
+    while(r.walls.length<r.pts.length)r.walls.push({cuts:[],segs:[seg('','auto')]});
+    r.walls.length=r.pts.length;
+    r.walls.forEach(w=>{w.cuts=(w.cuts||[]).map(Number).filter(Number.isFinite).sort((a,b)=>a-b);w.segs=w.segs||[];
+      while(w.segs.length<w.cuts.length+1)w.segs.push(seg('','auto'));w.segs.length=w.cuts.length+1;
+      w.segs.forEach(s=>{s.adj=s.adj||'auto';s.adjT=Number.isFinite(+s.adjT)?+s.adjT:20;s.openings=(s.openings||[]).map(o=>({id:o.id||rid(),name:o.name||'Raam',w:+o.w||0,h:+o.h||0,cid:o.cid||''}));});});
+  });
+  return p;
+}
+
+/* ---------- state ---------- */
+let all={};           // id -> project
+let P=null;           // current project
+let tab='sel', sel=null, tool='select';
+let view={s:60,tx:60,ty:70};
+let drawPts=[], hover=null, drag=null, pan=null, spaceDown=false, hoverSplit=null, cursorW=null;
+let undoStack=[], redoStack=[], undoArmed=false;
+let confirmDel=false;
+let curFloor=null, showUnder=true;
+try{showUnder=localStorage.getItem('wvt.under')!=='0';}catch(_){}
+const floorIdx=id=>P.floors.findIndex(f=>f.id===id);
+const curRooms=()=>P.rooms.filter(r=>r.floorId===curFloor);
+function underFloor(){const i=floorIdx(curFloor);return i>0?P.floors[i-1]:null;}
+const underRooms=()=>{const f=underFloor();return showUnder&&f?P.rooms.filter(r=>r.floorId===f.id&&!presentOn(r,curFloor)):[];};
+// a room spans from its own floor up to spanTo (stairwell, void)
+function levelsOf(r){const a=floorIdx(r.floorId),b=r.spanTo?floorIdx(r.spanTo):-1;return[a,b>a?b:a];}
+const spans=r=>{const l=levelsOf(r);return l[1]>l[0];};
+function presentOn(r,fid){const i=floorIdx(fid),l=levelsOf(r);return i>=l[0]&&i<=l[1];}
+function levelsMeet(r,o){const a=levelsOf(r),b=levelsOf(o);return a[0]<=b[1]&&b[0]<=a[1];}
+const videRooms=()=>P.rooms.filter(r=>r.floorId!==curFloor&&presentOn(r,curFloor));
+const snapRooms=()=>curRooms().concat(underRooms(),videRooms());
+function setFloor(id,keepSel){if(!P.floors.some(f=>f.id===id))id=P.floors[0].id;if(curFloor===id)return;curFloor=id;if(!keepSel)sel=null;drawPts=[];drag=null;
+  try{localStorage.setItem('wvt.floor.'+P.id,id);}catch(_){}renderAll();}
+function renderFloorbar(){const uf=underFloor();
+  $('floorbar').innerHTML=`<div class="floors" role="group" aria-label="Verdieping">${P.floors.map(f=>`<button data-floor="${f.id}" aria-pressed="${f.id===curFloor}">${esc(f.name)} <span style="opacity:.7">${P.rooms.filter(r=>r.floorId===f.id).length}</span></button>`).join('')}<button data-floor="__add" title="Verdieping toevoegen" aria-label="Verdieping toevoegen">+</button></div>
+  <button class="btn small undbtn" id="btn-under" aria-pressed="${!!(showUnder&&uf)}" ${uf?'':'disabled'} title="${uf?'Toon '+esc(uf.name)+' lichtgrijs als ondergrond (O)':'Er is geen verdieping onder deze'}">Ondergrond${uf?': '+esc(uf.name):''}</button>`;}
+$('floorbar').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;
+  if(b.id==='btn-under'){showUnder=!showUnder;try{localStorage.setItem('wvt.under',showUnder?'1':'0');}catch(_){}renderFloorbar();renderCanvas();return;}
+  if(b.dataset.floor==='__add'){addFloor();return;}setFloor(b.dataset.floor);requestAnimationFrame(fitIfEmptyView);});
+function addFloor(){pushUndo();const n=P.floors.length;const f={id:'f'+rid(),name:n===1?'1e verdieping':n===2?'2e verdieping':n===3?'Zolder':(n)+'e verdieping'};P.floors.push(f);markDirty();showUnder=true;setFloor(f.id);toast(`${f.name} toegevoegd. De verdieping eronder staat lichtgrijs als ondergrond.`);}
+function fitIfEmptyView(){}
+
+/* ---------- geometry ---------- */
+const getRoom=id=>P.rooms.find(r=>r.id===id);
+const conById=id=>P.constructions.find(c=>c.id===id);
+function polyArea(pts){let a=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];a+=p.x*q.y-q.x*p.y;}return a/2;}
+function centroid(pts){const A=polyArea(pts);if(Math.abs(A)<1e-9){let x=0,y=0;pts.forEach(p=>{x+=p.x;y+=p.y});return{x:x/pts.length,y:y/pts.length};}
+  let cx=0,cy=0;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length];const f=p.x*q.y-q.x*p.y;cx+=(p.x+q.x)*f;cy+=(p.y+q.y)*f;}return{x:cx/(6*A),y:cy/(6*A)};}
+function edge(room,i){const n=room.pts.length;const a=room.pts[i],b=room.pts[(i+1)%n];const dx=b.x-a.x,dy=b.y-a.y;const L=Math.hypot(dx,dy);
+  const sg=polyArea(room.pts)>=0?1:-1;const ux=L?dx/L:0,uy=L?dy/L:0;return{a,b,L,ux,uy,nx:sg*uy,ny:-sg*ux};} // n = outward normal
+function bounds(room,i){const L=edge(room,i).L;const w=room.walls[i];return[0,...w.cuts.map(c=>Math.max(0,Math.min(c,L))),L];}
+function mergeIv(iv){iv.sort((a,b)=>a[0]-b[0]);const out=[];for(const v of iv){const l=out[out.length-1];if(l&&v[0]<=l[1]+1e-6)l[1]=Math.max(l[1],v[1]);else out.push([v[0],v[1]]);}return out;}
+function neighbourIntervals(room,i){
+  const e=edge(room,i);if(e.L<1e-6)return[];const maxT=Math.max(0.02,P.settings.maxWall);const res=[];
+  for(const o of P.rooms){if(o===room||!levelsMeet(room,o))continue;const ivs=[];
+    for(let k=0;k<o.pts.length;k++){const f=edge(o,k);if(f.L<1e-6)continue;
+      if(Math.abs(e.ux*f.uy-e.uy*f.ux)>0.01)continue;
+      const da=(f.a.x-e.a.x)*e.nx+(f.a.y-e.a.y)*e.ny, db=(f.b.x-e.a.x)*e.nx+(f.b.y-e.a.y)*e.ny;
+      if(da<-0.02||da>maxT+0.001||Math.abs(da-db)>0.02)continue;
+      let t0=(f.a.x-e.a.x)*e.ux+(f.a.y-e.a.y)*e.uy,t1=(f.b.x-e.a.x)*e.ux+(f.b.y-e.a.y)*e.uy;if(t0>t1)[t0,t1]=[t1,t0];
+      t0=Math.max(0,t0);t1=Math.min(e.L,t1);if(t1-t0>0.01)ivs.push([t0,t1]);}
+    if(ivs.length)res.push({room:o,ivs:mergeIv(ivs)});}
+  return res;
+}
+function normalizeWalls(room){room.walls.forEach((w,i)=>{const L=edge(room,i).L;for(let c=w.cuts.length-1;c>=0;c--){if(w.cuts[c]>=L-0.01||w.cuts[c]<=0.01){const keep=c;const merged=w.segs[keep].openings.concat(w.segs[keep+1].openings);w.cuts.splice(c,1);w.segs.splice(keep+1,1);w.segs[keep].openings=merged;}}});}
+
+/* ---------- layer build-up (NEN-EN-ISO 6946, simplified) ---------- */
+function airR(d,kind){const t=AIR[kind==='dak'?'up':kind==='vloer'?'down':'h'];d=Math.max(0,Math.min(300,d||0));
+  for(let i=1;i<t.length;i++){if(d<=t[i][0]){const[d0,r0]=t[i-1],[d1,r1]=t[i];return r0+(r1-r0)*(d-d0)/(d1-d0);}}return t[t.length-1][1];}
+function calcLayers(c,p){
+  p=p||P;const mat=id=>p.materials.find(m=>m.id===id);const rs=RS[c.kind]||RS.wand;const rsi=rs[0];let rse=c.inner?rsi:rs[1];
+  const L=c.layers||[];const vi=L.findIndex(l=>{const m=mat(l.mid);return m&&m.type==='spouw'&&l.vent!=='niet';});
+  const mode=vi>=0?L[vi].vent:'';let cut=L.length;if(mode==='sterk'){cut=vi;rse=rsi;}
+  const Rm=(m,l)=>{if(!m)return 0;if(m.type==='lambda')return m.lambda>0?(l.d/1000)/m.lambda:0;if(m.type==='R')return m.R||0;return airR(l.d,c.kind);};
+  const rows=L.map((l,i)=>{const m=mat(l.mid);let rp=Rm(m,l);if(mode==='zwak'&&i===vi)rp/=2;
+    let rm=null,f=0;if(l.mix&&m&&m.type==='lambda'){const mm=mat(l.mix.mid);if(mm&&mm.type==='lambda'){rm=Rm(mm,l);f=Math.max(0,Math.min(100,l.mix.pct))/100;}}
+    const req=rm==null||f===0?rp:1/((1-f)/(rp||1e-9)+f/(rm||1e-9));
+    return{rp,rm,f,req,active:i<cut};});
+  if(mode==='zwak'){const outer=rows.filter((r,i)=>i>vi);const s=outer.reduce((a,r)=>a+r.req,0);if(s>0.15){const k=0.15/s;outer.forEach(r=>{r.rp*=k;r.req*=k;if(r.rm!=null)r.rm*=k;});}}
+  const act=rows.filter(r=>r.active);
+  const Rlo=rsi+rse+act.reduce((a,r)=>a+r.req,0);
+  const M=act.filter(r=>r.rm!=null&&r.f>0).slice(0,6);let Rup=Rlo;
+  if(M.length){const base=rsi+rse+act.filter(r=>!M.includes(r)).reduce((a,r)=>a+r.rp,0);let inv=0;
+    for(let b=0;b<(1<<M.length);b++){let fr=1,R=base;M.forEach((r,k)=>{if(b&(1<<k)){fr*=r.f;R+=r.rm;}else{fr*=1-r.f;R+=r.rp;}});inv+=fr/R;}Rup=1/inv;}
+  const RT=M.length?(Rup+Rlo)/2:Rlo;
+  return{rsi,rse,RT,Rc:RT-rsi-rse,U:RT>0?1/RT:NaN,Rup,Rlo,mixed:M.length>0,mode,cut,layers:rows.map(r=>({r:r.req,active:r.active}))};
+}
+function syncU(c,p){if(c.mode==='lagen'&&c.layers.length){const r=calcLayers(c,p);if(Number.isFinite(r.U)&&r.U>0)c.U=Math.round(r.U*10000)/10000;}}
+const matById=id=>P.materials.find(m=>m.id===id);
+
+/* ---------- calculation ---------- */
+function adjTemp(type,custom){const S=P.settings;switch(type){case'buiten':return S.te;case'grond':return S.tGround;case'onverwarmd':return S.tUnheated;case'buurwoning':return S.tNeighbour;case'temp':return custom;default:return S.te;}}
+/* ---------- 2.5D: roof shape per room ----------
+   z(p) = height of the ceiling/roof underside above the floor at plan point p.
+   Ridge runs parallel to a chosen wall; s = coordinate perpendicular to the ridge.
+   zadel: z = nok − k·|s − s_ridge|, eaves at the outer s of the room at knee height
+   lessenaar: z rises from knee height at the low side
+   room.height acts as a flat ceiling (hanenbalk) that caps z. */
+const ROOF_TYPES={plat:'Plat plafond',zadel:'Zadeldak',lessenaar:'Lessenaarsdak'};
+function roofOf(room){const r=room.roof;if(!r||r.type==='plat'||room.pts.length<3)return null;
+  const n=room.pts.length,ei=Math.max(0,Math.min(n-1,r.edge|0)),e=edge(room,ei);if(e.L<1e-6)return null;
+  const v={x:-e.uy,y:e.ux},sOf=p=>p.x*v.x+p.y*v.y,ss=room.pts.map(sOf),smin=Math.min(...ss),smax=Math.max(...ss);
+  const k=Math.tan(Math.max(1,Math.min(80,+r.pitch||45))*Math.PI/180),knee=Math.max(0,+r.knee||0),cap=room.height;
+  const base={v,sOf,smin,smax,k,knee,cap,cosA:1/Math.sqrt(1+k*k),u:{x:e.ux,y:e.uy}};
+  if(r.type==='zadel'){const sr=(smin+smax)/2,nok=knee+k*(sr-smin);const wc=nok>cap?(nok-cap)/k:0;
+    return{...base,type:'zadel',sr,nok,wc,crit:[sr,sr-wc,sr+wc,sr-nok/k,sr+nok/k],z:s=>Math.max(0,Math.min(cap,nok-k*Math.abs(s-sr)))};}
+  const lowMin=r.low!=='max',nok=knee+k*(smax-smin);const sc=lowMin?smin+(cap-knee)/k:smax-(cap-knee)/k;
+  return{...base,type:'lessenaar',lowMin,nok,sc,crit:[sc,lowMin?smin-knee/k:smax+knee/k],z:s=>Math.max(0,Math.min(cap,lowMin?knee+k*(s-smin):knee+k*(smax-s)))};}
+// wall area between t0 and t1 along edge e: exact for piecewise-linear heights
+function wallArea(room,e,t0,t1,R){if(t1<=t0)return 0;if(R===undefined)R=roofOf(room);if(!R)return(t1-t0)*room.height;
+  const sa=R.sOf(e.a),ds=e.ux*R.v.x+e.uy*R.v.y,zt=t=>R.z(sa+ds*t);
+  if(Math.abs(ds)<1e-9)return(t1-t0)*zt(t0);
+  const ts=[t0,t1,...R.crit.map(c=>(c-sa)/ds).filter(t=>t>t0&&t<t1)].sort((a,b)=>a-b);
+  let A=0;for(let i=1;i<ts.length;i++)A+=(zt(ts[i-1])+zt(ts[i]))/2*(ts[i]-ts[i-1]);return A;}
+// keep the part of a polygon on one side of the line s = c (Sutherland–Hodgman; area stays correct for concave shapes)
+function clipS(pts,sOf,c,keepBelow){const out=[],inn=p=>keepBelow?sOf(p)<=c+1e-9:sOf(p)>=c-1e-9;
+  for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length],ia=inn(a),ib=inn(b);
+    if(ia)out.push(a);if(ia!==ib){const sa=sOf(a),sb=sOf(b),t=(c-sa)/(sb-sa);out.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});}}
+  return out.length>=3?out:[];}
+// horizontal regions of the top: sloped roof planes and the flat ceiling, each with projected area and mean height
+function roofParts(room){const R=roofOf(room);if(!R)return null;const pts=room.pts,sOf=R.sOf;
+  const reg=(poly,kind)=>{const A=Math.abs(polyArea(poly));if(A<1e-6)return null;const c=centroid(poly);return{kind,A,z:R.z(sOf(c)),poly};};
+  const out=[];
+  if(R.type==='zadel'){const lo=R.sr-R.wc,hi=R.sr+R.wc;
+    out.push(reg(clipS(pts,sOf,lo,true),'slope'),reg(clipS(pts,sOf,hi,false),'slope'));
+    if(R.wc>0)out.push(reg(clipS(clipS(pts,sOf,lo,false),sOf,hi,true),'cap'));}
+  else{const inside=R.sc>R.smin&&R.sc<R.smax;
+    if(!inside&&((R.lowMin&&R.sc>=R.smax)||(!R.lowMin&&R.sc<=R.smin)))out.push(reg(pts,'slope'));
+    else if(!inside)out.push(reg(pts,'cap'));
+    else{out.push(reg(clipS(pts,sOf,R.sc,R.lowMin),'slope'),reg(clipS(pts,sOf,R.sc,!R.lowMin),'cap'));}}
+  return{R,parts:out.filter(Boolean)};}
+function roomVolume(room){const rp=roofParts(room);const Af=Math.abs(polyArea(room.pts));if(!rp)return Af*room.height;return rp.parts.reduce((a,p)=>a+p.A*p.z,0);}
+// wall pieces of one segment: per neighbouring room (auto) and the rest, each with length and real area
+function wallParts(room,i,s0,s1,nb,R){if(spans(room))return wallPartsSpan(room,i,s0,s1,nb,R);const e=edge(room,i),parts=[],all=[];
+  nb.forEach(n=>{const iv=n.ivs.map(v=>[Math.max(s0,v[0]),Math.min(s1,v[1])]).filter(v=>v[1]-v[0]>1e-6);const len=iv.reduce((a,v)=>a+v[1]-v[0],0);
+    if(len>0.005){parts.push({room:n.room,len,A:iv.reduce((a,v)=>a+wallArea(room,e,v[0],v[1],R),0)});all.push(...iv);}});
+  let cur=s0,rl=0,ra=0;mergeIv(all).forEach(v=>{if(v[0]>cur){rl+=v[0]-cur;ra+=wallArea(room,e,cur,v[0],R);}cur=Math.max(cur,v[1]);});
+  if(s1>cur){rl+=s1-cur;ra+=wallArea(room,e,cur,s1,R);}
+  if(rl>0.005)parts.push({room:null,len:rl,A:ra});return parts;}
+function wallPartsSpan(room,i,s0,s1,nb,R){const e=edge(room,i),gross=wallArea(room,e,s0,s1,R),parts=[];let sum=0;
+  nb.forEach(n=>{const iv=n.ivs.map(v=>[Math.max(s0,v[0]),Math.min(s1,v[1])]).filter(v=>v[1]-v[0]>1e-6);const len=iv.reduce((a,v)=>a+v[1]-v[0],0);
+    if(len>0.005){const A=len*Math.min(n.room.height,room.height);parts.push({room:n.room,len,A});sum+=A;}});
+  if(sum>gross&&sum>0){const k=gross/sum;parts.forEach(p=>p.A*=k);sum=gross;}
+  if(gross-sum>0.005)parts.push({room:null,len:s1-s0,A:gross-sum});return parts;}
+function transLines(room){
+  const S=P.settings,ti=room.temp,lines=[],R=roofOf(room);let missing=0;
+  const push=(o)=>{const c=o.con;const U=c?c.U:NaN;const Ueff=Number.isFinite(U)?U+(DU_TYPES.has(o.type)?S.dU:0):NaN;const dT=ti-o.t;const phi=o.A*Ueff*dT;
+    if(!c&&o.A>0.0001)missing++;lines.push({label:o.label,sub:o.sub,A:o.A,U,Ueff,dT,phi:Number.isFinite(phi)?phi:0,miss:!c,type:o.type,w:o.w,s:o.s,group:o.group,cid:c?c.id:''});};
+  room.pts.forEach((_,i)=>{
+    const w=room.walls[i];const b=bounds(room,i);const nb=neighbourIntervals(room,i);
+    w.segs.forEach((sg,j)=>{
+      const s0=b[j],s1=b[j+1],len=s1-s0;if(len<=1e-4)return;
+      const con=conById(sg.cid);const nm='Wand '+(i+1)+(w.segs.length>1?LET[j]||j:'');
+      const opType=sg.adj==='auto'?'buiten':sg.adj;const opT=sg.adj==='auto'?S.te:adjTemp(sg.adj,sg.adjT);
+      let Aop=0;sg.openings.forEach(o=>{const A=Math.max(0,o.w*o.h);Aop+=A;push({label:nm+' · '+(o.name||'Opening'),sub:(conById(o.cid)||{}).name||'geen constructie',A,con:conById(o.cid),t:opT,type:opType,w:i,s:j,group:'open'});});
+      let parts=[];
+      if(sg.adj==='auto')parts=wallParts(room,i,s0,s1,nb,R).map(p=>p.room?{len:p.len,A:p.A,t:p.room.temp,type:'ruimte',lab:p.room.name}:{len:p.len,A:p.A,t:S.te,type:'buiten',lab:'buiten'});
+      else parts.push({len,A:wallArea(room,edge(room,i),s0,s1,R),t:adjTemp(sg.adj,sg.adjT),type:sg.adj,lab:ADJ[sg.adj].toLowerCase()});
+      let rem=Aop;const order=parts.slice().sort((a,b)=>(b.type===opType)-(a.type===opType));
+      for(const p of order){const d=Math.min(p.A,rem);p.A-=d;rem-=d;}
+      parts.forEach(p=>push({label:nm,sub:(con?con.name:'geen constructie')+' → '+p.lab,A:p.A,con,t:p.t,type:p.type,w:i,s:j,group:'wall'}));
+    });
+  });
+  const Af=Math.abs(polyArea(room.pts));
+  const topLine=(k,lab,A,extra)=>{const s=room[k];if(!s||A<1e-4)return;push({label:lab,sub:((conById(s.cid)||{}).name||'geen constructie')+' → '+ADJ[s.adj].toLowerCase()+(extra||''),A,con:conById(s.cid),t:adjTemp(s.adj,s.t),type:s.adj,group:k});};
+  topLine('floor','Vloer',Af);
+  const rp=roofParts(room);
+  if(!rp)topLine('ceil','Plafond / dak',Af);
+  else{const slopes=rp.parts.filter(p=>p.kind==='slope'),cap=rp.parts.filter(p=>p.kind==='cap').reduce((a,p)=>a+p.A,0);
+    slopes.forEach((p,n)=>topLine('roof',slopes.length>1?`Dakvlak ${n+1}`:'Dakvlak',p.A/rp.R.cosA,` · ${fmt(p.A,1)} m² horizontaal, helling ${nv(room.roof.pitch,0)}°`));
+    topLine('ceil','Vlak plafond',cap);}
+  return{lines,missing,Af};
+}
+const envOf=t=>t.lines.filter(l=>l.type==='buiten').reduce((a,l)=>a+l.A,0);
+function supplyTemp(){const S=P.settings;return S.ventSys==='D'?S.te+S.eta*(S.tRet-S.te):S.te;}
+function infTotal(){const S=P.settings;const Ag=P.rooms.reduce((a,r)=>a+Math.abs(polyArea(r.pts)),0);return{Ag,q:0.46*S.qv10*Ag*S.fInf*3.6};} // m³/h
+function calcRoom(room){
+  const S=P.settings,ti=room.temp;const t=transLines(room);const{lines,missing,Af}=t;const V=roomVolume(room);
+  const trans=lines.reduce((a,l)=>a+l.phi,0);
+  // ventilation: supply air at supply temperature; transfer air from other rooms at their temperature;
+  // whatever is still missing to cover extract + outgoing transfer comes from "the rest of the house" at tRet
+  const ts=supplyTemp(),air=airBalance(room);
+  const phiS=RHOC*room.sup*(ti-ts);
+  const tin=air.tin.map(t=>({...t,phi:RHOC*t.q*(ti-t.room.temp)}));
+  const qo=air.rest,phiO=RHOC*qo*(ti-S.tRet)+tin.reduce((a,t)=>a+t.phi,0);
+  // infiltration: qv10 → qi = 0,46 · qv10 · Ag · f, spread over rooms by area of envelope to outside
+  const env=envOf(t);let qi;
+  if(S.infMode==='qv10'){const tot=infTotal();const envAll=P.rooms.reduce((a,r)=>a+(r===room?env:envOf(transLines(r))),0);
+    qi=envAll>0?tot.q*env/envAll:(tot.Ag>0?tot.q*Af/tot.Ag:0);}
+  else qi=(S.nInf||0)*V;
+  const inf=RHOC*qi*(ti-S.te),vent=phiS+phiO;
+  return{lines,trans,vent,inf,total:trans+vent+inf,Af,V,missing,env,qi,ts,qo,phiS,phiO,tin,air};
+}
+// breakdown for the bars: opaque fabric, glazing/doors, air (ventilation + infiltration)
+function brk(c){let fab=0,gla=0;c.lines.forEach(l=>{if(l.group==='open')gla+=Math.max(0,l.phi);else fab+=Math.max(0,l.phi);});return{fab,gla,air:Math.max(0,c.vent)+Math.max(0,c.inf)};}
+function segHtml(c,legend){const b=brk(c),t=b.fab+b.gla+b.air;if(t<=0)return'';
+  const parts=[['fab','--seg-fabric','Schil'],['gla','--seg-glass','Ramen en deuren'],['air','--seg-air','Lucht']];
+  return `<div class="segbar" role="img" aria-label="Schil ${fmt(b.fab/1000,2)} kW, ramen ${fmt(b.gla/1000,2)} kW, lucht ${fmt(b.air/1000,2)} kW">${parts.map(([k,col])=>b[k]>0?`<i style="flex:${b[k]/t} 0 0;background:var(${col})"></i>`:'').join('')}</div>`+
+    (legend?`<div class="seglegend">${parts.map(([k,col,lab])=>`<span style="--c:var(${col})">${lab} ${fmt(b[k]/1000,2)}</span>`).join('')}</div>`:'');}
+function airBalance(room){
+  const tr=(P.transfers||[]).filter(t=>t.from!==t.to&&t.q>0);
+  const tin=tr.filter(t=>t.to===room.id).map(t=>({id:t.id,q:t.q,room:getRoom(t.from)})).filter(t=>t.room);
+  const tout=tr.filter(t=>t.from===room.id).map(t=>({id:t.id,q:t.q,room:getRoom(t.to)})).filter(t=>t.room);
+  const qin=tin.reduce((a,t)=>a+t.q,0),qout=tout.reduce((a,t)=>a+t.q,0);
+  const inn=room.sup+qin,out=room.ext+qout;
+  return{tin,tout,qin,qout,inn,out,rest:Math.max(0,out-inn),surplus:Math.max(0,inn-out)};
+}
+function calcAll(){const per=P.rooms.map(r=>({room:r,c:calcRoom(r)}));return{per,total:per.reduce((a,x)=>a+x.c.total,0)};}
+
+/* ---------- view transforms ---------- */
+const svg=$('cv'),stage=$('stage');
+const S=p=>({x:p.x*view.s+view.tx,y:p.y*view.s+view.ty});
+function toWorld(e){const r=svg.getBoundingClientRect();return{x:(e.clientX-r.left-view.tx)/view.s,y:(e.clientY-r.top-view.ty)/view.s};}
+function snapPoint(w,o){o=o||{};const tol=10/view.s;
+  if(!o.alt){let best=null,bd=tol;
+    for(const r of snapRooms())r.pts.forEach((p,i)=>{if(o.exclude&&o.exclude.r===r.id&&o.exclude.i===i)return;const d=dist(p,w);if(d<bd){bd=d;best=p;}});
+    drawPts.forEach(p=>{const d=dist(p,w);if(d<bd){bd=d;best=p;}});
+    if(best)return{x:best.x,y:best.y,kind:'vtx'};}
+  const st=o.alt?0.001:Math.max(0.001,P.settings.snap);let x=r3(Math.round(w.x/st)*st),y=r3(Math.round(w.y/st)*st);let kind='grid';
+  const al=8/view.s;[o.prev,o.next].forEach(q=>{if(!q)return;if(Math.abs(w.x-q.x)<al){x=q.x;kind='align';}if(Math.abs(w.y-q.y)<al){y=q.y;kind='align';}});
+  return{x,y,kind};}
+function fit(){const W=stage.clientWidth,H=stage.clientHeight;if(!W||!H)return;
+  let list=curRooms();if(!list.length)list=underRooms();if(!list.length)list=P.rooms;
+  if(!list.length){view={s:60,tx:60,ty:80};renderCanvas();return;}
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;list.forEach(r=>r.pts.forEach(p=>{x0=Math.min(x0,p.x);y0=Math.min(y0,p.y);x1=Math.max(x1,p.x);y1=Math.max(y1,p.y);}));
+  const m=70,s=Math.max(8,Math.min(300,Math.min((W-2*m)/Math.max(0.5,x1-x0),(H-2*m-30)/Math.max(0.5,y1-y0))));
+  view.s=s;view.tx=(W-(x1-x0)*s)/2-x0*s;view.ty=(H-(y1-y0)*s)/2-y0*s+12;renderCanvas();}
+function zoomAt(f,cx,cy){const ns=Math.max(6,Math.min(600,view.s*f));const k=ns/view.s;view.tx=cx-(cx-view.tx)*k;view.ty=cy-(cy-view.ty)*k;view.s=ns;renderCanvas();}
+
+/* ---------- canvas rendering ---------- */
+function gridSvg(W,H){const s=view.s;let st=s>=70?0.1:s>=25?0.5:s>=10?1:5;const major=st<1?1:5;
+  const x0=-view.tx/s,x1=(W-view.tx)/s,y0=-view.ty/s,y1=(H-view.ty)/s;let minor='',maj='';
+  for(let x=Math.floor(x0/st)*st;x<=x1;x+=st){const X=(x*s+view.tx).toFixed(1);const isM=Math.abs(x/major-Math.round(x/major))<1e-6;if(isM)maj+=`M${X} 0V${H}`;else minor+=`M${X} 0V${H}`;}
+  for(let y=Math.floor(y0/st)*st;y<=y1;y+=st){const Y=(y*s+view.ty).toFixed(1);const isM=Math.abs(y/major-Math.round(y/major))<1e-6;if(isM)maj+=`M0 ${Y}H${W}`;else minor+=`M0 ${Y}H${W}`;}
+  return `<path d="${minor}" stroke="var(--grid)" stroke-width="1"/><path d="${maj}" stroke="var(--grid-major)" stroke-width="1"/>`;}
+function renderCanvas(){
+  if(!P)return;const W=stage.clientWidth,H=stage.clientHeight;svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  if(!P.floors.some(f=>f.id===curFloor)){let saved=null;try{saved=localStorage.getItem('wvt.floor.'+P.id);}catch(_){}curFloor=P.floors.some(f=>f.id===saved)?saved:P.floors[0].id;}
+  const calc={};curRooms().forEach(r=>calc[r.id]=calcRoom(r));
+  let out=gridSvg(W,H)+'<defs><pattern id="vvhatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--c-hp)" stroke-width="1.3" stroke-opacity=".45"/></pattern><pattern id="videhatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0M-2 2L2 -2M8 12L12 8" stroke="var(--muted)" stroke-width="1" stroke-opacity=".4"/></pattern></defs>';const off=6/view.s;
+  const selR=sel&&sel.r;
+  // underlay: floor below in light grey
+  underRooms().forEach(r=>{const pts=r.pts.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');const c=S(centroid(r.pts));
+    out+=`<polygon points="${pts}" fill="none" stroke="var(--under)" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`;
+    out+=`<text x="${c.x}" y="${c.y+40}" text-anchor="middle" font-size="11" fill="var(--under)" stroke="none" pointer-events="none">${esc(r.name)}</text>`;});
+  // rooms from a lower floor that continue through this one
+  videRooms().forEach(r=>{const pts=r.pts.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');const c=S(centroid(r.pts));const base=P.floors[floorIdx(r.floorId)];
+    out+=`<polygon data-k="vide" data-r="${r.id}" points="${pts}" fill="url(#videhatch)" stroke="var(--wall)" stroke-width="5" stroke-linejoin="miter" style="cursor:pointer"/>`;
+    out+=`<text x="${c.x}" y="${c.y-4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${r.kind==='trap'?'Trappenhuis':'Vide'} · ${esc(r.name)}</text><text x="${c.x}" y="${c.y+12}" text-anchor="middle" class="rsub" font-size="10" pointer-events="none">loopt door vanaf ${esc(base.name)}</text>`;});
+  // room fills
+  curRooms().forEach(r=>{const pts=r.pts.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+    out+=`<polygon class="room" data-k="room" data-r="${r.id}" points="${pts}" fill="${selR===r.id?'var(--accent-soft-2)':'var(--room)'}" stroke="none"/>`;});
+  // walls: dark architectural line on the drawn outline (shared walls coincide), construction colour as a strip on the room side
+  const P2=(e,t,o)=>S({x:e.a.x+e.ux*t-e.nx*o,y:e.a.y+e.uy*t-e.ny*o});
+  curRooms().forEach(r=>{const pts=r.pts.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+    out+=`<polygon points="${pts}" fill="none" stroke="var(--wall)" stroke-width="5" stroke-linejoin="miter" pointer-events="none"/>`;});
+  curRooms().forEach(r=>{r.pts.forEach((_,i)=>{const e=edge(r,i);if(e.L<1e-6)return;const b=bounds(r,i);const w=r.walls[i];
+    w.segs.forEach((sg,j)=>{const s0=b[j],s1=b[j+1];if(s1-s0<1e-4)return;
+      const a=P2(e,s0+3/view.s,off),bb=P2(e,s1-3/view.s,off),w0=P2(e,s0,0),w1=P2(e,s1,0);
+      const con=conById(sg.cid);const isSel=sel&&sel.t==='seg'&&sel.r===r.id&&sel.w===i&&sel.s===j;
+      if(isSel)out+=`<line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--heat)" stroke-opacity=".35" stroke-width="16" stroke-linecap="round"/>`;
+      out+=`<line x1="${a.x}" y1="${a.y}" x2="${bb.x}" y2="${bb.y}" stroke="${con?con.color:'var(--warn)'}" stroke-width="${isSel?4:3}" stroke-linecap="round" ${con?'':'stroke-dasharray="3 3"'}/>`;
+      // openings: orange accent in the wall
+      const opW=sg.openings.reduce((t,o)=>t+Math.max(0,o.w),0);
+      if(opW>0){const ow=Math.min(opW,s1-s0)*0.9;const mid=(s0+s1)/2;const p0=P2(e,mid-ow/2,0),p1=P2(e,mid+ow/2,0);
+        out+=`<line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--heat)" stroke-width="7"/><line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--paper)" stroke-width="1.2"/>`;}
+      out+=`<line class="hit" data-k="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke-width="18"/>`;});
+    // cut markers
+    w.cuts.forEach((c,ci)=>{if(c<=0||c>=e.L)return;const m=P2(e,c,off/2);const big=selR===r.id;
+      const tx=e.nx*9,ty=e.ny*9;out+=`<line x1="${m.x-tx}" y1="${m.y-ty}" x2="${m.x+tx}" y2="${m.y+ty}" stroke="var(--ink)" stroke-width="2"/>`;
+      if(big)out+=`<circle data-k="cut" data-r="${r.id}" data-w="${i}" data-c="${ci}" cx="${m.x}" cy="${m.y}" r="6" fill="var(--surface)" stroke="var(--heat)" stroke-width="2" style="cursor:ew-resize"/>`;});
+  });});
+  // heat emitters: radiators etc. as thick blue bars, underfloor heating as a hatched area
+  curRooms().forEach(r=>(r.emitters||[]).forEach(em=>{const isSel=sel&&sel.t==='em'&&sel.e===em.id;const o=emOutput(em,r),pc=pipeCheck(em,o);
+    if(em.kind==='vv'){const pts=em.pts.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+      out+=`<polygon points="${pts}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="${isSel?2.5:1.5}" stroke-dasharray="6 4" pointer-events="none"/>`;
+      out+=`<polygon data-k="em" data-r="${r.id}" data-e="${em.id}" points="${pts}" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" style="cursor:pointer"/>`;
+      const q=S(em.pts[0]);out+=`<text x="${q.x+6}" y="${q.y+14}" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${pc.state!=='ok'?'⚠ ':''}VV ${fmt(o/1000,2)} kW</text>`;}
+    else{const a=S(em.a),b=S(em.b);
+      if(isSel)out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--c-hp)" stroke-opacity=".3" stroke-width="18" stroke-linecap="round"/>`;
+      out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--c-hp)" stroke-width="7" stroke-linecap="round" pointer-events="none"/>`;
+      if(em.kind!=='rad')out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--paper)" stroke-width="1.5" stroke-dasharray="${em.kind==='fan'?'1 4':'5 3'}" pointer-events="none"/>`;
+      out+=`<line class="hit" data-k="em" data-r="${r.id}" data-e="${em.id}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke-width="18"/>`;
+      const m=S(emMid(em)),c=S(centroid(r.pts)),dx=c.x-m.x,dy=c.y-m.y,dd=Math.hypot(dx,dy)||1;
+      out+=`<text x="${m.x+dx/dd*16}" y="${m.y+dy/dd*16+3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${pc.state!=='ok'?'⚠ ':''}${fmt(o/1000,2)} kW${em.boost?' ⟳':''}</text>`;}}));
+  if(drag&&drag.type==='emline'){const a=S(drag.p0),b=S(drag.p1);out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--c-hp)" stroke-width="7" stroke-linecap="round" stroke-opacity=".7"/><text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-10}" text-anchor="middle" class="dim">${fmt(dist(drag.p0,drag.p1))} m</text>`;}
+  if(drag&&drag.type==='emrect'){const a=S(drag.p0),b=S(drag.p1),x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(a.x-b.x),hh=Math.abs(a.y-b.y);
+    out+=`<rect x="${x}" y="${y}" width="${w}" height="${hh}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="2"/><text x="${x+w/2}" y="${y+hh/2+4}" text-anchor="middle" class="dim">${fmt(Math.abs(drag.p1.x-drag.p0.x)*Math.abs(drag.p1.y-drag.p0.y),1)} m²</text>`;}
+  if((tool==='emit'||tool==='vv')&&hover&&!drag){const q=S(hover);out+=`<circle cx="${q.x}" cy="${q.y}" r="4" fill="none" stroke="var(--c-hp)" stroke-width="1.8"/>`;}
+  // sloped roofs: ridge (orange dashes) and the edge of a flat ceiling (grey dashes), with heights
+  curRooms().forEach(r=>{const R=roofOf(r);if(!R)return;
+    roofLines(R).forEach(c=>{const sg=lineAcross(r,R,c);if(!sg)return;const a=S(sg[0]),b=S(sg[1]);const ridge=R.type==='zadel'&&R.wc===0;
+      out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${ridge?'var(--heat)':'var(--muted)'}" stroke-width="1.6" stroke-dasharray="7 5" pointer-events="none"/>`;
+      const lx=a.x+(b.x-a.x)*0.12,ly=a.y+(b.y-a.y)*0.12;
+      out+=`<text x="${lx}" y="${ly-5}" class="dim" font-size="10" pointer-events="none" ${ridge?'':'style="fill:var(--muted)"'}>${ridge?'nok':'plafond'} ${fmt(R.z(c),2)} m</text>`;});
+    // knee walls: mark the low eave(s) with their height
+    const eaves=R.type==='zadel'?[R.smin,R.smax]:[R.lowMin?R.smin:R.smax];
+    eaves.forEach(c=>{const sg=lineAcross(r,R,c+(c===R.smin?1e-6:-1e-6));if(!sg)return;const m=S({x:(sg[0].x+sg[1].x)/2,y:(sg[0].y+sg[1].y)/2});const cc=S(centroid(r.pts));
+      const dx=cc.x-m.x,dy=cc.y-m.y,d=Math.hypot(dx,dy)||1;out+=`<text x="${m.x+dx/d*18}" y="${m.y+dy/d*18+3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--muted)" pointer-events="none">${fmt(R.knee,2)} m</text>`;});});
+  // labels: small caps name + area, heat load in kW, breakdown bar, temperature
+  curRooms().forEach(r=>{const c=S(centroid(r.pts));const k=calc[r.id];
+    let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;r.pts.forEach(p=>{x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y);});
+    const wpx=(x1-x0)*view.s,hpx=(y1-y0)*view.s;const full=wpx>=110&&hpx>=96;
+    out+=`<text x="${c.x}" y="${c.y-14}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}${spans(r)?' ↑':''}${full?' · '+fmt(k.Af,1)+' m²':''}${k.missing?' ⚠':''}</text>`;
+    out+=`<text x="${c.x}" y="${c.y+6}" text-anchor="middle" class="rheat" font-size="${full?18:14}" pointer-events="none">${fmt(k.total/1000,2)} kW</text>`;
+    if(full){const bw=Math.min(84,wpx-30),br=brk(k),tot=br.fab+br.gla+br.air;let bx=c.x-bw/2;
+      if(tot>0)[['fab','--seg-fabric'],['gla','--seg-glass'],['air','--seg-air']].forEach(([key,col])=>{const sw=br[key]/tot*(bw-6);if(sw<=0.5)return;out+=`<rect x="${bx}" y="${c.y+13}" width="${sw}" height="4" rx="2" fill="var(${col})" pointer-events="none"/>`;bx+=sw+3;});
+      out+=`<text x="${c.x}" y="${c.y+32}" text-anchor="middle" class="rsub" font-size="10.5" pointer-events="none">${nv(r.temp,1)} °C</text>`;}});
+  // selected room: dimension lines with pill labels + vertices
+  const room=selR&&getRoom(selR);
+  if(room){room.pts.forEach((_,i)=>{const e=edge(room,i);if(e.L*view.s<36)return;const o=-24/view.s;
+      const d0=P2(e,0,o),d1=P2(e,e.L,o),w0=P2(e,0,-4/view.s),w1=P2(e,e.L,-4/view.s),m=P2(e,e.L/2,o);const tk=5,nx=e.nx*tk,ny=e.ny*tk;
+      out+=`<g pointer-events="none" stroke="var(--heat)"><line x1="${w0.x}" y1="${w0.y}" x2="${d0.x+nx}" y2="${d0.y+ny}" stroke-opacity=".35" stroke-width="1"/><line x1="${w1.x}" y1="${w1.y}" x2="${d1.x+nx}" y2="${d1.y+ny}" stroke-opacity=".35" stroke-width="1"/>
+        <line x1="${d0.x}" y1="${d0.y}" x2="${d1.x}" y2="${d1.y}" stroke-width="1.3"/><line x1="${d0.x-nx}" y1="${d0.y-ny}" x2="${d0.x+nx}" y2="${d0.y+ny}" stroke-width="1.3"/><line x1="${d1.x-nx}" y1="${d1.y-ny}" x2="${d1.x+nx}" y2="${d1.y+ny}" stroke-width="1.3"/></g>`;
+      const txt=`${fmt(e.L)} m`,tw=txt.length*6.6+22;
+      out+=`<g pointer-events="none"><rect x="${m.x-tw/2}" y="${m.y-9}" width="${tw}" height="18" rx="9" fill="var(--surface)" stroke="var(--heat)" stroke-width="1"/><text x="${m.x}" y="${m.y+3.8}" text-anchor="middle" class="pilltxt"><tspan fill="var(--muted)">${i+1}</tspan>  ${txt}</text></g>`;});
+    room.pts.forEach((p,i)=>{const q=S(p);const isV=sel.t==='vtx'&&sel.i===i;
+      out+=`<circle data-k="vtx" data-r="${room.id}" data-i="${i}" cx="${q.x}" cy="${q.y}" r="${isV?7:5.5}" fill="${isV?'var(--heat)':'var(--surface)'}" stroke="var(--heat)" stroke-width="2" style="cursor:grab"/>`;});}
+  // split hover
+  if(tool==='split'&&hoverSplit){const r=getRoom(hoverSplit.r);if(r){const e=edge(r,hoverSplit.w);const t=hoverSplit.t;const m=S({x:e.a.x+e.ux*t-e.nx*off,y:e.a.y+e.uy*t-e.ny*off});
+    out+=`<line x1="${m.x-e.nx*12}" y1="${m.y-e.ny*12}" x2="${m.x+e.nx*12}" y2="${m.y+e.ny*12}" stroke="var(--accent)" stroke-width="2.5"/>`;
+    out+=`<text x="${m.x-e.nx*26}" y="${m.y-e.ny*26+4}" text-anchor="middle" class="dim">${fmt(t)} | ${fmt(e.L-t)} m</text>`;}}
+  // drawing previews
+  if(tool==='poly'&&drawPts.length){const pts=drawPts.map(S);let d='M'+pts.map(p=>p.x+' '+p.y).join('L');
+    out+=`<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`;
+    if(hover){const h=S(hover),l=pts[pts.length-1];out+=`<line x1="${l.x}" y1="${l.y}" x2="${h.x}" y2="${h.y}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4"/>`;
+      if(drawPts.length>=2)out+=`<line x1="${h.x}" y1="${h.y}" x2="${pts[0].x}" y2="${pts[0].y}" stroke="var(--accent)" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="3 4"/>`;
+      const L=dist(hover,drawPts[drawPts.length-1]);out+=`<text x="${(l.x+h.x)/2}" y="${(l.y+h.y)/2-8}" text-anchor="middle" class="dim">${fmt(L)} m</text>`;}
+    pts.forEach((p,i)=>out+=`<circle cx="${p.x}" cy="${p.y}" r="${i===0&&drawPts.length>=3?7:4}" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>`);}
+  if(tool==='rect'&&drag&&drag.type==='rect'){const a=S(drag.p0),b=S(drag.p1);const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(a.x-b.x),h=Math.abs(a.y-b.y);
+    out+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="var(--accent-soft-2)" stroke="var(--accent)" stroke-width="2"/>`;
+    out+=`<text x="${x+w/2}" y="${y+h/2+4}" text-anchor="middle" class="dim">${fmt(Math.abs(drag.p1.x-drag.p0.x))} × ${fmt(Math.abs(drag.p1.y-drag.p0.y))} m</text>`;}
+  if((tool==='poly'||tool==='rect')&&hover&&!(drag&&drag.type==='rect')){const h=S(hover);out+=`<circle cx="${h.x}" cy="${h.y}" r="${hover.kind==='vtx'?7:3.5}" fill="none" stroke="var(--accent)" stroke-width="1.8"/>`;}
+  svg.innerHTML=out;
+  renderScale();renderLegend();
+}
+function renderScale(){const targets=[0.1,0.2,0.5,1,2,5,10,20];let m=1;for(const t of targets){if(t*view.s>=60){m=t;break;}m=t;}
+  $('scalebar').innerHTML=`<span>${nv(m,1)} m</span><i style="width:${(m*view.s).toFixed(0)}px"></i>`;}
+function renderLegend(){const used=new Map();curRooms().forEach(r=>r.walls.forEach(w=>w.segs.forEach(s=>{const c=conById(s.cid);if(c)used.set(c.id,c);})));
+  const el=$('legend');if(!used.size){el.hidden=true;return;}el.hidden=false;
+  el.innerHTML=[...used.values()].map(c=>`<div><span class="sw" style="background:${esc(c.color)}"></span><span>${esc(c.name)} · U ${nv(c.U,3)}</span></div>`).join('');}
+function updateCoords(){$('coords').textContent=cursorW?`x ${fmt(cursorW.x)}  y ${fmt(cursorW.y)} m`:'x –  y –';}
+
+/* ---------- hints & tools ---------- */
+const HINTS={
+  select:'Klik een wanddeel of ruimte om te bewerken. Sleep hoekpunten of een hele ruimte. Dubbelklik op een wand om een hoekpunt toe te voegen. Sleep een lege plek om te schuiven, scroll om te zoomen.',
+  rect:'Sleep een rechthoek voor een nieuwe ruimte. Punten klikken vast op het raster en op hoeken van andere ruimtes. Alt: niet vastklikken.',
+  poly:'Klik de hoekpunten. Sluit door op het eerste punt te klikken, te dubbelklikken of Enter. Backspace haalt het laatste punt weg, Esc annuleert.',
+  split:'Klik op een wand om hem op die plek in twee delen te splitsen. Elk deel krijgt een eigen constructie en isolatiewaarde.',
+  emit:'Sleep een lijn binnen een ruimte voor een radiator, convector of fancoil. Daarna kies je de soort en vul je het vermogen en de aansluitleiding in.',
+  vv:'Sleep een rechthoek binnen een ruimte voor vloerverwarming. Daarna kies je de hart-op-hartafstand, de vloerafwerking en de aansluitleiding.'};
+function setTool(t){tool=t;drawPts=[];drag=null;hover=null;hoverSplit=null;
+  document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
+  stage.className='stage t-'+t;$('hint').textContent=HINTS[t];renderCanvas();}
+
+/* ---------- mutations ---------- */
+function pushUndo(){undoStack.push(JSON.stringify(P));if(undoStack.length>120)undoStack.shift();redoStack=[];updateUndoBtns();}
+function undo(){if(!undoStack.length)return;redoStack.push(JSON.stringify(P));P=normalizeProject(JSON.parse(undoStack.pop()));all[P.id]=P;validateSel();markDirty(true);renderAll();}
+function redo(){if(!redoStack.length)return;undoStack.push(JSON.stringify(P));P=normalizeProject(JSON.parse(redoStack.pop()));all[P.id]=P;validateSel();markDirty(true);renderAll();}
+function updateUndoBtns(){$('btn-undo').disabled=!undoStack.length;$('btn-redo').disabled=!redoStack.length;}
+function validateSel(){if(!sel)return;const r=getRoom(sel.r);if(!r||r.floorId!==curFloor){sel=null;return;}
+  if(sel.t==='seg'){if(!r.walls[sel.w]||!r.walls[sel.w].segs[sel.s])sel={t:'room',r:r.id};}
+  if(sel.t==='vtx'&&!r.pts[sel.i])sel={t:'room',r:r.id};
+  if(sel.t==='em'&&!(r.emitters||[]).some(x=>x.id===sel.e))sel={t:'room',r:r.id};}
+function defaultCid(kind){const c=P.constructions.find(c=>c.kind===kind);return c?c.id:'';}
+function makeRoom(pts){
+  const n=P.rooms.length+1;const wc=defaultCid('wand');
+  const r={id:rid(),name:'Ruimte '+n,floorId:curFloor,temp:20,height:P.settings.height,sup:0,ext:0,pts:pts.map(p=>({x:r3(p.x),y:r3(p.y)})),
+    walls:pts.map(()=>({cuts:[],segs:[seg(wc,'auto')]})),floor:{cid:defaultCid('vloer'),adj:'grond',t:20},ceil:{cid:defaultCid('dak'),adj:'temp',t:20},
+    roof:{type:'plat',pitch:45,knee:0.6,edge:0,low:'min',cid:defaultCid('dak'),adj:'buiten',t:20}};
+  pushUndo();P.rooms.push(r);sel={t:'room',r:r.id};tab='sel';markDirty();renderAll();
+  toast(`${r.name} toegevoegd. Klik op een wand om de constructie te kiezen.`);
+}
+function finishPoly(){const pts=drawPts.filter((p,i)=>i===0||dist(p,drawPts[i-1])>1e-6);drawPts=[];hover=null;
+  if(pts.length>=3&&Math.abs(polyArea(pts))>0.01)makeRoom(pts);else renderCanvas();}
+function addCut(room,i,t){const w=room.walls[i];const L=edge(room,i).L;if(t<=0.02||t>=L-0.02)return;if(w.cuts.some(c=>Math.abs(c-t)<0.02))return;
+  pushUndo();const j=w.cuts.filter(c=>c<t).length;w.cuts.splice(j,0,r3(t));const src=w.segs[j];w.segs.splice(j+1,0,{cid:src.cid,adj:src.adj,adjT:src.adjT,openings:[]});
+  sel={t:'seg',r:room.id,w:i,s:j+1};tab='sel';markDirty();renderAll();toast(`Wand ${i+1} gesplitst op ${fmt(t)} m. Kies nu de constructie van het nieuwe deel.`);}
+function removeCut(room,i,c){const w=room.walls[i];if(c<0||c>=w.cuts.length)return;pushUndo();const merged=w.segs[c].openings.concat(w.segs[c+1].openings);
+  w.cuts.splice(c,1);w.segs.splice(c+1,1);w.segs[c].openings=merged;sel={t:'seg',r:room.id,w:i,s:c};markDirty();renderAll();}
+function insertVertex(room,i,t){const e=edge(room,i);if(t<0.05||t>e.L-0.05)return;pushUndo();const p={x:r3(e.a.x+e.ux*t),y:r3(e.a.y+e.uy*t)};const w=room.walls[i];
+  const j=w.cuts.filter(c=>c<t).length;const w1={cuts:w.cuts.slice(0,j),segs:w.segs.slice(0,j+1).map(clone)};
+  const tail=w.segs.slice(j).map(clone);tail[0].openings=[];tail.forEach((s,k)=>{if(k>0)s.openings.forEach(o=>o.id=rid());});
+  const w2={cuts:w.cuts.slice(j).map(c=>r3(c-t)),segs:tail};room.pts.splice(i+1,0,p);room.walls.splice(i,1,w1,w2);sel={t:'vtx',r:room.id,i:i+1};markDirty();renderAll();}
+function deleteSelection(){if(!sel)return;const room=getRoom(sel.r);if(!room)return;
+  if(sel.t==='em'){pushUndo();room.emitters=(room.emitters||[]).filter(x=>x.id!==sel.e);sel={t:'room',r:room.id};markDirty();renderAll();toast('Afgifte-element verwijderd.',true);return;}
+  if(sel.t==='vtx'){if(room.pts.length<=3){toast('Een ruimte heeft minstens drie hoekpunten.');return;}pushUndo();room.pts.splice(sel.i,1);room.walls.splice(sel.i,1);normalizeWalls(room);sel={t:'room',r:room.id};markDirty();renderAll();return;}
+  if(sel.t==='seg'){if(room.walls[sel.w].segs.length>1){const c=sel.s>0?sel.s-1:0;removeCut(room,sel.w,c);toast('Splitsing verwijderd.',true);}else toast('Selecteer de ruimte zelf om hem te verwijderen.');return;}
+  pushUndo();P.rooms=P.rooms.filter(r=>r!==room);P.transfers=P.transfers.filter(t=>t.from!==room.id&&t.to!==room.id);sel=null;markDirty();renderAll();toast(`${room.name} verwijderd.`,true);}
+function splitT(room,i,w,alt){const e=edge(room,i);let t=(w.x-e.a.x)*e.ux+(w.y-e.a.y)*e.uy;t=Math.max(0,Math.min(e.L,t));
+  if(!alt){const tol=10/view.s;let best=null,bd=tol;neighbourIntervals(room,i).forEach(n=>n.ivs.forEach(iv=>iv.forEach(v=>{const d=Math.abs(v-t);if(d<bd&&v>0.02&&v<e.L-0.02){bd=d;best=v;}})));
+    if(best!=null)return r3(best);const st=Math.max(0.001,P.settings.snap);t=r3(Math.round(t/st)*st);}
+  return t;}
+
+/* ---------- pointer interaction ---------- */
+function capture(e){try{svg.setPointerCapture(e.pointerId);}catch(_){}}
+function beginPan(e){pan={x:e.clientX,y:e.clientY,tx:view.tx,ty:view.ty};stage.classList.add('panning');capture(e);}
+svg.addEventListener('contextmenu',e=>e.preventDefault());
+svg.addEventListener('pointerdown',e=>{
+  const wp=toWorld(e);const tgt=e.target.closest?e.target.closest('[data-k]'):null;const k=tgt&&tgt.dataset.k;
+  if(e.button===1||e.button===2||spaceDown){beginPan(e);return;}
+  if(e.button!==0)return;
+  if(tool==='select'){
+    if(k==='vtx'){sel={t:'vtx',r:tgt.dataset.r,i:+tgt.dataset.i};drag={type:'vtx',r:sel.r,i:sel.i,moved:false};capture(e);tab='sel';renderAll();return;}
+    if(k==='vide'){const r=getRoom(tgt.dataset.r);if(r){setFloor(r.floorId,true);sel={t:'room',r:r.id};tab='sel';renderAll();}return;}
+    if(k==='em'){const r=getRoom(tgt.dataset.r);const em=(r.emitters||[]).find(x=>x.id===tgt.dataset.e);if(!em)return;sel={t:'em',r:r.id,e:em.id};tab='sel';
+      drag={type:'em',r:r.id,e:em.id,start:wp,orig:clone(em),moved:false};capture(e);renderAll();return;}
+    if(k==='cut'){drag={type:'cut',r:tgt.dataset.r,w:+tgt.dataset.w,c:+tgt.dataset.c,moved:false};capture(e);return;}
+    if(k==='seg'){const r=tgt.dataset.r,w=+tgt.dataset.w,now=Date.now();
+      if(lastSegDown&&lastSegDown.r===r&&lastSegDown.w===w&&now-lastSegDown.t<400&&Math.hypot(e.clientX-lastSegDown.x,e.clientY-lastSegDown.y)<8){
+        lastSegDown=null;const room=getRoom(r);const ed=edge(room,w);let t=(wp.x-ed.a.x)*ed.ux+(wp.y-ed.a.y)*ed.uy;const st=Math.max(0.001,P.settings.snap);insertVertex(room,w,r3(Math.round(t/st)*st));return;}
+      lastSegDown={r,w,t:now,x:e.clientX,y:e.clientY};
+      sel={t:'seg',r,w,s:+tgt.dataset.s};tab='sel';renderAll();return;}
+    if(k==='room'){const r=getRoom(tgt.dataset.r);if(!(sel&&sel.r===r.id&&sel.t==='room')){sel={t:'room',r:r.id};tab='sel';renderAll();}
+      drag={type:'room',r:r.id,start:wp,orig:clone(r.pts),oem:clone(r.emitters||[]),moved:false};capture(e);return;}
+    if(sel){sel=null;renderAll();}beginPan(e);return;}
+  if(tool==='poly'){const p=snapPoint(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey});
+    if(drawPts.length>=3&&dist(p,drawPts[0])*view.s<10){finishPoly();return;}
+    const last=drawPts[drawPts.length-1];if(last&&dist(p,last)<1e-6){if(drawPts.length>=3)finishPoly();return;}
+    drawPts.push({x:p.x,y:p.y});renderCanvas();return;}
+  if(tool==='rect'){const p=snapPoint(wp,{alt:e.altKey});drag={type:'rect',p0:p,p1:p};capture(e);renderCanvas();return;}
+  if(tool==='emit'||tool==='vv'){const p=snapPoint(wp,{alt:e.altKey});drag={type:tool==='emit'?'emline':'emrect',p0:p,p1:p};capture(e);renderCanvas();return;}
+  if(tool==='split'){if(k==='seg'){const r=getRoom(tgt.dataset.r);const i=+tgt.dataset.w;addCut(r,i,splitT(r,i,wp,e.altKey));}return;}
+});
+svg.addEventListener('pointermove',e=>{
+  const wp=toWorld(e);cursorW=wp;updateCoords();
+  if(pan){view.tx=pan.tx+(e.clientX-pan.x);view.ty=pan.ty+(e.clientY-pan.y);renderCanvas();return;}
+  if(drag){
+    if(drag.type==='vtx'){const r=getRoom(drag.r);const n=r.pts.length;const p=snapPoint(wp,{exclude:{r:r.id,i:drag.i},prev:r.pts[(drag.i-1+n)%n],next:r.pts[(drag.i+1)%n],alt:e.altKey});
+      const cur=r.pts[drag.i];if(cur.x===p.x&&cur.y===p.y)return;if(!drag.moved){pushUndo();drag.moved=true;}r.pts[drag.i]={x:p.x,y:p.y};renderCanvas();return;}
+    if(drag.type==='room'){const r=getRoom(drag.r);const st=e.altKey?0.001:Math.max(0.001,P.settings.snap);
+      let dx=r3(Math.round((wp.x-drag.start.x)/st)*st),dy=r3(Math.round((wp.y-drag.start.y)/st)*st);
+      // magnet: snap moved vertices to other rooms' vertices
+      if(!e.altKey){const tol=10/view.s;let best=null,bd=tol;drag.orig.forEach(p=>{const q={x:p.x+dx,y:p.y+dy};snapRooms().forEach(o=>{if(o.id===r.id)return;o.pts.forEach(v=>{const d=dist(v,q);if(d<bd){bd=d;best={dx:v.x-p.x,dy:v.y-p.y};}});});});if(best){dx=r3(best.dx);dy=r3(best.dy);}}
+      if(!drag.moved&&(dx||dy)){pushUndo();drag.moved=true;}if(!drag.moved)return;r.pts=drag.orig.map(p=>({x:r3(p.x+dx),y:r3(p.y+dy)}));r.emitters=drag.oem.map(em=>shiftEm(em,dx,dy));renderCanvas();return;}
+    if(drag.type==='em'){const r=getRoom(drag.r);const st=e.altKey?0.001:Math.max(0.001,P.settings.snap);const dx=r3(Math.round((wp.x-drag.start.x)/st)*st),dy=r3(Math.round((wp.y-drag.start.y)/st)*st);
+      if(!drag.moved&&(dx||dy)){pushUndo();drag.moved=true;}if(!drag.moved)return;const i=r.emitters.findIndex(x=>x.id===drag.e);if(i>=0)r.emitters[i]=shiftEm(drag.orig,dx,dy);renderCanvas();return;}
+    if(drag.type==='emline'){drag.p1=snapPoint(wp,{prev:drag.p0,alt:e.altKey});renderCanvas();return;}
+    if(drag.type==='emrect'){drag.p1=snapPoint(wp,{alt:e.altKey});renderCanvas();return;}
+    if(drag.type==='cut'){const r=getRoom(drag.r);const w=r.walls[drag.w];let t=splitT(r,drag.w,wp,e.altKey);const lo=(drag.c>0?w.cuts[drag.c-1]:0)+0.02,hi=(drag.c<w.cuts.length-1?w.cuts[drag.c+1]:edge(r,drag.w).L)-0.02;
+      t=Math.max(lo,Math.min(hi,t));if(t===w.cuts[drag.c])return;if(!drag.moved){pushUndo();drag.moved=true;}w.cuts[drag.c]=r3(t);sel={t:'seg',r:r.id,w:drag.w,s:drag.c};renderCanvas();return;}
+    if(drag.type==='rect'){drag.p1=snapPoint(wp,{alt:e.altKey});renderCanvas();return;}
+  }
+  if(tool==='poly'||tool==='rect'||tool==='emit'||tool==='vv'){hover=snapPoint(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey});renderCanvas();return;}
+  if(tool==='split'){const tgt=e.target.closest?e.target.closest('[data-k="seg"]'):null;
+    if(tgt){const r=getRoom(tgt.dataset.r);const i=+tgt.dataset.w;hoverSplit={r:r.id,w:i,t:splitT(r,i,wp,e.altKey)};}else hoverSplit=null;renderCanvas();}
+});
+function endPointer(){
+  if(pan){pan=null;stage.classList.remove('panning');}
+  if(drag){const d=drag;drag=null;
+    if(d.type==='emline'){if(dist(d.p0,d.p1)>=0.2)addEmitter('line',{a:{x:d.p0.x,y:d.p0.y},b:{x:d.p1.x,y:d.p1.y}});else renderCanvas();return;}
+    if(d.type==='emrect'){const w=Math.abs(d.p1.x-d.p0.x),hh=Math.abs(d.p1.y-d.p0.y);if(w>=0.3&&hh>=0.3){const x0=Math.min(d.p0.x,d.p1.x),y0=Math.min(d.p0.y,d.p1.y);addEmitter('vv',{pts:rectPts(x0,y0,x0+w,y0+hh)});}else renderCanvas();return;}
+    if(d.type==='rect'){const w=Math.abs(d.p1.x-d.p0.x),h=Math.abs(d.p1.y-d.p0.y);if(w>=0.1&&h>=0.1){const x0=Math.min(d.p0.x,d.p1.x),y0=Math.min(d.p0.y,d.p1.y);makeRoom(rectPts(x0,y0,x0+w,y0+h));}else renderCanvas();return;}
+    if(d.moved){const r=getRoom(d.r);if(r)normalizeWalls(r);markDirty();renderAll();}}
+}
+svg.addEventListener('pointerup',endPointer);svg.addEventListener('pointercancel',endPointer);
+svg.addEventListener('pointerleave',()=>{if(!drag&&!pan){hover=null;hoverSplit=null;cursorW=null;updateCoords();if(tool!=='select')renderCanvas();}});
+let lastSegDown=null;
+svg.addEventListener('wheel',e=>{e.preventDefault();const r=svg.getBoundingClientRect();zoomAt(Math.exp(-e.deltaY*0.0015),e.clientX-r.left,e.clientY-r.top);},{passive:false});
+$('z-in').onclick=()=>zoomAt(1.25,stage.clientWidth/2,stage.clientHeight/2);
+$('z-out').onclick=()=>zoomAt(0.8,stage.clientWidth/2,stage.clientHeight/2);
+$('tool-fit').onclick=fit;
+document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$('btn-undo').onclick=undo;$('btn-redo').onclick=redo;
+new ResizeObserver(()=>renderCanvas()).observe(stage);
+
+document.addEventListener('keydown',e=>{
+  const tag=(e.target.tagName||'').toLowerCase();const typing=tag==='input'||tag==='select'||tag==='textarea';
+  if((e.ctrlKey||e.metaKey)&&!typing&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();return;}
+  if((e.ctrlKey||e.metaKey)&&!typing&&e.key.toLowerCase()==='y'){e.preventDefault();redo();return;}
+  if(typing||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.key===' '){spaceDown=true;e.preventDefault();return;}
+  const k=e.key.toLowerCase();
+  if(e.key==='PageUp'||e.key==='PageDown'){e.preventDefault();const i=floorIdx(curFloor)+(e.key==='PageUp'?1:-1);if(i>=0&&i<P.floors.length)setFloor(P.floors[i].id);return;}
+  if(k==='o'){const b=$('btn-under');if(b&&!b.disabled)b.click();return;}
+  if(k==='v')setTool('select');else if(k==='r')setTool('rect');else if(k==='p')setTool('poly');else if(k==='s')setTool('split');else if(k==='a')setTool('emit');else if(k==='h')setTool('vv');else if(k==='f')fit();
+  else if(e.key==='Escape'){if(drawPts.length){drawPts=[];renderCanvas();}else if(tool!=='select')setTool('select');else{sel=null;renderAll();}}
+  else if(e.key==='Enter'&&tool==='poly'){finishPoly();}
+  else if(e.key==='Backspace'&&tool==='poly'&&drawPts.length){e.preventDefault();drawPts.pop();renderCanvas();}
+  else if((e.key==='Delete'||e.key==='Backspace')&&tool==='select'&&sel){e.preventDefault();deleteSelection();}
+});
+document.addEventListener('keyup',e=>{if(e.key===' ')spaceDown=false;});
+
+/* ---------- panel ---------- */
+const pbody=$('pbody');
+function conOptions(selected,prefer){const order=[prefer,...Object.keys(KINDS).filter(k=>k!==prefer)];
+  let h=`<option value="">— kies een constructie —</option>`;
+  order.forEach(k=>{const cs=P.constructions.filter(c=>c.kind===k);if(!cs.length)return;h+=`<optgroup label="${KINDS[k]}">`+cs.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${esc(c.name)} · U ${nv(c.U,3)}</option>`).join('')+`</optgroup>`;});
+  return h;}
+function adjOptions(selected,withAuto){let h='';if(withAuto)h+=`<option value="auto" ${selected==='auto'?'selected':''}>Automatisch (uit tekening)</option>`;
+  Object.entries(ADJ).forEach(([k,v])=>h+=`<option value="${k}" ${selected===k?'selected':''}>${v}</option>`);return h;}
+function numField(id,f,label,unit,val,d){return `<label class="f" for="${id}">${label} <span class="u">${unit}</span><input class="in num" id="${id}" data-f="${f}" inputmode="decimal" value="${nv(val,d==null?3:d)}"></label>`;}
+function wallBar(room,i,curS){const b=bounds(room,i);const L=b[b.length-1]||1;const w=room.walls[i];
+  return `<div class="wallbar">`+w.segs.map((sg,j)=>{const len=b[j+1]-b[j];const c=conById(sg.cid);const pct=Math.max(0,len/L*100);
+    return `<button class="segbtn ${c?'':'none'} ${curS===j?'cur':''}" style="flex:${pct} 0 0;${c?'background:'+esc(c.color):''}" data-act="selseg" data-r="${room.id}" data-w="${i}" data-s="${j}" title="${esc((c?c.name:'Geen constructie')+' · '+fmt(len)+' m')}">${w.segs.length>1?(LET[j]||j)+' ':''}${fmt(len)}</button>`;}).join('')+`</div>`;}
+function calcTable(lines,extra){
+  let h=`<div class="tablewrap"><table class="calc"><thead><tr><th>Onderdeel</th><th>A m²</th><th>U</th><th>Δθ K</th><th>Φ W</th></tr></thead><tbody>`;
+  lines.forEach(l=>{h+=`<tr class="${l.miss&&l.A>0.0001?'miss':''}"><td>${esc(l.label)}<small>${esc(l.sub||'')}</small></td><td>${fmt(l.A)}</td><td>${Number.isFinite(l.Ueff)?nv(l.Ueff,3):'?'}</td><td>${nv(l.dT,1)}</td><td>${fmtW(l.phi)}</td></tr>`;});
+  (extra||[]).forEach(x=>h+=`<tr><td>${x[0]}<small>${x[1]}</small></td><td></td><td></td><td></td><td>${fmtW(x[2])}</td></tr>`);
+  return h+`</tbody></table></div>`;}
+// intersection of the line s = c with the room outline, as a segment ordered along the ridge direction
+function lineAcross(room,R,c){const hits=[];const pts=room.pts;
+  for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length],sa=R.sOf(a),sb=R.sOf(b);
+    if((sa-c)*(sb-c)<=0&&Math.abs(sb-sa)>1e-9){const t=(c-sa)/(sb-sa);hits.push({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});}}
+  if(hits.length<2)return null;const key=p=>p.x*R.u.x+p.y*R.u.y;hits.sort((p,q)=>key(p)-key(q));return[hits[0],hits[hits.length-1]];}
+function roofLines(R){return R.type==='zadel'?(R.wc>0?[R.sr-R.wc,R.sr+R.wc]:[R.sr]):(R.sc>R.smin&&R.sc<R.smax?[R.sc]:[]);}
+function isoSvg(room){const R=roofOf(room),pts=room.pts,zAt=p=>R?R.z(R.sOf(p)):room.height;
+  const pr=(p,z)=>({X:(p.x-p.y)*0.866,Y:(p.x+p.y)*0.5-z});
+  const walls=pts.map((a,i)=>{const e=edge(room,i);const ts=[0,e.L];
+    if(R){const sa=R.sOf(e.a),ds=e.ux*R.v.x+e.uy*R.v.y;if(Math.abs(ds)>1e-9)R.crit.forEach(c=>{const t=(c-sa)/ds;if(t>0&&t<e.L)ts.push(t);});}
+    ts.sort((x,y)=>x-y);const Q=ts.map(t=>({x:e.a.x+e.ux*t,y:e.a.y+e.uy*t}));
+    return{bottom:Q.map(p=>pr(p,0)),top:Q.map(p=>pr(p,zAt(p))),depth:(e.a.x+e.b.x+e.a.y+e.b.y)/2};});
+  const extra=[];if(R)roofLines(R).forEach(c=>{const sg=lineAcross(room,R,c);if(sg){const z=R.z(c);extra.push([pr(sg[0],z),pr(sg[1],z)]);}});
+  const all=walls.flatMap(w=>w.bottom.concat(w.top)).concat(extra.flat());
+  const X0=Math.min(...all.map(p=>p.X)),X1=Math.max(...all.map(p=>p.X)),Y0=Math.min(...all.map(p=>p.Y)),Y1=Math.max(...all.map(p=>p.Y));
+  const W=340,H=200,pad=14,sc=Math.min((W-2*pad)/Math.max(.1,X1-X0),(H-2*pad)/Math.max(.1,Y1-Y0));
+  const T=p=>`${(pad+(p.X-X0)*sc+((W-2*pad)-(X1-X0)*sc)/2).toFixed(1)},${(pad+(p.Y-Y0)*sc+((H-2*pad)-(Y1-Y0)*sc)/2).toFixed(1)}`;
+  let o=`<polygon points="${pts.map(p=>T(pr(p,0))).join(' ')}" fill="var(--surface-2)" stroke="var(--line)"/>`;
+  walls.slice().sort((a,b)=>a.depth-b.depth).forEach(w=>{o+=`<polygon points="${w.bottom.map(T).concat(w.top.slice().reverse().map(T)).join(' ')}" fill="var(--accent-soft-2)" stroke="var(--wall)" stroke-width="1.2" stroke-linejoin="round"/>`;});
+  extra.forEach(([a,b])=>o+=`<line x1="${T(a).split(',')[0]}" y1="${T(a).split(',')[1]}" x2="${T(b).split(',')[0]}" y2="${T(b).split(',')[1]}" stroke="var(--heat)" stroke-width="2" stroke-linecap="round"/>`);
+  return `<div class="xsec"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="3D-weergave van ${esc(room.name)}">${o}</svg></div>`;}
+function roofEditor(room,surfCard){const r=room.roof,R=roofOf(room),rp=roofParts(room);
+  const typeSel=`<label class="f" for="f-roof-type">Vorm<select class="in" id="f-roof-type" data-f="roof.type">${Object.entries(ROOF_TYPES).map(([k,v])=>`<option value="${k}" ${r.type===k?'selected':''}>${v}</option>`).join('')}</select></label>`;
+  if(!R)return `<div class="card">${typeSel}<p class="note">Kies Zadeldak of Lessenaarsdak voor een ruimte onder een schuin dak, zoals een zolder.</p></div>${surfCard('ceil','Plafond','dak')}${isoSvg(room)}`;
+  const slopeA=rp.parts.filter(p=>p.kind==='slope').reduce((a,p)=>a+p.A,0),capA=rp.parts.filter(p=>p.kind==='cap').reduce((a,p)=>a+p.A,0);
+  let h=`<div class="card">${typeSel}
+    <div class="fields">${numField('f-roof-p','roof.pitch','Dakhelling','°',r.pitch,1)}${numField('f-roof-k','roof.knee','Knieschot','m',r.knee,2)}
+    <label class="f" for="f-roof-e">Nok evenwijdig aan<select class="in" id="f-roof-e" data-f="roof.edge">${room.pts.map((_,i)=>`<option value="${i}" ${(r.edge|0)===i?'selected':''}>Wand ${i+1} (${fmt(edge(room,i).L)} m)</option>`).join('')}</select></label>
+    ${R.type==='lessenaar'?`<label class="f" for="f-roof-l">Lage kant<select class="in" id="f-roof-l" data-f="roof.low"><option value="min" ${r.low!=='max'?'selected':''}>Aan de ene kant</option><option value="max" ${r.low==='max'?'selected':''}>Aan de andere kant</option></select></label>`:''}</div>
+    <div class="det">${R.type==='zadel'?'Nokhoogte':'Hoogste punt'} ${fmt(R.nok)} m${R.nok>R.cap?` · vlak plafond op ${fmt(R.cap)} m`:''}<br>Dakvlak ${fmt(slopeA/R.cosA,1)} m² (${fmt(slopeA,1)} m² horizontaal)${capA>0?` · vlak plafond ${fmt(capA,1)} m²`:''}<br>Inhoud ${fmt(roomVolume(room),1)} m³</div>
+    <p class="note">De hoogte van de ruimte (bovenaan) werkt als vlak plafond of hanenbalk: daarboven loopt het dak niet verder door. Zet die hoger dan de nok als het dak tot in de nok open is.</p></div>
+  ${isoSvg(room)}
+  ${surfCard('roof','Dakvlak','dak')}`;
+  if(capA>0)h+=surfCard('ceil','Vlak plafond','dak');
+  return h;}
+function roomCard(x){return `<button class="roomcard" data-act="selroom" data-r="${x.room.id}"><span class="rn">${esc(x.room.name)}</span><span class="rk">${fmt(x.c.total/1000,2)} kW</span>${segHtml(x.c,false)}<span class="rs">${fmt(x.c.Af,1)} m² · ${nv(x.room.temp,1)} °C${x.c.missing?' · ⚠ constructie ontbreekt':''}</span></button>`;}
+function roomCalcHtml(room){const c=calcRoom(room);const S=P.settings;
+  return `<div class="kcard"><div class="kh"><span>${esc(room.name)}</span><b>${fmt(c.total/1000,2)} kW</b></div>${segHtml(c,true)}
+    <div class="seglegend"><span style="--c:transparent">${fmtW(c.trans)} W transmissie</span><span style="--c:transparent">${fmtW(c.vent+c.inf)} W lucht</span><span style="--c:transparent">${c.Af>0?fmtW(c.total/c.Af):'–'} W/m²</span></div></div>
+  ${c.missing?`<div class="warnbox">${c.missing} onderdeel${c.missing>1?'en hebben':' heeft'} nog geen constructie. Die tellen nu als 0 W.</div>`:''}
+  ${calcTable(c.lines,[
+    ['Ventilatie toevoer',`${nv(room.sup,0)} m³/h van ${fmt(c.ts,1)} °C${S.ventSys==='D'?` (na WTW, η ${nv(S.eta,2)})`:' (buitenlucht)'}`,c.phiS],
+    ...c.tin.map(t=>[`Overstroom uit ${esc(t.room.name)}`,`${nv(t.q,0)} m³/h van ${nv(t.room.temp,1)} °C`,t.phi]),
+    ...(c.qo>0?[['Aanvulling uit de woning',`${nv(c.qo,0)} m³/h van ${nv(S.tRet,1)} °C · herkomst niet opgegeven`,RHOC*c.qo*(room.temp-S.tRet)]]:[]),
+    ['Infiltratie',S.infMode==='qv10'?`${fmt(c.qi,1)} m³/h · aandeel via ${fmt(c.env,1)} m² buitenschil`:`n = ${nv(S.nInf,2)} /h × ${fmt(c.V,1)} m³`,c.inf]])}`;}
+function viewNone(){
+  const c=calcAll();const fl=P.floors[floorIdx(curFloor)]||P.floors[0];const per=c.per.filter(x=>x.room.floorId===curFloor);
+  return `<div class="sec"><h2>${esc(P.name)}</h2><p class="note">Klik in de tekening op een ruimte of een wanddeel. Een nieuwe ruimte teken je met <b>Rechthoek</b> (R) of <b>Veelhoek</b> (P). Een wand die uit twee materialen bestaat, splits je met <b>Splits</b> (S). Wissel van verdieping met de knoppen boven de tekening of met PageUp en PageDown.</p></div>
+  <div class="sec"><h3>Ruimtes op ${esc(fl.name)}</h3>${per.length?`<div class="roomcards">${per.map(roomCard).join('')}</div>`:'<p class="note">Nog geen ruimtes. Kies Rechthoek en sleep in het tekenvlak.</p>'}</div>
+  ${P.example?`<div class="sec"><p class="note">Dit is een voorbeeldproject met verzonnen waarden. Pas het aan, of start een leeg project onder <b>Project</b>.</p></div>`:''}`;}
+function viewRoom(room){
+  let h=`<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-room-name" data-f="room.name" value="${esc(room.name)}" aria-label="Naam ruimte"></div>
+  <div class="fields">${numField('f-room-temp','room.temp','Ontwerptemperatuur θi','°C',room.temp,1)}${numField('f-room-h','room.height',spans(room)?'Totale hoogte':room.roof&&room.roof.type!=='plat'?'Vlak plafond op':'Hoogte','m',room.height,2)}${numField('f-room-sup','room.sup',P.settings.ventSys==='D'?'Inblaas':'Toevoer (roosters)','m³/h',room.sup,0)}${numField('f-room-ext','room.ext','Afzuiging','m³/h',room.ext,0)}</div>
+  <div class="fields"><label class="f" for="f-room-kind">Soort ruimte<select class="in" id="f-room-kind" data-f="room.kind">${[['normaal','Normale ruimte'],['trap','Trappenhuis'],['vide','Vide']].map(([k,l])=>`<option value="${k}" ${room.kind===k?'selected':''}>${l}</option>`).join('')}</select></label>
+    <label class="f" for="f-room-span">Loopt door tot<select class="in" id="f-room-span" data-f="room.spanTo"><option value="">Alleen ${esc((P.floors[floorIdx(room.floorId)]||{}).name||'deze verdieping')}</option>${P.floors.slice(floorIdx(room.floorId)+1).map(fl=>`<option value="${fl.id}" ${room.spanTo===fl.id?'selected':''}>${esc(fl.name)}</option>`).join('')}</select></label></div>
+  ${spans(room)?`<p class="note">Deze ruimte loopt door tot ${esc(P.floors[levelsOf(room)[1]].name)}. Vul bij Totale hoogte de hoogte over alle verdiepingen in. Wanden van ruimtes op de verdiepingen erboven grenzen nu aan deze ruimte, en op die verdiepingen staat hij gearceerd. Warme lucht stijgt hier vrij op: geef onder <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie</button> de overstroom van en naar deze ruimte op.</p>`:(room.kind!=='normaal'&&P.floors.length<=floorIdx(room.floorId)+1?'<p class="note">Er is geen verdieping boven deze. Voeg eerst een verdieping toe om de ruimte te laten doorlopen.</p>':'')}
+  ${roomAirHtml(room)}
+  <p class="note">Ventilatiesysteem ${esc(VENT_SYS[P.settings.ventSys])}${P.settings.ventSys==='D'?`, WTW-rendement ${nv(P.settings.eta*100,0)}%`:''}. <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie en WTW instellen</button></p>
+  <div class="sec" id="calc-out">${roomCalcHtml(room)}</div>
+  <div class="sec">${roomEmitHtml(room)}</div>
+  <div class="sec"><h3>Wanden</h3><p class="note">Klik een deel om de constructie en wat erachter ligt in te stellen.</p>`;
+  room.pts.forEach((_,i)=>{const e=edge(room,i);const w=room.walls[i];
+    h+=`<div class="wallrow"><div class="meta"><span><b>Wand ${i+1}</b> · ${fmt(e.L)} m${w.segs.length>1?' · '+w.segs.length+' delen':''}</span><span>${w.segs.map(s=>s.adj==='auto'?'auto':ADJ[s.adj].split(' ')[0].toLowerCase()).filter((v,k,a)=>a.indexOf(v)===k).join(', ')}</span></div>${wallBar(room,i,-1)}</div>`;});
+  const surfCard=(k,lab,kind,extra)=>{const s=room[k];
+    return `<div class="card"><b>${lab}</b>${extra||''}<label class="f" for="f-${k}-cid">Constructie<select class="in" id="f-${k}-cid" data-f="${k}.cid">${conOptions(s.cid,kind)}</select></label>
+    <div class="row"><label class="f grow" for="f-${k}-adj">Grenst aan<select class="in" id="f-${k}-adj" data-f="${k}.adj">${adjOptions(s.adj,false)}</select></label>${s.adj==='temp'?`<label class="f" style="width:110px" for="f-${k}-t">Temperatuur <span class="u">°C</span><input class="in num" id="f-${k}-t" data-f="${k}.t" inputmode="decimal" value="${nv(s.t,1)}"></label>`:''}</div></div>`;};
+  h+=`</div><div class="sec"><h3>Vloer</h3>${surfCard('floor','Vloer','vloer')}</div>`;
+  h+=`<div class="sec"><h3>Dak en plafond</h3>${roofEditor(room,surfCard)}`;
+  h+=`</div><div class="row"><button class="btn danger" data-act="delroom">Ruimte verwijderen</button></div>`;
+  return h;}
+function viewSeg(room,i,j){
+  const e=edge(room,i);const w=room.walls[i];const sg=w.segs[j];const b=bounds(room,i);const s0=b[j],s1=b[j+1];const con=conById(sg.cid);
+  const nm='Wand '+(i+1)+(w.segs.length>1?' · deel '+(LET[j]||j):'');
+  let h=`<div class="sec"><button class="crumb" data-act="selroom" data-r="${room.id}">← ${esc(room.name)}</button><h2>${nm}</h2>
+    <p class="note">Wand van hoek ${i+1} naar hoek ${(i+1)%room.pts.length+1}, totaal ${fmt(e.L)} m. Dit deel: ${fmt(s0)} – ${fmt(s1)} m (${fmt(s1-s0)} m × ${fmt(room.height)} m hoog).</p>
+    ${wallBar(room,i,j)}<div class="scale"><span>0</span><span>${fmt(e.L)} m</span></div></div>
+  <div class="sec"><h3>Constructie</h3><select class="in" id="f-seg-cid" data-f="seg.cid">${conOptions(sg.cid,'wand')}</select>
+    ${con?`<p class="note">U = ${nv(con.U,3)} W/m²K${DU_TYPES.has(sg.adj==='auto'?'buiten':sg.adj)?` + ΔU koudebrug ${nv(P.settings.dU,3)}`:''}. Wijzig de waarde onder <button class="crumb" data-act="gocon" data-c="${con.id}">Constructies</button>.</p>`:`<p class="note">Nog geen constructie. Maak er een aan onder <button class="crumb" data-act="gocon">Constructies</button> met de U-waarde uit ubakus.de.</p>`}</div>
+  <div class="sec"><h3>Grenst aan</h3><div class="row"><select class="in grow" id="f-seg-adj" data-f="seg.adj">${adjOptions(sg.adj,true)}</select>${sg.adj==='temp'?`<label class="f" style="width:110px" for="f-seg-t">Temp. <span class="u">°C</span><input class="in num" id="f-seg-t" data-f="seg.adjT" inputmode="decimal" value="${nv(sg.adjT,1)}"></label>`:''}</div>`;
+  if(sg.adj==='auto'){const nb=neighbourIntervals(room,i);let rows=[],used=0;nb.forEach(n=>{let l=0;n.ivs.forEach(iv=>l+=Math.max(0,Math.min(s1,iv[1])-Math.max(s0,iv[0])));if(l>0.005){rows.push(`${fmt(l)} m → ${esc(n.room.name)} (${nv(n.room.temp,1)} °C)`);used+=l;}});
+    const rest=s1-s0-used;if(rest>0.005)rows.push(`${fmt(rest)} m → buiten (${nv(P.settings.te,1)} °C)`);
+    h+=`<div class="det">${rows.join('<br>')}</div><p class="note">Herkend uit de tekening: wanden van andere ruimtes die evenwijdig liggen binnen ${fmt(P.settings.maxWall)} m wanddikte.</p>`;}
+  h+=`</div><div class="sec"><h3>Splitsingen in wand ${i+1}</h3>`;
+  if(w.cuts.length){w.cuts.forEach((c,ci)=>{h+=`<div class="row"><label class="f grow" for="f-cut-${ci}">Grens ${LET[ci]||ci}|${LET[ci+1]||ci+1} op <span class="u">m vanaf hoek ${i+1}</span><input class="in num" id="f-cut-${ci}" data-f="cut.${ci}" inputmode="decimal" value="${nv(c,3)}"></label><button class="btn small" data-act="delcut" data-c="${ci}" style="align-self:flex-end">Weghalen</button></div>`;});}
+  else h+=`<p class="note">Deze wand bestaat uit één deel.</p>`;
+  h+=`<div class="row"><label class="f grow" for="f-newcut">Nieuwe splitsing op <span class="u">m vanaf hoek ${i+1}</span><input class="in num" id="f-newcut" inputmode="decimal" placeholder="${nv(r3((s0+s1)/2),2)}"></label><button class="btn small" data-act="addcut" style="align-self:flex-end">Splitsen</button><button class="btn small" data-act="splitmid" style="align-self:flex-end">In het midden</button></div></div>`;
+  h+=`<div class="sec"><h3>Ramen en deuren in dit deel</h3>`;
+  sg.openings.forEach(o=>{h+=`<div class="card"><div class="opgrid"><label class="f" for="f-op-${o.id}-n">Naam<input class="in" id="f-op-${o.id}-n" data-f="op.${o.id}.name" value="${esc(o.name)}"></label>${numField('f-op-'+o.id+'-w','op.'+o.id+'.w','Breedte','m',o.w,2)}${numField('f-op-'+o.id+'-h','op.'+o.id+'.h','Hoogte','m',o.h,2)}<button class="btn small" data-act="delop" data-o="${o.id}" aria-label="Verwijder ${esc(o.name)}">✕</button></div>
+    <select class="in" id="f-op-${o.id}-c" data-f="op.${o.id}.cid" aria-label="Constructie opening">${conOptions(o.cid,'raam')}</select></div>`;});
+  h+=`<div class="row"><button class="btn small" data-act="addop">+ Raam of deur</button><span class="note">Het oppervlak gaat van de wand af.</span></div></div>`;
+  const c=calcRoom(room);const mine=c.lines.filter(l=>l.w===i&&l.s===j);
+  h+=`<div class="sec" id="calc-out"><h3>Verlies van dit deel</h3>${calcTable(mine)}<p class="note">Subtotaal ${fmtW(mine.reduce((a,l)=>a+l.phi,0))} W van ${fmtW(c.total)} W voor ${esc(room.name)}.</p></div>`;
+  return h;}
+let conOpen=null;
+const rseOf=c=>c.inner?RS[c.kind][0]:RS[c.kind][1];
+function matOptions(sel){return `<option value="">— materiaal —</option>`+P.materials.map(m=>`<option value="${m.id}" ${m.id===sel?'selected':''}>${esc(m.name)}${m.type==='lambda'?' · λ '+nv(m.lambda,3):m.type==='R'?' · R '+nv(m.R,2):''}</option>`).join('');}
+function xsecSvg(c,r){
+  const L=c.layers;if(!L.length)return'';const W=360,H=118,pl=34,pr=34,top=16,hh=H-top-26;
+  const th=L.map(l=>{const m=matById(l.mid);return m&&m.type==='R'?0:Math.max(0,l.d);});const tot=th.reduce((a,b)=>a+b,0)||1;
+  let ws=th.map(t=>Math.max(3,t/tot*(W-pl-pr)));const sc=(W-pl-pr)/ws.reduce((a,b)=>a+b,0);ws=ws.map(w=>w*sc);
+  let x=pl,out='';const xs=[x];
+  L.forEach((l,i)=>{const m=matById(l.mid);const w=ws[i];const op=r.layers[i].active?1:.35;
+    if(m&&m.type==='spouw')out+=`<rect x="${x}" y="${top}" width="${w}" height="${hh}" fill="none" stroke="var(--muted)" stroke-dasharray="2 2" opacity="${op}"/>`;
+    else out+=`<rect x="${x}" y="${top}" width="${w}" height="${hh}" fill="${esc(m?m.color:'#999999')}" opacity="${op}"/>`;
+    if(l.mix&&m&&m.type==='lambda'){const mm=matById(l.mix.mid);const bh=hh*Math.max(0,Math.min(100,l.mix.pct))/100;
+      if(mm&&bh>0)out+=`<rect x="${x}" y="${top+(hh-bh)/2}" width="${w}" height="${bh}" fill="${esc(mm.color)}" opacity="${op}"/>`;}
+    x+=w;xs.push(x);});
+  const ti=20,te=P.settings.te,y=t=>top+(ti-t)/Math.max(1,ti-te)*hh;const q=(ti-te)/r.Rlo;
+  let cur=ti-q*r.rsi;const pts=[[6,ti],[pl,cur]];
+  L.forEach((l,i)=>{if(r.layers[i].active)cur-=q*r.layers[i].r;else cur=te;pts.push([xs[i+1],cur]);});pts.push([W-6,te]);
+  out+=`<polyline points="${pts.map(p=>p[0].toFixed(1)+','+y(p[1]).toFixed(1)).join(' ')}" fill="none" stroke="var(--heat)" stroke-width="2"/>`;
+  out+=`<text x="4" y="${H-8}">binnen ${nv(ti,0)} °C</text><text x="${W-4}" y="${H-8}" text-anchor="end">buiten ${nv(te,0)} °C</text>`;
+  out+=`<text x="${pl+3}" y="11">${nv(pts[1][1],1)} °C</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Doorsnede met temperatuurverloop">${out}</svg>`;}
+function layerSummary(c,r){
+  if(!c.layers.length)return'';const notes=[];
+  if(r.mode==='sterk')notes.push('Sterk geventileerde spouw: de spouw en alle lagen erbuiten tellen niet mee. Aan de buitenkant geldt dan Rse = Rsi.');
+  if(r.mode==='zwak')notes.push('Zwak geventileerde spouw: de spouw telt voor de helft, de lagen erbuiten samen voor maximaal 0,15 m²K/W.');
+  if(r.mixed)notes.push(`Inhomogene laag (stijlen of regels): gemiddelde van bovengrens ${fmt(r.Rup,2)} en ondergrens ${fmt(r.Rlo,2)} m²K/W.`);
+  return `<div class="xsec">${xsecSvg(c,r)}</div>
+    <div class="det">Rsi ${fmt(r.rsi,2)} + lagen ${fmt(r.Rc,2)} + Rse ${fmt(r.rse,2)} = RT ${fmt(r.RT,2)} m²K/W<br><b>Rc = ${fmt(r.Rc,2)} m²K/W · U = ${nv(r.U,3)} W/m²K</b></div>
+    ${notes.map(n=>`<p class="note">${n}</p>`).join('')}`;}
+function layersEditor(c){
+  const r=calcLayers(c);
+  let h=`<div id="lsum-${c.id}" class="sec">${layerSummary(c,r)}</div><div class="layers"><span class="layside">Binnen</span>`;
+  if(!c.layers.length)h+=`<p class="note">Nog geen lagen. Begin met de binnenste laag.</p>`;
+  c.layers.forEach((l,i)=>{const m=matById(l.mid);const li=r.layers[i];const pre=`lay.${c.id}.${l.id}.`;
+    h+=`<div class="layer ${li.active?'':'ign'}"><div class="lrow">
+      <div class="lmove"><button data-act="laymove" data-c="${c.id}" data-l="${l.id}" data-dir="-1" aria-label="Laag naar binnen" ${i===0?'disabled':''}>▲</button><button data-act="laymove" data-c="${c.id}" data-l="${l.id}" data-dir="1" aria-label="Laag naar buiten" ${i===c.layers.length-1?'disabled':''}>▼</button></div>
+      <select class="in" id="f-lay-${l.id}-m" data-f="${pre}mid" aria-label="Materiaal">${matOptions(l.mid)}</select>
+      ${m&&m.type==='R'?`<span class="mmwrap">vaste R</span>`:`<span class="mmwrap"><input class="in num" id="f-lay-${l.id}-d" data-f="${pre}d" inputmode="decimal" value="${nv(l.d,1)}" aria-label="Dikte in mm">mm</span>`}
+      <span class="rd" id="rd-${l.id}">${li.active?'R '+fmt(li.r,2):'telt niet'}</span>
+      <button class="xbtn" data-act="laydel" data-c="${c.id}" data-l="${l.id}" aria-label="Laag verwijderen">✕</button></div>`;
+    if(m&&m.type==='spouw')h+=`<div class="subrow"><select class="in" id="f-lay-${l.id}-v" data-f="${pre}vent" aria-label="Ventilatie spouw">${[['niet','niet geventileerd'],['zwak','zwak geventileerd'],['sterk','sterk geventileerd']].map(([v,t])=>`<option value="${v}" ${l.vent===v?'selected':''}>${t}</option>`).join('')}</select></div>`;
+    else if(m&&m.type==='lambda'){
+      if(l.mix)h+=`<div class="subrow">waarvan <input class="in num" style="width:56px" id="f-lay-${l.id}-p" data-f="${pre}mixpct" inputmode="decimal" value="${nv(l.mix.pct,1)}" aria-label="Aandeel in procent"> % <select class="in" id="f-lay-${l.id}-mm" data-f="${pre}mixmid" aria-label="Materiaal stijlen">${matOptions(l.mix.mid)}</select><button class="linkbtn" data-act="delmix" data-c="${c.id}" data-l="${l.id}">weghalen</button></div>`;
+      else h+=`<div class="subrow"><button class="linkbtn" data-act="addmix" data-c="${c.id}" data-l="${l.id}">+ stijlen of regels in deze laag</button></div>`;}
+    h+=`</div>`;});
+  return h+`<span class="layside">Buiten</span></div><div class="row"><button class="btn small" data-act="addlayer" data-c="${c.id}">+ Laag</button></div>`;}
+function conCard(c,uses){
+  const open=conOpen===c.id;const r=c.mode==='lagen'&&c.layers.length?calcLayers(c):null;
+  const Rc=r?r.Rc:(c.U>0?1/c.U-RS[c.kind][0]-rseOf(c):NaN);
+  let h=`<div class="concard ${open?'open':''}" id="card-${c.id}"><button class="consum" data-act="togglecon" data-c="${c.id}" aria-expanded="${open}"><span class="sw" style="background:${esc(c.color)}"></span><span class="nm">${esc(c.name)}</span><span class="val">Rc ${Number.isFinite(Rc)?fmt(Rc,2):'–'} · U ${nv(c.U,3)}</span><span aria-hidden="true">${open?'▴':'▾'}</span></button>`;
+  if(open){h+=`<div class="conbody">
+    <div class="row"><input type="color" class="colorin" id="f-con-${c.id}-col" data-f="con.${c.id}.color" value="${esc(c.color)}" aria-label="Kleur"><input class="in grow" id="f-con-${c.id}-n" data-f="con.${c.id}.name" value="${esc(c.name)}" aria-label="Naam constructie"></div>
+    <div class="fields"><label class="f" for="f-con-${c.id}-k">Soort<select class="in" id="f-con-${c.id}-k" data-f="con.${c.id}.kind">${Object.entries(KINDS).map(([kk,v])=>`<option value="${kk}" ${kk===c.kind?'selected':''}>${v}</option>`).join('')}</select></label>
+    <label class="f" for="f-con-${c.id}-mode">Invoer<select class="in" id="f-con-${c.id}-mode" data-f="con.${c.id}.mode"><option value="lagen" ${c.mode==='lagen'?'selected':''}>Opbouw in lagen</option><option value="U" ${c.mode==='U'?'selected':''}>U-waarde invullen</option></select></label></div>
+    <label class="chk"><input type="checkbox" id="f-con-${c.id}-inner" data-f="con.${c.id}.inner" ${c.inner?'checked':''}> Aan beide kanten binnen (binnenwand of verdiepingsvloer, Rse = Rsi)</label>
+    ${c.mode==='U'?`<div class="fields">${numField('f-con-'+c.id+'-u','con.'+c.id+'.U','U-waarde','W/m²K',c.U,3)}${numField('f-con-'+c.id+'-rc','con.'+c.id+'.Rc','Rc','m²K/W',Rc,2)}</div><p class="note">Bijvoorbeeld de U-waarde uit <a href="https://www.ubakus.de/u-wert-rechner/" target="_blank" rel="noopener">ubakus.de</a> of van de leverancier.</p>`:layersEditor(c)}
+    <div class="row"><span class="note grow">${uses[c.id]?`Gebruikt op ${uses[c.id]} plek${uses[c.id]>1?'ken':''}`:'Nog niet gebruikt'}</span><button class="btn small" data-act="dupcon" data-c="${c.id}">Kopie</button><button class="btn small danger" data-act="delcon" data-c="${c.id}" ${uses[c.id]?'disabled title="Nog in gebruik"':''}>Verwijderen</button></div></div>`;}
+  return h+`</div>`;}
+function viewMats(){
+  const used=new Set();P.constructions.forEach(c=>c.layers.forEach(l=>{used.add(l.mid);if(l.mix)used.add(l.mix.mid);}));
+  let h=`<div class="sec"><h3>Materialen</h3><p class="note">De λ-waarden zijn indicatieve rekenwaarden in W/mK. Gebruik voor isolatie de λD van het productblad of de waarde uit ubakus.</p>`;
+  P.materials.forEach(m=>{h+=`<div class="matrow"><input type="color" class="colorin" id="f-mat-${m.id}-c" data-f="mat.${m.id}.color" value="${esc(m.color)}" aria-label="Kleur"><input class="in grow" style="flex-basis:150px" id="f-mat-${m.id}-n" data-f="mat.${m.id}.name" value="${esc(m.name)}" aria-label="Naam materiaal">
+    <select class="in" id="f-mat-${m.id}-t" data-f="mat.${m.id}.type" aria-label="Soort"><option value="lambda" ${m.type==='lambda'?'selected':''}>λ</option><option value="R" ${m.type==='R'?'selected':''}>vaste R</option><option value="spouw" ${m.type==='spouw'?'selected':''}>luchtspouw</option></select>
+    ${m.type==='lambda'?`<input class="in num" style="width:78px" id="f-mat-${m.id}-l" data-f="mat.${m.id}.lambda" inputmode="decimal" value="${nv(m.lambda,4)}" aria-label="Lambda in W/mK" title="λ in W/mK">`:m.type==='R'?`<input class="in num" style="width:78px" id="f-mat-${m.id}-r" data-f="mat.${m.id}.R" inputmode="decimal" value="${nv(m.R,3)}" aria-label="R in m²K/W" title="R in m²K/W">`:`<span class="note" style="width:78px">uit tabel</span>`}
+    <button class="xbtn" data-act="delmat" data-m="${m.id}" ${used.has(m.id)?'disabled title="In gebruik"':''} aria-label="Verwijder ${esc(m.name)}">✕</button></div>`;});
+  return h+`<div class="row"><button class="btn small" data-act="addmat">+ Materiaal</button></div></div>`;}
+function viewCon(focusId){
+  if(focusId)conOpen=focusId;
+  const uses={};P.rooms.forEach(r=>{r.walls.forEach(w=>w.segs.forEach(s=>{uses[s.cid]=(uses[s.cid]||0)+1;s.openings.forEach(o=>uses[o.cid]=(uses[o.cid]||0)+1);}));uses[r.floor.cid]=(uses[r.floor.cid]||0)+1;uses[r.ceil.cid]=(uses[r.ceil.cid]||0)+1;});
+  let h=`<div class="sec"><h2>Constructies</h2><p class="note">Stel de opbouw samen uit lagen van binnen naar buiten, zoals op <a href="https://www.ubakus.de/u-wert-rechner/" target="_blank" rel="noopener">ubakus.de</a>. Per laag rekent de app R = d / λ uit, en daarmee de Rc en de U-waarde van de hele constructie. Voor ramen en deuren vul je meestal direct de U-waarde van de leverancier in.</p></div>`;
+  Object.keys(KINDS).forEach(k=>{const cs=P.constructions.filter(c=>c.kind===k);h+=`<div class="sec"><h3>${KINDS[k]}</h3>`;
+    if(!cs.length)h+=`<p class="note">Nog geen ${KINDS[k].toLowerCase()}.</p>`;
+    cs.forEach(c=>h+=conCard(c,uses));
+    h+=`<div class="row"><button class="btn small" data-act="addcon" data-kind="${k}">+ ${KINDS[k]}</button></div></div>`;});
+  return h+viewMats();}
+/* ---------- heat emitters and their connection pipes ---------- */
+const EM_KINDS={rad:'Radiator',conv:'Convector',fan:'Fancoil',vv:'Vloerverwarming'};
+const EM_N={rad:1.3,conv:1.4,fan:1.0,vv:1.0};
+const EM_NOM={rad:[75,65,20],conv:[75,65,20],fan:[35,30,20]}; // conditions the stated output refers to
+const PIPES={koper:{label:'Koper',d:{'10':8,'12':10,'15':13,'18':16,'22':20,'28':26}},pex:{label:'PEX / alupex',d:{'14':10,'16':12,'17':13,'20':16,'26':20}},staal:{label:'Staal (gasbuis)',d:{'3/8"':12.5,'1/2"':16.1,'3/4"':21.6,'1"':27.3}}};
+const VV_COVER={tegels:['Tegels / natuursteen',0.01],pvc:['PVC / vinyl',0.03],laminaat:['Laminaat met ondervloer',0.07],parket:['Parket',0.10],tapijt:['Tapijt',0.15]};
+// indicative heat output coefficient of underfloor heating (W/m²K over the log-mean water–room temperature difference),
+// screed ~45 mm above a 16 mm pipe, by pipe spacing (cm) and covering resistance 0 / 0,05 / 0,10 / 0,15 m²K/W
+const VV_KH={10:[6.7,5.0,4.0,3.3],15:[5.9,4.5,3.6,3.0],20:[5.2,4.0,3.3,2.8]};
+const V_OK=0.5,V_MAX=0.8; // m/s in connection pipes
+function lmtd(ts,tr,ti){if(ts<=ti||tr<=ti)return 0;if(Math.abs(ts-tr)<1e-6)return ts-ti;return(ts-tr)/Math.log((ts-ti)/(tr-ti));}
+const emArea=em=>em.kind==='vv'&&em.pts?Math.abs(polyArea(em.pts)):0;
+const emLen=em=>em.a&&em.b?dist(em.a,em.b):0;
+const emMid=em=>em.kind==='vv'?centroid(em.pts):{x:(em.a.x+em.b.x)/2,y:(em.a.y+em.b.y)/2};
+function emOutput(em,room,ts,tr){const S=P.settings;if(ts==null){ts=S.twSup;tr=S.twRet;}const ti=room.temp,dt=lmtd(ts,tr,ti);if(dt<=0)return 0;
+  if(em.kind==='vv'){const R=(VV_COVER[em.cover]||VV_COVER.tegels)[1],row=VV_KH[em.spacing]||VV_KH[15];const x=Math.min(3,Math.max(0,R/0.05)),i=Math.min(2,Math.floor(x));const kh=row[i]+(row[i+1]-row[i])*(x-i);
+    const qmax=8.92*Math.pow(Math.max(0,29-ti),1.1); // floor surface at most 29 °C
+    return Math.min(kh*dt,qmax)*emArea(em);}
+  const nom=EM_NOM[em.kind]||EM_NOM.rad;const boost=em.boost&&(em.kind==='rad'||em.kind==='conv')?1+(em.boostPct||0)/100:1;
+  return Math.max(0,em.p)*Math.pow(dt/lmtd(nom[0],nom[1],nom[2]),em.n||EM_N[em.kind]||1.3)*boost;}
+function pipeCheck(em,W){const S=P.settings,dT=Math.max(0.5,S.twSup-S.twRet);const mat=PIPES[em.pipe.mat]||PIPES.koper;const di=(mat.d[em.pipe.dn]||13)/1000,Ar=Math.PI*di*di/4;
+  const Q=W/(4190*dT)/1000; // m³/s
+  const v=Q/Ar;return{lh:Q*3.6e6,v,pmax:V_OK*Ar*1000*4190*dT,di:di*1000,state:v<=V_OK?'ok':v<=V_MAX?'krap':'te klein'};}
+function roomEmit(room,ts,tr){return(room.emitters||[]).reduce((a,e)=>a+emOutput(e,room,ts,tr),0);}
+// lowest supply temperature (same ΔT as the design) at which the room's emitters cover its heat loss
+function neededSupply(room,need){const S=P.settings,dT=Math.max(0.5,S.twSup-S.twRet);if(!(room.emitters||[]).length||need<=0)return null;
+  let lo=room.temp+dT+0.05,hi=90;if(roomEmit(room,hi,hi-dT)<need)return Infinity;for(let k=0;k<40;k++){const m=(lo+hi)/2;if(roomEmit(room,m,m-dT)>=need)hi=m;else lo=m;}return hi;}
+const vvLoop=em=>emArea(em)/((+em.spacing||15)/100)+10; // pipe in the floor plus ~2×5 m to the manifold
+function pointInPoly(p,pts){let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const a=pts[i],b=pts[j];if((a.y>p.y)!==(b.y>p.y)&&p.x<(b.x-a.x)*(p.y-a.y)/(b.y-a.y)+a.x)c=!c;}return c;}
+function shiftEm(em,dx,dy){const e=clone(em);const m=p=>({x:r3(p.x+dx),y:r3(p.y+dy)});if(e.a)e.a=m(e.a);if(e.b)e.b=m(e.b);if(e.pts)e.pts=e.pts.map(m);return e;}
+function addEmitter(kind,geom){const mid=kind==='vv'?centroid(geom.pts):{x:(geom.a.x+geom.b.x)/2,y:(geom.a.y+geom.b.y)/2};
+  const room=curRooms().find(r=>pointInPoly(mid,r.pts));if(!room){toast('Teken het afgifte-element binnen een ruimte.');renderCanvas();return;}
+  pushUndo();room.emitters=room.emitters||[];const n=room.emitters.length+1;
+  const em=kind==='vv'?{id:rid(),kind:'vv',name:'Vloerverwarming'+(n>1?' '+n:''),pts:geom.pts,spacing:15,cover:'tegels',p:0,n:1,pipe:{mat:'pex',dn:'16'}}
+    :{id:rid(),kind:'rad',name:'Radiator '+n,a:geom.a,b:geom.b,p:Math.round(emLen(geom)*100)*10,n:1.3,pipe:{mat:'koper',dn:'15'}};
+  room.emitters.push(em);sel={t:'em',r:room.id,e:em.id};tab='sel';markDirty();renderAll();
+  toast(kind==='vv'?`Vloerverwarming toegevoegd aan ${room.name}.`:`${em.name} toegevoegd aan ${room.name}. Vul het vermogen van de typeplaat in.`);}
+function selEm(){const r=selRoom();return r&&sel.t==='em'?(r.emitters||[]).find(x=>x.id===sel.e):null;}
+function twFieldsHtml(){const S=P.settings;return `<div class="card"><b>Afgiftesysteem</b><div class="fields">${numField('f-tw-s','set.twSup','Aanvoertemperatuur','°C',S.twSup,1)}${numField('f-tw-r','set.twRet','Retourtemperatuur','°C',S.twRet,1)}</div>
+  <p class="note">Alle afgiftevermogens worden bij deze temperaturen berekend. Geldt voor het hele project.</p></div>`;}
+function pipeChip(pc){return pc.state==='ok'?`<span class="chip ok">✓ ${fmt(pc.v,2)} m/s: leiding is ruim genoeg</span>`:pc.state==='krap'?`<span class="chip bad">⚠ ${fmt(pc.v,2)} m/s: krap, kans op geluid en drukval</span>`:`<span class="chip bad">⚠ ${fmt(pc.v,2)} m/s: leiding te klein</span>`;}
+function roomEmitHtml(room,c){c=c||calcRoom(room);const S=P.settings,ems=room.emitters||[];
+  if(!ems.length)return `<h3>Afgifte</h3><p class="note">Nog geen afgifte in deze ruimte. Teken een radiator met <b>Radiator</b> (A) of vloerverwarming met <b>Vloerverw.</b> (H).</p>`;
+  const emit=roomEmit(room),need=c.total,ns=neededSupply(room,need),ok=emit>=need-1;
+  return `<h3>Afgifte</h3><div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup,1)}/${nv(S.twRet,1)} °C</span><b>${fmt(emit/1000,2)} kW</b></div>
+    <div class="seglegend"><span style="--c:transparent">warmteverlies ${fmt(need/1000,2)} kW</span></div>
+    <div class="row">${ok?`<span class="chip ok">✓ voldoende${need>0?` (${fmtW(emit/need*100)}%)`:''}</span>`:`<span class="chip bad">⚠ tekort ${fmt((need-emit)/1000,2)} kW</span>`}</div>
+    <span class="note">${ns==null?'':ns===Infinity?'Ook bij 90 °C aanvoer niet voldoende: meer of grotere afgifte nodig.':`Minimaal nodige aanvoertemperatuur in deze ruimte: ${fmt(ns,1)} °C (bij ΔT ${nv(S.twSup-S.twRet,1)} K).`}</span></div>
+    ${ems.map(em=>{const o=emOutput(em,room),pc=pipeCheck(em,o);return `<button class="linkrow" data-act="selem" data-r="${room.id}" data-e="${em.id}"><span>${esc(em.name)} <span class="note">· ${EM_KINDS[em.kind]}${em.boost?' met boosters':''}${pc.state!=='ok'?' · ⚠ leiding '+pc.state:''}</span></span><span>${fmt(o/1000,2)} kW</span></button>`;}).join('')}
+    ${twFieldsHtml()}`;}
+function viewEm(room,em){const S=P.settings,out=emOutput(em,room),pc=pipeCheck(em,out),isV=em.kind==='vv';
+  const kinds=(isV?['vv']:['rad','conv','fan']).map(k=>`<option value="${k}" ${em.kind===k?'selected':''}>${EM_KINDS[k]}</option>`).join('');
+  let h=`<div class="sec"><button class="crumb" data-act="selroom" data-r="${room.id}">← ${esc(room.name)}</button><input class="title" id="f-em-name" data-f="em.name" value="${esc(em.name)}" aria-label="Naam"></div>
+  <div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup,1)}/${nv(S.twRet,1)} °C</span><b>${fmt(out/1000,2)} kW</b></div>
+    <div class="seglegend"><span style="--c:transparent">${fmtW(pc.lh)} l/h water</span><span style="--c:transparent">ruimte ${nv(room.temp,1)} °C</span></div></div>
+  <div class="fields"><label class="f" for="f-em-kind">Soort<select class="in" id="f-em-kind" data-f="em.kind" ${isV?'disabled':''}>${kinds}</select></label>`;
+  if(!isV){const nom=EM_NOM[em.kind];h+=numField('f-em-p','em.p',`Vermogen bij ${nom[0]}/${nom[1]}/${nom[2]} °C`,'W',em.p,0)+numField('f-em-n','em.n','Exponent n','–',em.n,2)+`</div>
+    <p class="note">Vul het vermogen van de typeplaat of uit de documentatie in${em.kind==='fan'?' (fancoils worden meestal bij 35 °C opgegeven)':' (EN 442, 75/65/20 °C)'}. De app rekent het om naar ${nv(S.twSup,1)}/${nv(S.twRet,1)} °C met exponent n (radiator 1,3, convector 1,4, fancoil 1,0). Lengte in de tekening ${fmt(emLen(em))} m.</p>
+    ${em.kind==='rad'||em.kind==='conv'?`<div class="card"><label class="chk"><input type="checkbox" id="f-em-boost" data-f="em.boost" ${em.boost?'checked':''}> Voorzien van boosters (ventilatoren)</label>
+      ${em.boost?`<div class="fields">${numField('f-em-bp','em.boostPct','Meerafgifte door boosters','%',em.boostPct,0)}</div>
+      <p class="note">Zonder boosters ${fmt(emOutput({...em,boost:false},room)/1000,2)} kW, met boosters ${fmt(out/1000,2)} kW. Fabrikanten noemen bij lage watertemperatuur 30 tot 100% meer afgifte, afhankelijk van radiatortype en aantal ventilatoren. 40% is een voorzichtige waarde; gebruik bij voorkeur de opgave van de fabrikant.</p>`:''}</div>`:''}`;}
+  else h+=`<label class="f" for="f-em-sp">Hart-op-hart<select class="in" id="f-em-sp" data-f="em.spacing">${[10,15,20].map(v=>`<option value="${v}" ${+em.spacing===v?'selected':''}>${v} cm</option>`).join('')}</select></label>
+    <label class="f" for="f-em-cov">Vloerafwerking<select class="in" id="f-em-cov" data-f="em.cover">${Object.entries(VV_COVER).map(([k,[l,R]])=>`<option value="${k}" ${em.cover===k?'selected':''}>${l} (R ${nv(R,2)})</option>`).join('')}</select></label></div>
+    <p class="note">Oppervlak ${fmt(emArea(em),1)} m² · ${fmtW(emArea(em)>0?out/emArea(em):0)} W/m² · leiding ca. ${fmtW(vvLoop(em))} m${vvLoop(em)>100?' <b style="color:var(--warn)">⚠ meer dan 100 m: verdeel over twee groepen</b>':''}. Indicatieve afgifte volgens EN 1264 (dekvloer ca. 45 mm), begrensd op een vloertemperatuur van 29 °C.</p>`;
+  const mat=em.pipe.mat;
+  h+=`<div class="sec"><h3>Aansluitleiding</h3><div class="fields"><label class="f" for="f-em-pm">Materiaal<select class="in" id="f-em-pm" data-f="em.pipe.mat">${Object.entries(PIPES).map(([k,v])=>`<option value="${k}" ${mat===k?'selected':''}>${v.label}</option>`).join('')}</select></label>
+    <label class="f" for="f-em-pd">Diameter<select class="in" id="f-em-pd" data-f="em.pipe.dn">${Object.keys(PIPES[mat].d).map(d=>`<option value="${esc(d)}" ${em.pipe.dn===d?'selected':''}>${esc(d)}${mat==='staal'?'':' mm'} (inwendig ${nv(PIPES[mat].d[d],1)} mm)</option>`).join('')}</select></label></div>
+    <div class="row">${pipeChip(pc)}</div>
+    <p class="note">Waterdebiet ${fmtW(pc.lh)} l/h bij ΔT ${nv(S.twSup-S.twRet,1)} K. Deze leiding transporteert bij ${nv(V_OK,1)} m/s ongeveer ${fmt(pc.pmax/1000,2)} kW. Boven ${nv(V_OK,1)} m/s nemen geluid en drukval toe; boven ${nv(V_MAX,1)} m/s is de leiding te klein.</p></div>
+  ${twFieldsHtml()}
+  <div class="row"><button class="btn danger" data-act="delem">Verwijderen</button></div>`;
+  return h;}
+function emitOverviewHtml(c){const S=P.settings;let maxNs=0,any=false,pipes=0;
+  const rows=c.per.map(x=>{const r=x.room,ems=r.emitters||[];
+    if(!ems.length)return `<tr><td><button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button></td><td>${fmt(x.c.total/1000,2)}</td><td>–</td><td colspan="2" style="font-family:var(--font-body);color:var(--muted)">geen afgifte</td></tr>`;
+    any=true;const e=roomEmit(r),ns=neededSupply(r,x.c.total);if(ns===Infinity)maxNs=Infinity;else if(ns!=null)maxNs=Math.max(maxNs,ns);
+    ems.forEach(em=>{if(pipeCheck(em,emOutput(em,r)).state!=='ok')pipes++;});
+    const ok=e>=x.c.total-1;
+    return `<tr class="${ok?'':'miss'}"><td><button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button></td><td>${fmt(x.c.total/1000,2)}</td><td>${fmt(e/1000,2)}</td><td>${ok?'✓':'⚠ '+fmt((x.c.total-e)/1000,2)}</td><td>${ns==null?'–':ns===Infinity?'> 90':fmt(ns,0)}</td></tr>`;}).join('');
+  return `<div class="sec"><h3>Afgifte</h3>${twFieldsHtml()}
+    ${any?`<div class="kcard"><div class="kh"><span>Minimaal nodige aanvoertemperatuur</span><b>${maxNs===Infinity?'> 90':fmt(maxNs,0)} °C</b></div>
+      <span class="note">De ruimte met de zwaarste vraag bepaalt de aanvoertemperatuur van de hele installatie. Ruimtes zonder afgifte tellen niet mee.${pipes?` <b style="color:var(--warn)">⚠ ${pipes} aansluitleiding${pipes>1?'en zijn':' is'} krap of te klein.</b>`:''}</span></div>`:''}
+    <div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>Verlies kW</th><th>Afgifte kW</th><th>Status</th><th>Aanvoer °C</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;}
+/* ---------- heat pumps ---------- */
+let hpList=null,hpSource='laden',hpSel=null,hpErr='';
+const HP_LS='wvt.hp.v1';
+function hpValid(list){return Array.isArray(list)?list.filter(h=>h&&Array.isArray(h.punten)&&h.punten.filter(p=>Number.isFinite(+p.buiten)&&Number.isFinite(+p.max)).length>=2)
+  .map((h,i)=>({id:String(h.id||('hp'+i)),merk:String(h.merk||''),model:String(h.model||'Warmtepomp'),type:String(h.type||''),aanvoer:Number.isFinite(+h.aanvoer)?+h.aanvoer:null,bron:String(h.bron||''),
+    punten:h.punten.map(p=>({buiten:+p.buiten,min:Number.isFinite(+p.min)?+p.min:0,max:+p.max})).sort((a,b)=>a.buiten-b.buiten)})):[];}
+function hpAt(h,t,key){const p=h.punten;let i=1;while(i<p.length-1&&t>p[i].buiten)i++;const a=p[i-1],b=p[i];
+  const v=a[key]+(b[key]-a[key])*(t-a.buiten)/((b.buiten-a.buiten)||1);return Math.max(0,v);}
+const hpExtra=(h,t)=>t<h.punten[0].buiten-1e-9||t>h.punten[h.punten.length-1].buiten+1e-9;
+async function loadHpList(){
+  try{const own=localStorage.getItem(HP_LS);if(own){const l=hpValid(JSON.parse(own));if(l.length){hpList=l;hpSource='eigen';rerenderHp();return;}}}catch(_){}
+  try{const j=JSON.parse(document.getElementById('hp-default').textContent);hpList=hpValid(j.warmtepompen);hpSource='standaard';}
+  catch(_){hpList=[];hpSource='fout';hpErr='De standaardlijst met warmtepompen kon niet worden geladen.';}
+  rerenderHp();}
+async function loadHpFromAccount(){if(storeMode!=='db')return;try{const d=await db.collection('data/users/'+uid).doc('hplist').get();
+  if(d.exists){const l=hpValid((d.data()||{}).warmtepompen);if(l.length){hpList=l;hpSource='eigen';try{localStorage.setItem(HP_LS,JSON.stringify(l));}catch(_){}rerenderHp();}}}catch(_){}}
+async function saveHpOwn(list){try{localStorage.setItem(HP_LS,JSON.stringify(list));}catch(_){}
+  if(storeMode==='db'){try{await db.collection('data/users/'+uid).doc('hplist').set({warmtepompen:JSON.parse(JSON.stringify(list))});}catch(_){}}}
+function rerenderHp(){if(tab==='res')renderPanel();}
+// design heat loss as a straight line: zero at the loss-weighted indoor temperature
+// improvement measures: per construction, the drop in heat loss when its U goes from the current value to the target
+function computeAdvice(c){const R=P.settings.advice,map={};
+  c.per.forEach(x=>x.c.lines.forEach(l=>{if(!l.cid||!DU_TYPES.has(l.type)||l.dT<=0||l.A<=0)return;const con=conById(l.cid);if(!con)return;
+    const r=R[con.kind];if(!r||!(con.U>r.on)||!(r.to<con.U))return;
+    const m=map[con.id]||(map[con.id]={con,rule:r,A:0,dW:0,rooms:new Set()});const d=l.A*(con.U-r.to)*l.dT;m.A+=l.A;m.dW+=d;m.rooms.add(x.room.name);}));
+  return Object.values(map).sort((a,b)=>b.dW-a.dW);}
+function adviceSaving(c,list){return(list||computeAdvice(c)).filter(a=>P.advSel[a.con.id]).reduce((s,a)=>s+a.dW,0);}
+function lossLine(c,save){const S=P.settings,tot=c.total-(save||0);const w=c.per.reduce((a,x)=>a+Math.max(0,x.c.total),0);
+  const tref=w>0?c.per.reduce((a,x)=>a+Math.max(0,x.c.total)*x.room.temp,0)/w:20;
+  return{tref,te:S.te,at:t=>tot<=0||tref<=S.te?0:Math.max(0,tot*(tref-t)/(tref-S.te))/1000};}
+function hpJudge(h,L){const te=P.settings.te,need=L.at(te),need10=L.at(10),max=hpAt(h,te,'max'),min10=hpAt(h,10,'min');
+  const covers=max>=need-1e-9,mod=min10<=need10+1e-9;
+  // bivalent point: where the max capacity line meets the loss line
+  let biv=null;if(!covers){for(let t=te;t<=20;t+=0.1){if(hpAt(h,t,'max')>=L.at(t)){biv=t;break;}}}
+  const score=covers?(max/need-1)+(mod?0:1):10+(need-max);
+  return{need,need10,max,min10,covers,mod,biv,score,over:need>0?max/need-1:0,ex10:hpExtra(h,10)};}
+let advRulesOpen=false;
+function adviceHtml(c){const list=computeAdvice(c),save=adviceSaving(c,list),R=P.settings.advice;
+  let h=`<div class="sec"><h3>Verbeteradviezen</h3>`;
+  if(!list.length)h+=`<p class="note">Geen adviezen: alle constructies aan de buitenkant, de grond of een onverwarmde ruimte zijn al beter dan de uitgangspunten hieronder.</p>`;
+  else{h+=`<p class="note">Constructies aan de buitenkant met een slechtere U-waarde dan de drempel. Vink een maatregel aan om hem mee te nemen; de warmtepompkeuze hieronder rekent dan met het warmteverlies na de maatregelen.</p>`;
+    list.forEach(a=>{const pct=c.total>0?a.dW/c.total*100:0;const on=!!P.advSel[a.con.id];
+      h+=`<div class="card ${on?'cur':''}"><div class="kh" style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><b>${esc(a.rule.label)}</b><b style="font-family:var(--font-display);font-size:18px;color:var(--ok);white-space:nowrap">−${fmtW(a.dW)} W</b></div>
+        <span class="note">${esc(a.con.name)}: U ${nv(a.con.U,2)} → ${nv(a.rule.to,2)} W/m²K · ${fmt(a.A,1)} m² in ${[...a.rooms].map(esc).join(', ')} · ${fmt(pct,0)}% van het totaal</span>
+        <label class="chk"><input type="checkbox" id="f-adv-${a.con.id}" data-f="advsel.${a.con.id}" ${on?'checked':''}> Meenemen in de berekening</label></div>`;});
+    const after=c.total-save;
+    h+=`<div class="kcard"><div class="kh"><span>${save>0?'Na de aangevinkte maatregelen':'Vink maatregelen aan om het effect te zien'}</span><b>${fmt(after/1000,2)} kW</b></div>
+      <div class="seglegend"><span style="--c:transparent">Nu ${fmt(c.total/1000,2)} kW</span>${save>0?`<span style="--c:var(--ok)">besparing ${fmt(save/1000,2)} kW (−${fmt(save/c.total*100,0)}%)</span>`:''}</div></div>`;}
+  h+=`<button class="linkbtn" data-act="advrules" aria-expanded="${advRulesOpen}">${advRulesOpen?'▴':'▾'} Uitgangspunten voor de adviezen</button>`;
+  if(advRulesOpen)h+=`<div class="tablewrap"><table class="calc"><thead><tr><th>Maatregel</th><th>Advies als U boven</th><th>Nieuwe U</th></tr></thead><tbody>
+    ${Object.entries(R).map(([k,r])=>`<tr><td>${esc(r.label)}<small>${KINDS[k]}</small></td><td><input class="in num" style="width:64px" id="f-advr-${k}-on" data-f="adv.${k}.on" inputmode="decimal" value="${nv(r.on,2)}" aria-label="Drempel ${esc(KINDS[k])}"></td><td><input class="in num" style="width:64px" id="f-advr-${k}-to" data-f="adv.${k}.to" inputmode="decimal" value="${nv(r.to,2)}" aria-label="Nieuwe U ${esc(KINDS[k])}"></td></tr>`).join('')}
+    </tbody></table></div><p class="note">Richtwaarden: HR++ glas in een nieuw kozijn ca. U 1,1–1,4, triple glas ca. 0,7–0,9; spouwvulling ca. U 0,4–0,5; Rc 3,5 komt overeen met U ≈ 0,27, Rc 6 met U ≈ 0,16.</p>`;
+  return h+`</div>`;}
+function hpSectionHtml(c){
+  const save=adviceSaving(c),L=lossLine(c,save),L0=save>0?lossLine(c):null;if(c.total<=0)return'';
+  if(!hpList)return `<div class="sec"><h3>Warmtepomp</h3><p class="note">Lijst met warmtepompen laden…</p></div>`;
+  const rows=hpList.map(h=>({h,j:hpJudge(h,L)})).sort((a,b)=>a.j.score-b.j.score);
+  if(!hpSel||!hpList.some(h=>h.id===hpSel))hpSel=rows.length?rows[0].h.id:null;
+  const cur=rows.find(r=>r.h.id===hpSel);
+  let h=`<div class="sec"><h3>Warmtepomp</h3>
+    <p class="note">${save>0?`<b>Beoordeeld op het warmteverlies na de aangevinkte maatregelen.</b> `:""}Bij ${nv(L.te,0)} °C is het warmteverlies ${fmt(L.at(L.te),2)} kW; bij +10 °C nog ${fmt(L.at(10),2)} kW. Een geschikte warmtepomp levert bij ${nv(L.te,0)} °C minstens dat vermogen, en kan bij +10 °C terugregelen tot onder het warmteverlies, zodat hij niet steeds aan- en afslaat.</p>`;
+  if(hpErr)h+=`<div class="warnbox">${esc(hpErr)}</div>`;
+  if(cur)h+=hpChartHtml(cur.h,cur.j,L,L0);
+  h+=rows.map(({h:hp,j})=>`<button class="hprow ${hp.id===hpSel?'cur':''}" data-act="hpsel" data-h="${esc(hp.id)}" aria-pressed="${hp.id===hpSel}">
+      <span class="hn">${esc(hp.merk)} ${esc(hp.model)}<small>${hp.aanvoer?'aanvoer '+nv(hp.aanvoer,0)+' °C · ':''}${esc(hp.bron)}</small></span>
+      <span class="hk">${fmt(j.max,1)} kW</span>
+      <span class="hs">${j.covers?`<span class="chip ok">✓ dekt ${nv(L.te,0)} °C${j.over>0.005?` (+${fmtW(j.over*100)}%)`:''}</span>`:`<span class="chip bad">⚠ tekort ${fmt(j.need-j.max,1)} kW${j.biv!=null?` · bijverwarming nodig onder ${fmt(j.biv,1)} °C`:''}</span>`}
+      ${j.mod?`<span class="chip ok">✓ min. ${fmt(j.min10,1)} kW bij +10 °C</span>`:`<span class="chip bad">⚠ min. ${fmt(j.min10,1)} kW bij +10 °C: slaat vaak aan en af</span>`}${j.ex10?'<span class="chip">+10 °C doorgerekend</span>':''}</span></button>`).join('');
+  h+=`<div class="row"><button class="btn small" data-act="hpexport">Lijst downloaden (.json)</button><button class="btn small" data-act="hpimport">Eigen lijst importeren</button>${hpSource==='eigen'?'<button class="btn small" data-act="hpreset">Standaardlijst terugzetten</button>':''}</div>
+    <p class="note">${hpSource==='eigen'?'Je gebruikt je eigen lijst.':'Dit is de standaardlijst.'} Download de lijst, vul hem aan in een teksteditor en importeer hem weer. Per warmtepomp geef je het minimale en maximale vermogen bij een paar buitentemperaturen; daartussen rekent de app rechtlijnig door. De warmtepompen uit je Excel hebben gegevens bij −10 en +7 °C; de waarde bij +10 °C is doorgerekend. De voorbeelden met 'fictief' in de naam zijn verzonnen.</p></div>`;
+  return h;}
+function hpChartHtml(hp,j,L,L0){
+  const W=380,H=230,ml=40,mr=14,mt=14,mb=32,x0=-10,x1=15;const te=L.te<x0?L.te:x0;
+  const xs=t=>ml+(t-te)/(x1-te)*(W-ml-mr);
+  let ymax=Math.max(L.at(te),L0?L0.at(te):0,hpAt(hp,x1,'max'),hpAt(hp,te,'max'))*1.1;const step=ymax<=4?1:ymax<=10?2:ymax<=20?4:5;ymax=Math.ceil(ymax/step)*step;
+  const ys=v=>H-mb-(v/ymax)*(H-mt-mb);
+  let o='';
+  for(let v=0;v<=ymax+1e-9;v+=step)o+=`<line x1="${ml}" x2="${W-mr}" y1="${ys(v)}" y2="${ys(v)}" stroke="var(--line)" stroke-width="1"/><text x="${ml-6}" y="${ys(v)+3.5}" text-anchor="end">${nv(v,0)}</text>`;
+  for(let t=Math.ceil(te/5)*5;t<=x1;t+=5)o+=`<text x="${xs(t)}" y="${H-mb+15}" text-anchor="middle">${t>0?'+':''}${t}</text>`;
+  o+=`<text x="${(ml+W-mr)/2}" y="${H-4}" text-anchor="middle">buitentemperatuur °C</text><text x="${ml-6}" y="${mt-4}" text-anchor="end">kW</text>`;
+  // check lines at design temperature and +10 °C
+  [te,10].forEach(t=>o+=`<line x1="${xs(t)}" x2="${xs(t)}" y1="${mt}" y2="${H-mb}" stroke="var(--muted)" stroke-opacity=".35" stroke-dasharray="3 4"/>`);
+  const N=50,ts=[...Array(N+1)].map((_,i)=>te+(x1-te)*i/N);
+  const path=f=>ts.map((t,i)=>`${i?'L':'M'}${xs(t).toFixed(1)} ${ys(f(t)).toFixed(1)}`).join('');
+  // capacity band between min and max
+  o+=`<path d="${path(t=>hpAt(hp,t,'max'))}${ts.slice().reverse().map(t=>`L${xs(t).toFixed(1)} ${ys(hpAt(hp,t,'min')).toFixed(1)}`).join('')}Z" fill="var(--c-hp)" fill-opacity=".10"/>`;
+  o+=`<path d="${path(t=>hpAt(hp,t,'max'))}" fill="none" stroke="var(--c-hp)" stroke-width="2.4" stroke-linejoin="round"/>`;
+  o+=`<path d="${path(t=>hpAt(hp,t,'min'))}" fill="none" stroke="var(--c-hp)" stroke-width="2" stroke-dasharray="6 4"/>`;
+  if(L0)o+=`<path d="${path(t=>L0.at(t))}" fill="none" stroke="var(--c-loss)" stroke-opacity=".4" stroke-width="2" stroke-dasharray="2 4"/>`;
+  o+=`<path d="${path(t=>L.at(t))}" fill="none" stroke="var(--c-loss)" stroke-width="2.4"/>`;
+  // the two check points
+  const dot=(t,v,col)=>`<circle cx="${xs(t)}" cy="${ys(v)}" r="5" fill="${col}" stroke="var(--surface)" stroke-width="2"/>`;
+  o+=dot(te,L.at(te),'var(--c-loss)')+dot(te,j.max,'var(--c-hp)')+dot(10,L.at(10),'var(--c-loss)')+dot(10,j.min10,'var(--c-hp)');
+  // direct labels at the right end
+  o+=`<text x="${W-mr}" y="${ys(hpAt(hp,x1,'max'))-6}" text-anchor="end" style="fill:var(--ink);font-weight:600">max</text><text x="${W-mr}" y="${ys(hpAt(hp,x1,'min'))-6}" text-anchor="end" style="fill:var(--ink);font-weight:600">min</text>`;
+  o+=`<line id="hp-x" y1="${mt}" y2="${H-mb}" stroke="var(--ink)" stroke-opacity=".5" visibility="hidden"/><rect id="hp-hit" x="${ml}" y="${mt}" width="${W-ml-mr}" height="${H-mt-mb}" fill="transparent"/>`;
+  window.__hpChart={hp,L,te,x1,ml,mr,W,H};
+  return `<div class="chartleg"><span><i style="background:var(--c-loss)"></i>Warmteverlies${L0?" na maatregelen":""}</span>${L0?`<span><i style="background:repeating-linear-gradient(90deg,var(--c-loss) 0 2px,transparent 2px 6px);opacity:.6"></i>nu</span>`:""}<span><i style="background:var(--c-hp)"></i>${esc(hp.merk)} ${esc(hp.model)} max</span><span><i style="background:repeating-linear-gradient(90deg,var(--c-hp) 0 6px,transparent 6px 9px)"></i>min</span></div>
+    <div class="chart" id="hpchart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Warmteverlies en vermogen van ${esc(hp.merk)} ${esc(hp.model)} tegen de buitentemperatuur">${o}</svg><div class="tip" id="hp-tip" hidden></div></div>
+    <div class="tablewrap"><table class="calc"><thead><tr><th>Buiten</th><th>Warmteverlies kW</th><th>Max kW</th><th>Min kW</th></tr></thead><tbody>
+    ${[te,-5,0,5,10].filter((t,i,a)=>a.indexOf(t)===i).map(t=>`<tr><td>${t>0?'+':''}${nv(t,0)} °C</td><td>${fmt(L.at(t),2)}</td><td>${fmt(hpAt(hp,t,'max'),2)}${hpExtra(hp,t)?'*':''}</td><td>${fmt(hpAt(hp,t,'min'),2)}${hpExtra(hp,t)?'*':''}</td></tr>`).join('')}
+    </tbody></table></div>${[te,10].some(t=>hpExtra(hp,t))?'<p class="note">* doorgerekend buiten de opgegeven meetpunten</p>':''}`;}
+function bindHpChart(){const box=$('hpchart'),C=window.__hpChart;if(!box||!C)return;const svgEl=box.querySelector('svg'),tip=$('hp-tip'),xl=svgEl.querySelector('#hp-x');
+  const move=e=>{const r=svgEl.getBoundingClientRect();const X=(e.clientX-r.left)/r.width*C.W;const t=Math.round(C.te+(X-C.ml)/(C.W-C.ml-C.mr)*(C.x1-C.te));
+    if(t<C.te||t>C.x1){tip.hidden=true;xl.setAttribute('visibility','hidden');return;}const xx=C.ml+(t-C.te)/(C.x1-C.te)*(C.W-C.ml-C.mr);
+    xl.setAttribute('x1',xx);xl.setAttribute('x2',xx);xl.setAttribute('visibility','visible');
+    tip.innerHTML=`<b>${t>0?'+':''}${t} °C</b><br>verlies ${fmt(C.L.at(t),2)} kW<br>max ${fmt(hpAt(C.hp,t,'max'),2)} · min ${fmt(hpAt(C.hp,t,'min'),2)} kW`;
+    tip.style.left=(xx/C.W*r.width)+'px';tip.style.top=(e.clientY-r.top)+'px';tip.hidden=false;};
+  svgEl.addEventListener('pointermove',move);svgEl.addEventListener('pointerleave',()=>{tip.hidden=true;xl.setAttribute('visibility','hidden');});}
+function viewRes(){const c=calcAll();
+  const tb={lines:c.per.flatMap(x=>x.c.lines),vent:c.per.reduce((a,x)=>a+x.c.vent,0),inf:c.per.reduce((a,x)=>a+x.c.inf,0)};
+  let h=`<div class="sec"><h2>Resultaten</h2><div class="kcard"><div class="kh"><span>Som van alle ruimtes</span><b>${fmt(c.total/1000,2)} kW</b></div>${segHtml(tb,true)}</div></div>
+  ${P.floors.map(f=>{const per=c.per.filter(x=>x.room.floorId===f.id);return per.length?`<div class="sec"><h3>${esc(f.name)}</h3><div class="roomcards">${per.map(roomCard).join('')}</div></div>`:'';}).join('')}
+  ${emitOverviewHtml(c)}
+  ${adviceHtml(c)}
+  ${hpSectionHtml(c)}
+  <div class="sec"><h3>Tabel</h3></div>
+  <div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>θi</th><th>A m²</th><th>Transm.</th><th>Vent.+inf.</th><th>Totaal W</th><th>W/m²</th></tr></thead><tbody>`;
+  P.floors.forEach(f=>{const per=c.per.filter(x=>x.room.floorId===f.id);if(!per.length)return;
+    if(P.floors.length>1)h+=`<tr><td colspan="7" style="font-family:var(--font-body);font-weight:600;padding-top:10px">${esc(f.name)} <span class="note">· ${fmtW(per.reduce((a,x)=>a+x.c.total,0))} W</span></td></tr>`;
+  per.forEach(x=>{h+=`<tr class="${x.c.missing?'miss':''}"><td><button class="crumb" data-act="selroom" data-r="${x.room.id}">${esc(x.room.name)}</button>${x.c.missing?'<small>constructie ontbreekt</small>':''}</td><td>${nv(x.room.temp,1)}</td><td>${fmt(x.c.Af,1)}</td><td>${fmtW(x.c.trans)}</td><td>${fmtW(x.c.vent+x.c.inf)}</td><td>${fmtW(x.c.total)}</td><td>${x.c.Af?fmtW(x.c.total/x.c.Af):'–'}</td></tr>`;});});
+  h+=`<tr class="sum"><td>Totaal</td><td></td><td>${fmt(c.per.reduce((a,x)=>a+x.c.Af,0),1)}</td><td>${fmtW(c.per.reduce((a,x)=>a+x.c.trans,0))}</td><td>${fmtW(c.per.reduce((a,x)=>a+x.c.vent+x.c.inf,0))}</td><td>${fmtW(c.total)}</td><td></td></tr></tbody></table></div>
+  <div class="sec"><h3>Ventilatie</h3>${balanceHtml()}</div>
+  <div class="row"><button class="btn small" data-act="csv">Download als CSV</button><button class="btn small" data-act="export-hljs">Exporteren naar heatlossjs</button></div>
+  <p class="note">Het totaal per ruimte is het vermogen dat de radiator of vloerverwarming daar moet leveren. De som is een bovengrens voor de opwekker: verlies tussen verwarmde ruimtes onderling valt in de praktijk deels tegen elkaar weg.</p>
+  <p class="note">Vereenvoudigde methode: transmissie (A × (U + ΔU) × Δθ), ventilatie (0,335 × q × (θi − θtoevoer)) en infiltratie (0,335 × qi × (θi − θe)). Grond rekent met een vaste vervangende temperatuur. Opwarmtoeslag en de exacte factoren uit ISSO 51 / NEN-EN 12831 zitten er nog niet in. Controleer de uitkomst voordat je erop dimensioneert.</p>`;
+  return h;}
+function ventBalance(){const sup=P.rooms.reduce((a,r)=>a+r.sup,0),ext=P.rooms.reduce((a,r)=>a+r.ext,0);return{sup,ext,off:Math.max(sup,ext)>0?Math.abs(sup-ext)/Math.max(sup,ext):0};}
+function balanceHtml(){const S=P.settings,b=ventBalance();
+  let h=`<div class="det">Toevoer ${fmtW(b.sup)} m³/h · afvoer ${fmtW(b.ext)} m³/h${S.ventSys==='D'?` · toevoertemperatuur na WTW ${fmt(supplyTemp(),1)} °C`:''}</div>`;
+  if(S.ventSys==='D'&&b.off>0.1)h+=`<div class="warnbox">Balansventilatie is niet in balans: toevoer en afvoer verschillen ${fmtW(b.off*100)}%. Het verschil gaat in werkelijkheid via kieren naar binnen of buiten.</div>`;
+  if(S.ventSys!=='D'&&b.ext>0&&b.sup<b.ext*0.9)h+=`<div class="warnbox">Er wordt meer afgevoerd dan je aan toevoer (roosters) hebt ingevuld. Vul per ruimte de toevoer via roosters in, anders ontbreekt dat verlies.</div>`;
+  return h;}
+function ventSettingsHtml(){const S=P.settings,it=infTotal();
+  return `<div class="sec"><h3>Ventilatie</h3>
+    <label class="f" for="f-s-vs">Systeem<select class="in" id="f-s-vs" data-f="set.ventSys">${Object.entries(VENT_SYS).map(([k,v])=>`<option value="${k}" ${S.ventSys===k?'selected':''}>${v}</option>`).join('')}</select></label>
+    <div class="fields">${S.ventSys==='D'?numField('f-s-eta','set.eta','WTW-rendement η','0–1',S.eta,3):''}${numField('f-s-tr','set.tRet','Afvoer- en overstroomlucht','°C',S.tRet,1)}</div>
+    ${balanceHtml()}
+    <p class="note">Per ruimte vul je inblaas (of toevoer via roosters) en afzuiging in m³/h in. Een ruimte met inblaas verliest warmte omdat de lucht kouder binnenkomt: bij WTW op ${fmt(supplyTemp(),1)} °C, anders op de buitentemperatuur. Een ruimte met alleen afzuiging krijgt lucht uit de rest van het huis, op de temperatuur van de afvoerlucht; een warme badkamer verliest daardoor nog iets. Gebruik voor η het rendement uit de productspecificatie; in de praktijk ligt het vaak lager dan het opgegeven maximum.</p></div>
+  <div class="sec"><h3>Infiltratie</h3>
+    <label class="f" for="f-s-im">Methode<select class="in" id="f-s-im" data-f="set.infMode"><option value="qv10" ${S.infMode==='qv10'?'selected':''}>Uit de luchtdoorlatendheid qv10</option><option value="n" ${S.infMode==='n'?'selected':''}>Vast luchtwisselingsgetal n</option></select></label>
+    ${S.infMode==='qv10'?`<div class="fields">${numField('f-s-qv10','set.qv10','qv10 (specifiek)','dm³/s·m²',S.qv10,2)}${numField('f-s-finf','set.fInf','Correctiefactor','–',S.fInf,2)}</div>
+    <div class="det">qi = 0,46 × ${nv(S.qv10,2)} × ${fmt(it.Ag,1)} m² × ${nv(S.fInf,2)} = ${fmt(it.q/3.6,1)} dm³/s (${fmtW(it.q)} m³/h)</div>
+    <p class="note">qv10 is de lekkage bij 10 Pa drukverschil, per m² vloeroppervlak. Bij gewone omstandigheden is het drukverschil kleiner; daarom rekent de norm met 0,46 × qv10 en correctiefactoren voor wind, gebouwtype en ventilatiesysteem. Die factoren staan in ISSO 51 en zijn niet openbaar; met 1 zit je aan de veilige kant. De infiltratie wordt over de ruimtes verdeeld naar hun oppervlak aan de buitenschil. Richtwaarden qv10: nieuwbouw na 2010 ca. 0,4–1,0, woning 1990–2010 ca. 1,0–1,5, ouder dan 1970 ca. 2–4.</p>`
+    :`<div class="fields">${numField('f-s-n','set.nInf','Infiltratie n','1/h',S.nInf,2)}</div>`}</div>`;}
+function roomAirHtml(room){const a=airBalance(room);
+  const ins=[`toevoer ${nv(room.sup,0)}`,...a.tin.map(t=>`uit ${esc(t.room.name)} ${nv(t.q,0)}`)];if(a.rest>0)ins.push(`aanvulling ${nv(a.rest,0)}`);
+  const outs=[`afzuiging ${nv(room.ext,0)}`,...a.tout.map(t=>`naar ${esc(t.room.name)} ${nv(t.q,0)}`)];
+  return `<div class="det">Lucht in: ${ins.join(' + ')} = ${nv(a.inn+a.rest,0)} m³/h<br>Lucht uit: ${outs.join(' + ')} = ${nv(a.out,0)} m³/h</div>
+  ${a.surplus>1?`<div class="warnbox">Er komt ${nv(a.surplus,0)} m³/h meer binnen dan er weggaat. Geef onder Ventilatie aan naar welke ruimte die lucht overstroomt.</div>`:''}
+  ${a.rest>1&&(a.tin.length||room.sup>0)?`<div class="warnbox">Er gaat ${nv(a.rest,0)} m³/h meer weg dan er binnenkomt. De app rekent het verschil als lucht uit de woning op ${nv(P.settings.tRet,1)} °C.</div>`:''}`;}
+function transferRow(t){const opts=sel=>P.floors.map(f=>{const rs=P.rooms.filter(r=>r.floorId===f.id);return rs.length?`<optgroup label="${esc(f.name)}">${rs.map(r=>`<option value="${r.id}" ${r.id===sel?'selected':''}>${esc(r.name)}</option>`).join('')}</optgroup>`:'';}).join('');
+  return `<div class="matrow" style="flex-wrap:nowrap"><select class="in" style="flex:1 1 0;min-width:0" id="f-tr-${t.id}-f" data-f="tr.${t.id}.from" aria-label="Van ruimte">${opts(t.from)}</select><span class="note">→</span>
+    <select class="in" style="flex:1 1 0;min-width:0" id="f-tr-${t.id}-t" data-f="tr.${t.id}.to" aria-label="Naar ruimte">${opts(t.to)}</select>
+    <span class="mmwrap"><input class="in num" style="width:52px" id="f-tr-${t.id}-q" data-f="tr.${t.id}.q" inputmode="decimal" value="${nv(t.q,0)}" aria-label="Debiet in m³/h">m³/h</span>
+    <button class="xbtn" data-act="deltr" data-t="${t.id}" aria-label="Overstroom verwijderen">✕</button></div>`;}
+function viewVent(){const S=P.settings;
+  let h=`<div class="sec"><h2>Ventilatie</h2><p class="note">Kies het ventilatiesysteem en vul per ruimte de luchthoeveelheden in. Dat kan hieronder in één overzicht, of per ruimte onder Selectie.</p></div>
+  ${ventSettingsHtml()}
+  <div class="sec"><h3>Debieten per ruimte</h3><div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>θi</th><th>${S.ventSys==='D'?'Inblaas':'Toevoer'} m³/h</th><th>Afzuig m³/h</th><th>Over&shy;stroom in/uit</th><th>Φ W</th></tr></thead><tbody>`;
+  P.floors.forEach(f=>{const rs=P.rooms.filter(r=>r.floorId===f.id);if(!rs.length)return;
+    if(P.floors.length>1)h+=`<tr><td colspan="6" style="font-family:var(--font-body);font-weight:600;padding-top:10px">${esc(f.name)}</td></tr>`;
+    rs.forEach(r=>{const c=calcRoom(r),a=c.air;const st=a.surplus>1?`<small style="color:var(--warn)">${nv(a.surplus,0)} m³/h kan nergens heen</small>`:a.rest>1?`<small>${nv(a.rest,0)} m³/h aanvulling uit woning</small>`:'';
+      h+=`<tr><td><button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button>${st}</td><td>${nv(r.temp,1)}</td>
+      <td><input class="in num" style="width:56px" id="f-vr-${r.id}-s" data-f="vr.${r.id}.sup" inputmode="decimal" value="${nv(r.sup,0)}" aria-label="${S.ventSys==='D'?'Inblaas':'Toevoer'} ${esc(r.name)}"></td>
+      <td><input class="in num" style="width:56px" id="f-vr-${r.id}-e" data-f="vr.${r.id}.ext" inputmode="decimal" value="${nv(r.ext,0)}" aria-label="Afzuiging ${esc(r.name)}"></td><td style="white-space:nowrap">${nv(a.qin,0)}/${nv(a.qout,0)}</td><td id="vphi-${r.id}">${fmtW(c.vent)}</td></tr>`;});});
+  h+=`</tbody></table></div></div>
+  <div class="sec"><h3>Overstroom tussen ruimtes</h3><p class="note">Lucht die van de ene naar de andere ruimte stroomt, via een spleet onder de deur, een overstroomrooster of een open verbinding (bijvoorbeeld hal → keuken, of woonkamer → open keuken). De ontvangende ruimte rekent met de temperatuur van de ruimte waar de lucht vandaan komt. Gaat er uit een ruimte meer lucht weg dan er binnenkomt, dan rekent de app het verschil als lucht uit de woning op ${nv(S.tRet,1)} °C.</p>
+  ${(P.transfers||[]).map(transferRow).join('')||'<p class="note">Nog geen overstroom opgegeven.</p>'}
+  <div class="row"><button class="btn small" data-act="addtr" ${P.rooms.length<2?'disabled':''}>+ Overstroom</button></div></div>`;
+  return h;}
+function viewSet(){const S=P.settings;const list=Object.values(all).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  return `<div class="sec"><h2>Project</h2><label class="f" for="f-proj-name">Projectnaam<input class="in" id="f-proj-name" data-f="proj.name" value="${esc(P.name)}"></label></div>
+  <div class="sec"><h3>Verdiepingen</h3><p class="note">Van onder naar boven. De verdieping direct eronder kun je als lichtgrijze ondergrond tonen.</p>
+    ${P.floors.map((f,i)=>{const n=P.rooms.filter(r=>r.floorId===f.id).length;return `<div class="row"><div class="lmove"><button data-act="floormove" data-f="${f.id}" data-dir="1" aria-label="Hoger" ${i===P.floors.length-1?'disabled':''}>▲</button><button data-act="floormove" data-f="${f.id}" data-dir="-1" aria-label="Lager" ${i===0?'disabled':''}>▼</button></div>
+      <input class="in grow" id="f-fl-${f.id}" data-f="fl.${f.id}.name" value="${esc(f.name)}" aria-label="Naam verdieping"><span class="note">${n} ruimte${n===1?'':'s'}</span>
+      <button class="xbtn" data-act="delfloor" data-f="${f.id}" ${n||P.floors.length<2?'disabled title="Alleen een lege verdieping kan weg"':''} aria-label="Verwijder ${esc(f.name)}">✕</button></div>`;}).reverse().join('')}
+    <div class="row"><button class="btn small" data-act="addfloor">+ Verdieping</button></div></div>
+  <div class="sec"><h3>Rekenwaarden</h3><div class="fields">
+    ${numField('f-s-te','set.te','Buitentemperatuur θe','°C',S.te,1)}${numField('f-s-tg','set.tGround','Grond / kruipruimte','°C',S.tGround,1)}
+    ${numField('f-s-tu','set.tUnheated','Onverwarmde ruimte','°C',S.tUnheated,1)}${numField('f-s-tn','set.tNeighbour','Buurwoning','°C',S.tNeighbour,1)}
+    ${numField('f-s-du','set.dU','Koudebrugtoeslag ΔU','W/m²K',S.dU,3)}${numField('f-s-h','set.height','Standaard hoogte','m',S.height,2)}</div>
+    <p class="note">ΔU geldt voor delen die aan buiten, grond of een onverwarmde ruimte grenzen. Ventilatiesysteem, WTW en infiltratie stel je in onder <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie</button>.</p></div>
+  <div class="sec"><h3>Tekenen</h3><div class="fields">${numField('f-s-snap','set.snap','Snapraster','m',S.snap,3)}${numField('f-s-mw','set.maxWall','Max. wanddikte aangrenzing','m',S.maxWall,2)}</div>
+    <p class="note">Teken ruimtes hart-op-hart (wanden vallen samen) of op binnenmaat. Twee evenwijdige wanden binnen de maximale wanddikte gelden als gedeelde wand.</p></div>
+  <div class="sec"><h3>Projecten</h3>${list.map(p=>`<button class="linkrow" data-act="openproj" data-p="${p.id}"><span>${esc(p.name)}${p.id===P.id?' <span class="note">· geopend</span>':''}</span><span class="note">${p.rooms.length} ruimte${p.rooms.length===1?'':'s'}</span></button>`).join('')}
+    <div class="row"><button class="btn small" data-act="newproj">+ Leeg project</button><button class="btn small" data-act="dupproj">Kopie maken</button><button class="btn small" data-act="import">Importeren (.json)</button><button class="btn small" data-act="export">Exporteren (.json)</button></div>
+    <div class="row"><button class="btn small" data-act="export-hljs">Exporteren naar heatlossjs</button></div>
+    <p class="note">Het heatlossjs-bestand open je in <a href="https://github.com/trystanLea/heatlossjs" target="_blank" rel="noopener">heatlossjs</a> met Open. Daar kun je radiatoren, vloerverwarming en de warmtepomp doorrekenen. De tekening zit in het bestand: importeer je het hier weer, dan komt alles terug en worden in heatlossjs gewijzigde temperaturen en U-waarden overgenomen. Een heatlossjs-bestand zonder tekening levert alleen de constructietypen op.</p>
+    <div class="row">${confirmDel?`<span class="note">“${esc(P.name)}” definitief verwijderen?</span><button class="btn small danger" data-act="delproj-yes">Ja, verwijderen</button><button class="btn small" data-act="delproj-no">Annuleren</button>`:`<button class="btn small danger" data-act="delproj" ${list.length<2?'disabled title="Er moet minstens één project blijven"':''}>Project verwijderen</button>`}</div>
+    <p class="note" id="store-note">${storeNote()}</p></div>`;}
+let conFocus=null;
+function renderPanel(){
+  document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));
+  const st=pbody.scrollTop;let h='';
+  if(tab==='sel'){validateSel();const room=sel&&getRoom(sel.r);
+    if(!room)h=viewNone();else if(sel.t==='seg')h=viewSeg(room,sel.w,sel.s);else if(sel.t==='em'&&selEm())h=viewEm(room,selEm());else h=viewRoom(room);}
+  else if(tab==='con')h=viewCon(conFocus);else if(tab==='vent')h=viewVent();else if(tab==='res')h=viewRes();else h=viewSet();
+  pbody.innerHTML=h;pbody.scrollTop=st;bindHpChart();
+  if(tab==='con'&&conFocus){const el=$('card-'+conFocus);if(el)el.scrollIntoView({block:'nearest'});conFocus=null;}
+}
+function renderHeader(){const c=calcAll();$('total').innerHTML=`Warmteverlies <b>${fmt(c.total/1000,2)} kW</b>`;
+  const sel_=$('proj-sel');const list=Object.values(all).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  sel_.innerHTML=list.map(p=>`<option value="${p.id}" ${p.id===P.id?'selected':''}>${esc(p.name)}</option>`).join('');updateUndoBtns();}
+function renderAll(){renderCanvas();renderFloorbar();renderPanel();renderHeader();}
+let panelTimer=null;
+function schedulePanel(){clearTimeout(panelTimer);panelTimer=setTimeout(()=>{const a=document.activeElement;const id=a&&pbody.contains(a)?a.id:null;
+  renderPanel();renderHeader();if(id){const el=$(id);if(el){el.focus({preventScroll:true});}}},0);}
+function liveUpdate(){
+  if(tab==='vent')P.rooms.forEach(r=>{const el=$('vphi-'+r.id);if(el)el.textContent=fmtW(calcRoom(r).vent);});
+  if(tab==='con'&&conOpen){const c=conById(conOpen);if(c&&c.mode==='lagen'){const r=calcLayers(c);const el=$('lsum-'+c.id);if(el)el.innerHTML=layerSummary(c,r);
+    c.layers.forEach((l,i)=>{const s=$('rd-'+l.id);if(s)s.textContent=r.layers[i].active?'R '+fmt(r.layers[i].r,2):'telt niet';});
+    const v=document.querySelector(`#card-${c.id} .consum .val`);if(v)v.textContent=`Rc ${fmt(r.Rc,2)} · U ${nv(c.U,3)}`;}}
+  const out=$('calc-out');if(out&&tab==='sel'&&sel){const room=getRoom(sel.r);if(room&&sel.t!=='seg')out.innerHTML=roomCalcHtml(room);}
+  const c=calcAll();$('total').innerHTML=`Warmteverlies <b>${fmt(c.total/1000,2)} kW</b>`;}
+
+function selRoom(){return sel&&getRoom(sel.r);}
+function selSeg(){const r=selRoom();return r&&sel.t==='seg'&&r.walls[sel.w]?r.walls[sel.w].segs[sel.s]:null;}
+function applyField(el,final){
+  const f=el.dataset.f;if(!f)return;const parts=f.split('.');const v=el.value;const room=selRoom();let changed=false;
+  if(undoArmed){pushUndo();undoArmed=false;}
+  switch(parts[0]){
+    case'room':{if(!room)return;const k=parts[1];
+      if(k==='kind'){room.kind=['trap','vide'].includes(v)?v:'normaal';if(room.kind!=='normaal'&&!spans(room)){const nf=P.floors[floorIdx(room.floorId)+1];if(nf){room.spanTo=nf.id;room.height=r3(room.height*2);}}changed=true;break;}
+      if(k==='spanTo'){const was=spans(room);room.spanTo=v||null;if(!spans(room))room.spanTo=null;else if(!was){const l=levelsOf(room);room.height=r3(room.height*(l[1]-l[0]+1));}changed=true;break;}
+      if(k==='name'){room.name=v;changed=true;}else{const n=num(v);if(n==null)return;if(k==='height'&&n<=0)return;if((k==='sup'||k==='ext')&&n<0)return;room[k]=n;changed=true;}break;}
+    case'seg':{const sg=selSeg();if(!sg)return;if(parts[1]==='adjT'){const n=num(v);if(n==null)return;sg.adjT=n;}else sg[parts[1]]=v;changed=true;break;}
+    case'cut':{if(!final)return;const r=room;const w=r.walls[sel.w];const ci=+parts[1];let n=num(v);if(n==null)return;const L=edge(r,sel.w).L;
+      const lo=(ci>0?w.cuts[ci-1]:0)+0.02,hi=(ci<w.cuts.length-1?w.cuts[ci+1]:L)-0.02;n=Math.max(lo,Math.min(hi,n));w.cuts[ci]=r3(n);changed=true;break;}
+    case'op':{const sg=selSeg();const o=sg&&sg.openings.find(o=>o.id===parts[1]);if(!o)return;const k=parts[2];if(k==='name'||k==='cid')o[k]=v;else{const n=num(v);if(n==null||n<0)return;o[k]=n;}changed=true;break;}
+    case'roof':{if(!room)return;const r=room.roof,k=parts[1];
+      if(k==='pitch'||k==='knee'){const n=num(v);if(n==null||n<0)return;if(k==='pitch'&&(n<1||n>80))return;r[k]=n;changed=true;break;}
+      if(k==='edge'){r.edge=Math.max(0,Math.min(room.pts.length-1,parseInt(v,10)||0));changed=true;break;}
+      if(k==='type'||k==='low'){r[k]=v;changed=true;break;}}
+    // falls through for cid / adj / t, which work the same as floor and ceiling
+    case'floor':case'ceil':{if(!room)return;const s=room[parts[0]];if(parts[1]==='t'){const n=num(v);if(n==null)return;s.t=n;}else s[parts[1]]=v;changed=true;break;}
+    case'con':{const c=conById(parts[1]);if(!c)return;const k=parts[2];
+      if(k==='name'||k==='kind'||k==='color')c[k]=v;else if(k==='inner')c.inner=el.checked;else if(k==='mode')c.mode=v==='lagen'?'lagen':'U';
+      else if(k==='U'){if(c.mode==='lagen')return;const n=num(v);if(n==null||n<=0)return;c.U=n;}
+      else if(k==='Rc'){if(c.mode==='lagen')return;const n=num(v);if(n==null||n<0)return;c.U=Math.round(10000/(RS[c.kind][0]+n+rseOf(c)))/10000;}
+      syncU(c);changed=true;break;}
+    case'lay':{const c=conById(parts[1]);const l=c&&c.layers.find(x=>x.id===parts[2]);if(!l)return;const k=parts[3];
+      if(k==='mid'||k==='vent')l[k]=v;else if(k==='mixmid'){if(l.mix)l.mix.mid=v;}
+      else{const n=num(v);if(n==null||n<0)return;if(k==='d')l.d=n;else if(k==='mixpct'){if(n>100||!l.mix)return;l.mix.pct=n;}}
+      syncU(c);changed=true;break;}
+    case'mat':{const m=matById(parts[1]);if(!m)return;const k=parts[2];
+      if(k==='name'||k==='color')m[k]=v;else if(k==='type')m.type=['lambda','R','spouw'].includes(v)?v:'lambda';else{const n=num(v);if(n==null||n<0)return;if(k==='lambda'&&n===0)return;m[k]=n;}
+      P.constructions.forEach(c=>syncU(c));changed=true;break;}
+    case'set':{const k=parts[1];if(k==='ventSys'||k==='infMode'){P.settings[k]=v;changed=true;break;}const n=num(v);if(n==null)return;
+      if((k==='eta'&&(n<0||n>1))||((k==='qv10'||k==='fInf')&&n<0))return;if((k==='snap'||k==='height')&&n<=0)return;if(k==='maxWall'&&n<0)return;P.settings[k]=n;changed=true;break;}
+    case'proj':{P.name=v;changed=true;break;}
+    case'tr':{const t=(P.transfers||[]).find(x=>x.id===parts[1]);if(!t)return;const k=parts[2];
+      if(k==='from'||k==='to'){if(!getRoom(v))return;t[k]=v;}else{const n=num(v);if(n==null||n<0)return;t.q=n;}changed=true;break;}
+    case'advsel':{if(el.checked)P.advSel[parts[1]]=true;else delete P.advSel[parts[1]];changed=true;break;}
+    case'adv':{const r=P.settings.advice[parts[1]];if(!r)return;const n=num(v);if(n==null||n<=0)return;r[parts[2]]=n;changed=true;break;}
+    case'em':{const em=selEm();if(!em)return;const k=parts[1];
+      if(k==='name')em.name=v;else if(k==='boost')em.boost=el.checked;else if(k==='kind'){if(!EM_KINDS[v]||v==='vv')return;em.kind=v;em.n=EM_N[v];}
+      else if(k==='cover'){if(!VV_COVER[v])return;em.cover=v;}else if(k==='spacing')em.spacing=[10,15,20].includes(+v)?+v:15;
+      else if(k==='pipe'){if(parts[2]==='mat'){if(!PIPES[v])return;em.pipe.mat=v;if(!PIPES[v].d[em.pipe.dn])em.pipe.dn=v==='koper'?'15':v==='pex'?'16':'1/2"';}else{if(!PIPES[em.pipe.mat].d[v])return;em.pipe.dn=v;}}
+      else{const n=num(v);if(n==null||n<0)return;if(k==='n'&&(n<0.8||n>2))return;if(k==='boostPct'&&n>300)return;em[k]=n;}changed=true;break;}
+    case'vr':{const r=getRoom(parts[1]);if(!r)return;const n=num(v);if(n==null||n<0)return;r[parts[2]]=n;changed=true;break;}
+    case'fl':{const f=P.floors.find(x=>x.id===parts[1]);if(!f)return;f.name=v;renderFloorbar();changed=true;break;}
+  }
+  if(!changed)return;markDirty();renderCanvas();if(final)schedulePanel();else liveUpdate();
+}
+pbody.addEventListener('focusin',()=>{undoArmed=true;});
+pbody.addEventListener('input',e=>{if(e.target.tagName==='SELECT'||e.target.type==='color')return;applyField(e.target,false);});
+pbody.addEventListener('change',e=>{applyField(e.target,true);});
+pbody.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){if(e.target.id==='f-newcut'){act('addcut',e.target);return;}e.target.blur();}});
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('[data-tab]');if(!b)return;tab=b.dataset.tab;confirmDel=false;renderPanel();});
+pbody.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.disabled)return;act(b.dataset.act,b);});
+function act(a,b){
+  const room=selRoom();
+  switch(a){
+    case'desel':sel=null;renderAll();break;
+    case'selem':{const r=getRoom(b.dataset.r);if(!r)return;if(r.floorId!==curFloor){curFloor=r.floorId;}sel={t:'em',r:r.id,e:b.dataset.e};tab='sel';renderAll();break;}
+    case'delem':deleteSelection();break;
+    case'addtr':{if(P.rooms.length<2)return;pushUndo();
+      // sensible default: from a room with air to spare to a room that is short of air
+      const bal=P.rooms.map(r=>({r,a:airBalance(r)}));const from=(bal.find(x=>x.a.surplus>0)||bal.find(x=>x.r.sup>0)||bal[0]).r;
+      const to=(bal.find(x=>x.r!==from&&x.a.rest>0)||bal.find(x=>x.r!==from&&x.r.ext>0)||bal.find(x=>x.r!==from)).r;
+      const q=Math.max(5,Math.round(Math.min(airBalance(from).surplus||25,airBalance(to).rest||25)));
+      P.transfers.push({id:rid(),from:from.id,to:to.id,q});markDirty();renderAll();break;}
+    case'deltr':{pushUndo();P.transfers=P.transfers.filter(t=>t.id!==b.dataset.t);markDirty();renderAll();break;}
+    case'gotab':tab=b.dataset.tab;confirmDel=false;renderPanel();pbody.scrollTop=0;break;
+    case'selroom':case'selseg':{const r=getRoom(b.dataset.r);if(!r)return;if(r.floorId!==curFloor){curFloor=r.floorId;try{localStorage.setItem('wvt.floor.'+P.id,curFloor);}catch(_){}}
+      sel=a==='selroom'?{t:'room',r:r.id}:{t:'seg',r:r.id,w:+b.dataset.w,s:+b.dataset.s};tab='sel';renderAll();break;}
+    case'addfloor':addFloor();break;
+    case'floormove':{const i=floorIdx(b.dataset.f),j=i+(+b.dataset.dir);if(i<0||j<0||j>=P.floors.length)return;pushUndo();[P.floors[i],P.floors[j]]=[P.floors[j],P.floors[i]];markDirty();renderAll();break;}
+    case'delfloor':{const i=floorIdx(b.dataset.f);if(i<0||P.floors.length<2||P.rooms.some(r=>r.floorId===b.dataset.f))return;pushUndo();P.floors.splice(i,1);if(curFloor===b.dataset.f)curFloor=P.floors[Math.max(0,i-1)].id;markDirty();renderAll();break;}
+    case'delroom':deleteSelection();break;
+    case'gocon':tab='con';conFocus=b.dataset.c||null;renderPanel();break;
+    case'addcut':{const inp=$('f-newcut');const n=num(inp&&inp.value!==''?inp.value:inp&&inp.placeholder);if(n==null||!room)return;addCut(room,sel.w,n);break;}
+    case'splitmid':{if(!room)return;const bb=bounds(room,sel.w);addCut(room,sel.w,r3((bb[sel.s]+bb[sel.s+1])/2));break;}
+    case'delcut':if(room)removeCut(room,sel.w,+b.dataset.c);break;
+    case'addop':{const sg=selSeg();if(!sg)return;pushUndo();sg.openings.push(opening('Raam '+(sg.openings.length+1),1.2,1.4,defaultCid('raam')));markDirty();renderAll();break;}
+    case'delop':{const sg=selSeg();if(!sg)return;pushUndo();sg.openings=sg.openings.filter(o=>o.id!==b.dataset.o);markDirty();renderAll();break;}
+    case'addcon':{pushUndo();const k=b.dataset.kind;const c={id:rid(),name:'Nieuwe '+KINDS[k].toLowerCase(),kind:k,U:k==='raam'?1.8:0.25,color:PALETTE[P.constructions.length%PALETTE.length],mode:k==='raam'?'U':'lagen',inner:false,layers:[]};P.constructions.push(c);conFocus=c.id;markDirty();renderAll();setTimeout(()=>{const el=$('f-con-'+c.id+'-n');if(el){el.focus();el.select();}},0);break;}
+    case'dupcon':{const src=conById(b.dataset.c);if(!src)return;pushUndo();const c=clone(src);c.id=rid();c.name=src.name+' (kopie)';c.color=PALETTE[P.constructions.length%PALETTE.length];c.layers.forEach(l=>l.id=rid());P.constructions.push(c);conFocus=c.id;markDirty();renderAll();break;}
+    case'togglecon':conOpen=conOpen===b.dataset.c?null:b.dataset.c;renderPanel();break;
+    case'addlayer':{const c=conById(b.dataset.c);if(!c)return;pushUndo();const def=P.materials.find(m=>m.id==='m-glaswol')||P.materials.find(m=>m.type==='lambda')||P.materials[0];
+      c.layers.push({id:rid(),mid:def?def.id:'',d:100,vent:'niet',mix:null});syncU(c);markDirty();renderAll();break;}
+    case'laydel':case'laymove':case'addmix':case'delmix':{const c=conById(b.dataset.c);const i=c?c.layers.findIndex(l=>l.id===b.dataset.l):-1;if(i<0)return;pushUndo();const l=c.layers[i];
+      if(a==='laydel')c.layers.splice(i,1);
+      else if(a==='laymove'){const j=i+(+b.dataset.dir);if(j<0||j>=c.layers.length)return;[c.layers[i],c.layers[j]]=[c.layers[j],c.layers[i]];}
+      else if(a==='addmix'){const mm=P.materials.find(m=>m.id==='m-hout')||P.materials.find(m=>m.type==='lambda');l.mix={mid:mm?mm.id:'',pct:12};}
+      else l.mix=null;
+      syncU(c);markDirty();renderAll();break;}
+    case'addmat':{pushUndo();const m={id:rid(),name:'Nieuw materiaal',type:'lambda',lambda:0.04,R:0,color:'#BBBBBB'};P.materials.push(m);markDirty();renderAll();setTimeout(()=>{const el=$('f-mat-'+m.id+'-n');if(el){el.focus();el.select();}},0);break;}
+    case'delmat':{pushUndo();P.materials=P.materials.filter(m=>m.id!==b.dataset.m);markDirty();renderAll();break;}
+    case'delcon':{pushUndo();P.constructions=P.constructions.filter(c=>c.id!==b.dataset.c);markDirty();renderAll();break;}
+    case'csv':exportCsv();break;
+    case'newproj':{const p=emptyProject('Nieuw project');all[p.id]=p;openProject(p.id);tab='set';renderAll();toast('Leeg project aangemaakt. De constructies van het voorbeeld zijn meegekopieerd.');markDirty();break;}
+    case'dupproj':{const p=clone(P);p.id='p'+rid();p.name=P.name+' (kopie)';p.example=false;all[p.id]=p;openProject(p.id);markDirty();renderAll();toast('Kopie gemaakt.');break;}
+    case'openproj':openProject(b.dataset.p);renderAll();break;
+    case'delproj':confirmDel=true;renderPanel();break;
+    case'delproj-no':confirmDel=false;renderPanel();break;
+    case'delproj-yes':{confirmDel=false;const id=P.id;delete all[id];removeRemote(id);const next=Object.values(all).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];openProject(next.id);saveLocal();renderAll();toast('Project verwijderd.');break;}
+    case'import':$('file-in').click();break;
+    case'export':exportJson();break;
+    case'export-hljs':exportHeatlossjs();break;
+    case'advrules':advRulesOpen=!advRulesOpen;renderPanel();break;
+    case'hpsel':hpSel=b.dataset.h;renderPanel();break;
+    case'hpexport':saveFile('warmtepompen.json',JSON.stringify({versie:1,toelichting:"Per warmtepomp: minimaal en maximaal verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal twee punten, bij voorkeur -10 en +7 of +10 °C. Kopieer een blok om er een toe te voegen.",warmtepompen:hpList||[]},null,2));break;
+    case'hpimport':$('file-in').click();break;
+    case'hpreset':{try{localStorage.removeItem(HP_LS);}catch(_){}if(storeMode==='db'){db.collection('data/users/'+uid).doc('hplist').delete().catch(()=>{});}hpList=null;hpErr='';loadHpList();toast('Standaardlijst met warmtepompen teruggezet.');break;}
+  }
+}
+$('proj-sel').onchange=e=>{openProject(e.target.value);renderAll();};
+function openProject(id){if(!all[id])return;P=normalizeProject(all[id]);all[id]=P;sel=null;curFloor=null;undoStack=[];redoStack=[];drawPts=[];try{localStorage.setItem(LS_LAST,id);}catch(_){}requestAnimationFrame(fit);}
+
+/* ---------- toast ---------- */
+let toastTimer=null;
+function toast(msg,withUndo){const t=$('toast');t.innerHTML=`<span>${esc(msg)}</span>${withUndo?'<button id="toast-undo">Ongedaan maken</button>':''}`;t.hidden=false;
+  if(withUndo)$('toast-undo').onclick=()=>{undo();t.hidden=true;};clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.hidden=true,withUndo?6000:3500);}
+
+/* ---------- import / export ---------- */
+let downloads=null;
+async function saveFile(filename,data){
+  if(downloads){try{await downloads.save({filename,data});return;}catch(err){if(err&&err.code==='declined')return;}}
+  try{const type=/\.csv$/i.test(filename)?'text/csv;charset=utf-8':'application/json';
+    const url=URL.createObjectURL(new Blob([/\.csv$/i.test(filename)?'\uFEFF'+data:data],{type}));
+    const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);return;}catch(_){}
+  try{await navigator.clipboard.writeText(data);toast('Downloaden kan hier niet. De inhoud staat op je klembord.');}catch(_){toast('Downloaden is in deze weergave niet beschikbaar.');}}
+function exportJson(){saveFile(safeName(P.name)+'.json',JSON.stringify(P,null,1));}
+function exportCsv(){const c=calcAll();const rows=[['Ruimte','Temperatuur C','Vloeroppervlak m2','Transmissie W','Ventilatie W','Infiltratie W','Totaal W','W/m2']];
+  c.per.forEach(x=>rows.push([x.room.name,x.room.temp,x.c.Af.toFixed(2),x.c.trans.toFixed(0),x.c.vent.toFixed(0),x.c.inf.toFixed(0),x.c.total.toFixed(0),x.c.Af?(x.c.total/x.c.Af).toFixed(0):'']));
+  rows.push(['Totaal','','','','','',c.total.toFixed(0),'']);
+  saveFile(safeName(P.name)+' - warmteverlies.csv',rows.map(r=>r.map(v=>{const s=String(v);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}).join(';')).join('\n'));}
+/* ---------- heatlossjs (github.com/trystanLea/heatlossjs) ---------- */
+function toHeatlossjs(){
+  const S=P.settings;const T={external:S.te,ground:S.tGround,unheated:S.tUnheated};
+  const element_type={},elements=[],rooms={},typeMap={},names={};
+  const taken=new Set(['external','ground','unheated','buurwoning']);
+  P.rooms.forEach(r=>{const n=(r.name||'').trim()||'Ruimte';let k=n,i=2;while(taken.has(k))k=n+' '+(i++);taken.add(k);names[r.id]=k;});
+  const bnd=(type,t)=>{if(type==='grond')return'ground';if(type==='onverwarmd')return'unheated';
+    if(type==='buurwoning'){T.buurwoning=S.tNeighbour;return'buurwoning';}if(type==='temp'){const k='vast '+nv(t,1)+' C';T[k]=t;return k;}return'external';};
+  const tname=(cid,type)=>{const c=conById(cid);const du=!!(c&&DU_TYPES.has(type)&&S.dU>0);const k=(c?c.name:'Geen constructie')+(du?' (+ΔU)':'');
+    if(!element_type[k]){const u=Math.round((c?c.U+(du?S.dU:0):0)*10000)/10000;element_type[k]={uvalue:u};typeMap[k]={cid:c?c.id:'',du:du?S.dU:0,u};}return k;};
+  const add=(nm,el,boundary)=>{elements.push(el);rooms[nm].elements.push({id:elements.length-1,boundary});return elements.length-1;};
+  P.rooms.forEach(r=>{
+    const R=roofOf(r),Af=Math.abs(polyArea(r.pts)),V=roomVolume(r),nm=names[r.id],h=R?(Af>0?r3(V/Af):r.height):r.height,dTe=r.temp-S.te;
+    // heatlossjs only knows air changes against the outside temperature (0,33 Wh/m³K): express ventilation + infiltration as an equivalent ach
+    const cr=calcRoom(r);let ach=0;if(V>0&&dTe!==0)ach=(cr.vent+cr.inf)/(0.33*V*dTe);
+    rooms[nm]={temperature:r.temp,area:r3(Af),height:h,air_change_an_hour:Math.round(ach*10000)/10000,elements:[],radiators:[],ufh:[]};
+    (r.emitters||[]).forEach(em=>{if(em.kind==='rad'||em.kind==='conv')rooms[nm].radiators.push({name:em.name+(em.boost?' (met boosters)':''),heat50k:Math.round(em.p*(em.boost?1+(em.boostPct||0)/100:1)),model:'pow'});
+      else if(em.kind==='vv')rooms[nm].ufh.push({name:em.name,area:r3(emArea(em)),flooring:(VV_COVER[em.cover]||VV_COVER.tegels)[1]});});
+    r.pts.forEach((_,i)=>{const w=r.walls[i],b=bounds(r,i),nb=neighbourIntervals(r,i);
+      w.segs.forEach((sg,j)=>{const s0=b[j],s1=b[j+1],len=s1-s0;if(len<=1e-4)return;
+        let parts;
+        if(sg.adj==='auto')parts=wallParts(r,i,s0,s1,nb,R).map(p=>p.room?{len:p.len,A:p.A,type:'ruimte',bnd:names[p.room.id]}:{len:p.len,A:p.A,type:'buiten',bnd:'external'});
+        else parts=[{len,A:wallArea(r,edge(r,i),s0,s1,R),type:sg.adj,bnd:bnd(sg.adj,sg.adjT)}];
+        const opType=sg.adj==='auto'?'buiten':sg.adj,opBnd=sg.adj==='auto'?'external':bnd(sg.adj,sg.adjT);
+        const Aop=sg.openings.reduce((a,o)=>a+Math.max(0,o.w*o.h),0);
+        // width × height only works for straight-topped walls; under a sloped roof every piece goes as a net area
+        const host=parts.find(p=>p.type===opType)||parts[0];const simple=!R&&!spans(r)&&(!host||Aop<=host.len*h+1e-9);
+        if(!simple){let rem=Aop;parts.slice().sort((a,b)=>(b.type===opType)-(a.type===opType)).forEach(p=>{const d=Math.min(p.A,rem);p.A-=d;rem-=d;});}
+        parts.forEach(p=>{const el={type:tname(sg.cid,p.type),orientation:''};if(simple){el.width=r3(p.len);el.height=h;}else el.area=r3(p.A);p.idx=add(nm,el,p.bnd);});
+        sg.openings.forEach(o=>{const el={type:tname(o.cid,opType),orientation:'',width:o.w,height:o.h};if(simple&&host)el.subtractfrom=host.idx;add(nm,el,opBnd);});
+      });});
+    transLines(r).lines.filter(l=>l.group==='floor'||l.group==='ceil'||l.group==='roof').forEach(l=>{const s=r[l.group];if(!s||l.A<1e-4)return;
+      add(nm,{type:tname(s.cid,s.adj),orientation:'',area:r3(l.A)},bnd(s.adj,s.t));});
+  });
+  return{project_name:P.name,degreedays:2900,heating_MWT:(S.twSup+S.twRet)/2,heatpump_flow_rate:12,T,element_type,elements,rooms,
+    house:{},JK:50,cop_calculation_method:'ecodan',heatpump_capacity:5,solver_running:false,
+    tekentafel:{version:1,exported:new Date().toISOString(),names,typeMap,project:clone(P)}};
+}
+function exportHeatlossjs(){saveFile('heatlossjs_'+safeName(P.name)+'.json',JSON.stringify(toHeatlossjs(),null,1));}
+function guessKind(n){n=n.toLowerCase();if(/window|door|raam|deur|glas|glaz/.test(n))return'raam';if(/floor|vloer/.test(n))return'vloer';if(/roof|ceiling|loft|dak|plafond/.test(n))return'dak';return'wand';}
+function importHeatlossjs(o){
+  const meta=o.tekentafel;
+  if(meta&&meta.project){const p=normalizeProject(clone(meta.project));if(!p)throw 0;p.id='p'+rid();p.example=false;p.updatedAt=Date.now();let n=0;const T=o.T||{},S=p.settings;
+    [['external','te'],['ground','tGround'],['unheated','tUnheated'],['buurwoning','tNeighbour']].forEach(([k,s])=>{const v=+T[k];if(T[k]!=null&&Number.isFinite(v)&&v!==S[s]){S[s]=v;n++;}});
+    Object.entries(meta.names||{}).forEach(([id,name])=>{const r=p.rooms.find(x=>x.id===id),hr=o.rooms&&o.rooms[name];const v=hr?+hr.temperature:NaN;if(r&&Number.isFinite(v)&&v!==r.temp){r.temp=v;n++;}});
+    Object.entries(meta.typeMap||{}).forEach(([k,m])=>{const et=o.element_type&&o.element_type[k];const u=et?+et.uvalue:NaN;if(!Number.isFinite(u)||Math.abs(u-m.u)<0.0005)return;
+      const c=p.constructions.find(x=>x.id===m.cid);if(!c)return;c.mode='U';c.U=Math.max(0.0001,Math.round((u-m.du)*10000)/10000);n++;});
+    all[p.id]=p;openProject(p.id);markDirty();renderAll();
+    toast(n?`Tekening teruggeladen. ${n} waarde${n>1?'n':''} uit heatlossjs overgenomen.`:'Tekening teruggeladen uit het heatlossjs-bestand.');return;}
+  const types=Object.entries(o.element_type||{});if(!types.length)throw 0;
+  pushUndo();types.forEach(([name,v],i)=>{if(P.constructions.some(c=>c.name===name))return;P.constructions.push({id:rid(),name,kind:guessKind(name),U:+v.uvalue||0,color:PALETTE[(P.constructions.length+i)%PALETTE.length],mode:'U',inner:/internal|party/i.test(name),layers:[]});});
+  markDirty();tab='con';renderAll();
+  toast(`${types.length} constructietypen uit heatlossjs toegevoegd. Dit bestand heeft geen tekening, dus ruimtes en wanden zijn niet overgenomen.`);
+}
+function safeName(s){return String(s||'project').replace(/[\\/:*?"<>|]+/g,'-').slice(0,80);}
+$('file-in').addEventListener('change',e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{let o;try{o=JSON.parse(rd.result);}catch(_){toast('Dit bestand is geen geldig JSON-bestand.');return;}
+    if(o&&Array.isArray(o.warmtepompen)){const l=hpValid(o.warmtepompen);if(!l.length){toast('Geen bruikbare warmtepompen gevonden. Elke warmtepomp heeft minstens twee punten met buiten en max nodig.');return;}
+      hpList=l;hpSource='eigen';hpErr='';saveHpOwn(l);tab='res';renderPanel();toast(`${l.length} warmtepomp${l.length>1?'en':''} geïmporteerd.`);return;}
+    if(o&&o.rooms&&typeof o.rooms==='object'&&!Array.isArray(o.rooms)){try{importHeatlossjs(o);}catch(_){toast('Dit heatlossjs-bestand kon niet worden gelezen.');}return;}
+    try{const p=normalizeProject(o);if(!p)throw 0;p.id='p'+rid();p.example=false;all[p.id]=p;openProject(p.id);markDirty();renderAll();toast(`“${p.name}” geïmporteerd.`);}catch(_){toast('Dit bestand is geen geldig project (.json uit deze app).');}};
+  rd.readAsText(f);e.target.value='';});
+
+/* ---------- persistence ---------- */
+let db=null,uid=null,storeMode='local',saveTimer=null,saving=false,saveAgain=false,lastErr=null;
+function storeNote(){return storeMode==='db'?'Projecten worden automatisch opgeslagen in je Claude-account, alleen zichtbaar voor jou.':storeMode==='loading'?'Verbinden met je opslag…':'Projecten worden alleen in deze browser bewaard. Exporteer een .json als reservekopie.';}
+function setStatus(txt,cls){const s=$('status');s.textContent=txt;s.className='pill'+(cls?' '+cls:'');}
+function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(all));}catch(_){}}
+function loadLocal(){try{const raw=localStorage.getItem(LS_KEY);if(!raw)return{};const o=JSON.parse(raw);const out={};Object.values(o||{}).forEach(p=>{const n=normalizeProject(p);if(n)out[n.id]=n;});return out;}catch(_){return{};}}
+function markDirty(noStamp){if(!P)return;if(!noStamp){P.updatedAt=Date.now();}P.example=false;all[P.id]=P;setStatus('Wijzigingen…');clearTimeout(saveTimer);saveTimer=setTimeout(flush,900);}
+async function flush(){saveLocal();if(storeMode!=='db'){setStatus(storeMode==='loading'?'Opgeslagen in browser':'Opgeslagen in deze browser','ok');return;}
+  if(saving){saveAgain=true;return;}saving=true;const p=P;
+  try{setStatus('Opslaan…');await db.collection('data/users/'+uid).doc(p.id).set({name:p.name,updatedAt:p.updatedAt||Date.now(),project:JSON.parse(JSON.stringify(p))});setStatus('Opgeslagen','ok');lastErr=null;}
+  catch(err){lastErr=err;setStatus(err&&err.code==='quota_exceeded'?'Opslag vol':'Niet opgeslagen in account','warn');}
+  finally{saving=false;if(saveAgain){saveAgain=false;flush();}}}
+async function removeRemote(id){if(storeMode!=='db')return;try{await db.collection('data/users/'+uid).doc(id).delete();}catch(_){}}
+function withTimeout(pr,ms){return Promise.race([pr,new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),ms))]);}
+async function initStore(){
+  const c=window.claude;if(!c||typeof c.use!=='function'){storeMode='local';setStatus('Opgeslagen in deze browser','ok');return;}
+  storeMode='loading';setStatus('Verbinden…');
+  c.use('downloads').then(d=>{downloads=d;}).catch(()=>{});
+  try{
+    const [d,u]=await Promise.all([c.use('db'),c.use('user')]);
+    const id=u?await u.id():null;
+    if(!d||!id){storeMode='local';setStatus('Opgeslagen in deze browser','ok');if(tab==='set')renderPanel();return;}
+    db=d;uid=id;
+    const snap=await withTimeout(db.collection('data/users/'+uid).get(),10000);
+    const remote={};snap.docs.forEach(doc=>{const data=doc.data();const p=data&&normalizeProject(clone(data.project));if(p){p.id=doc.id;remote[p.id]=p;}});
+    const toUpload=[];
+    // drop untouched example when the account already has projects
+    if(Object.keys(remote).length){Object.values(all).forEach(p=>{if(p.example&&!p.updatedAt)delete all[p.id];});}
+    Object.values(remote).forEach(p=>{const l=all[p.id];if(!l||(p.updatedAt||0)>=(l.updatedAt||0))all[p.id]=p;});
+    Object.values(all).forEach(p=>{const r=remote[p.id];if(!r||(p.updatedAt||0)>(r.updatedAt||0)){if(!(p.example&&!p.updatedAt))toUpload.push(p);}});
+    storeMode='db';
+    if(!all[P.id]){let last=null;try{last=localStorage.getItem(LS_LAST);}catch(_){}const next=all[last]||Object.values(all).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+      if(next){openProject(next.id);}else{const ex=exampleProject();all[ex.id]=ex;openProject(ex.id);}}
+    else if(all[P.id]!==P){P=normalizeProject(all[P.id]);all[P.id]=P;validateSel();}
+    saveLocal();
+    for(const p of toUpload){try{await db.collection('data/users/'+uid).doc(p.id).set({name:p.name,updatedAt:p.updatedAt||Date.now(),project:JSON.parse(JSON.stringify(p))});}catch(_){}}
+    setStatus('Opgeslagen in account','ok');renderAll();loadHpFromAccount();
+  }catch(err){storeMode='local';setStatus(err&&err.code==='timeout'?'Account niet bereikbaar · lokaal opgeslagen':'Opgeslagen in deze browser',err&&err.code==='timeout'?'warn':'ok');if(tab==='set')renderPanel();}
+}
+
+/* ---------- boot ---------- */
+all=loadLocal();
+let last=null;try{last=localStorage.getItem(LS_LAST);}catch(_){}
+if(!Object.keys(all).length){const ex=exampleProject();all[ex.id]=ex;}
+P=all[last]||Object.values(all).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+setTool('select');renderAll();requestAnimationFrame(fit);
+initStore();loadHpList();
+})();
+</script>
+
+</body></html>
