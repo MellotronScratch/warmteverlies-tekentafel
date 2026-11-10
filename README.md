@@ -50,6 +50,16 @@ Beide delen nemen over wat al bij de oorspronkelijke ruimte was ingesteld:
 
 De twee delen delen dezelfde lijn, net als bij hart-op-hart tekenen. Ongedaan maken kan met Ctrl+Z.
 
+### Vides en trappenhuizen
+
+Een vide of trappenhuis teken je op de laagste verdieping. Kies bij de ruimte *Soort ruimte: Vide* (of *Trappenhuis*) en bij **Loopt door tot** de hoogste verdieping. Op de verdiepingen erboven staat de vide dan gearceerd.
+
+Teken je op zo'n hogere verdieping een ruimte die over de vide heen valt, dan knipt de app het stuk binnen de vide eruit. Andersom gaat het ook: laat je een bestaande ruimte later doorlopen, dan worden de ruimtes erboven op dezelfde manier geknipt.
+
+- De nieuwe wanden langs de vide worden binnenwanden. Is daar geen muur, maar bijvoorbeeld een balustrade, kies dan bij dat wanddeel **Open verbinding (geen wand)**.
+- Ligt de vide helemaal binnen de nieuwe ruimte, dan zou er een gat in de ruimte komen. Dat kan niet, dus de app maakt er twee delen van, met een open verbinding ertussen.
+- Valt de ruimte helemaal binnen de vide, dan wordt hij niet toegevoegd.
+
 ### Binnenmaat of buitenmaat?
 
 De muurdikte wordt niet getekend. De getekende lijn is de rand van de ruimte zelf:

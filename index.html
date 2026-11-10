@@ -886,7 +886,7 @@ function render3d(){const c=Math.cos(v3.th),sn=Math.sin(v3.th),ci=floorIdx(curFl
       out+=`<polygon ${top?`data-k3="room" data-r="${r.id}"`:'pointer-events="none"'} points="${r.pts.map(p=>pt(P3(p,z0))).join(' ')}" fill="${isSel?'var(--accent-soft-2)':'var(--room)'}" stroke="none" style="cursor:pointer"/>`;
       (r.emitters||[]).forEach(em=>{if(em.kind==='vv'){out+=`<polygon points="${em.pts.map(p=>pt(P3(p,z0+0.01))).join(' ')}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="1" stroke-dasharray="5 4" pointer-events="none"/>`;}
         else{const a=P3(em.a,z0+0.35),b=P3(em.b,z0+0.35),a2=P3(em.a,z0+0.85),b2=P3(em.b,z0+0.85);items.push({d:(a.d+b.d)/2-0.05,svg:`<polygon points="${[a,b,b2,a2].map(pt).join(' ')}" fill="var(--c-hp)" fill-opacity=".75" stroke="var(--c-hp)" stroke-width="1" pointer-events="none"/>`});}});
-      if(top){const cc=P3(centroid(r.pts),z0);labels.push(`<text x="${cc.X}" y="${cc.Y-4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y+13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${fmt(k.total/1000,2)} kW</text>`);}
+      if(top){const cc=P3(labelPt(r.pts),z0);labels.push(`<text x="${cc.X}" y="${cc.Y-4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y+13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${fmt(k.total/1000,2)} kW</text>`);}
       // walls, per wall part, with the top following a sloped roof
       const R=roofOf(r);
       r.pts.forEach((_,i)=>{const e=edge(r,i);if(e.L<1e-6)return;const b=bounds(r,i),w=r.walls[i];
@@ -989,7 +989,7 @@ function renderCanvas(){
     eaves.forEach(c=>{const sg=lineAcross(r,R,c+(c===R.smin?1e-6:-1e-6));if(!sg)return;const m=S({x:(sg[0].x+sg[1].x)/2,y:(sg[0].y+sg[1].y)/2});const cc=S(centroid(r.pts));
       const dx=cc.x-m.x,dy=cc.y-m.y,d=Math.hypot(dx,dy)||1;out+=`<text x="${m.x+dx/d*18}" y="${m.y+dy/d*18+3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--muted)" pointer-events="none">${fmt(R.knee,2)} m</text>`;});});
   // labels: small caps name + area, heat load in kW, breakdown bar, temperature
-  curRooms().forEach(r=>{const c=S(centroid(r.pts));const k=calc[r.id];
+  curRooms().forEach(r=>{const c=S(labelPt(r.pts));const k=calc[r.id];
     let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;r.pts.forEach(p=>{x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y);});
     const wpx=(x1-x0)*view.s,hpx=(y1-y0)*view.s;const full=wpx>=110&&hpx>=96;
     out+=`<text x="${c.x}" y="${c.y-14}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}${spans(r)?' ↑':''}${full?' · '+fmt(k.Af,1)+' m²':''}${k.missing?' ⚠':''}</text>`;
@@ -1071,8 +1071,12 @@ function makeRoom(pts){
   const r={id:rid(),name:'Ruimte '+n,floorId:curFloor,temp:20,height:P.settings.height,sup:0,ext:0,pts:pts.map(p=>({x:r3(p.x),y:r3(p.y)})),
     walls:pts.map(()=>({cuts:[],segs:[seg(wc,'auto')]})),floor:{cid:defaultCid('vloer'),adj:'grond',t:20},ceil:{cid:defaultCid('dak'),adj:'temp',t:20},
     roof:{type:'plat',pitch:45,knee:0.6,edge:0,low:'min',cid:defaultCid('dak'),adj:'buiten',t:20}};
-  pushUndo();P.rooms.push(r);sel={t:'room',r:r.id};tab='sel';markDirty();renderAll();
-  toast(`${r.name} toegevoegd. Klik op een wand om de constructie te kiezen.`);
+  const pieces=clipToVides(r);
+  if(!pieces.length){toast('Deze ruimte valt helemaal in een vide van een verdieping lager.');renderCanvas();return;}
+  pushUndo();pieces.forEach((x,k)=>{if(k>0){x.id=rid();x.name=r.name+' ('+(k+1)+')';}P.rooms.push(x);});sel={t:'room',r:pieces[0].id};tab='sel';markDirty();renderAll();
+  toast(pieces.length===1&&pieces[0]===r?`${r.name} toegevoegd. Klik op een wand om de constructie te kiezen.`
+    :pieces.length===1?`${r.name} toegevoegd. Het stuk dat in de vide valt, is eruit geknipt.`
+    :`${r.name} toegevoegd in ${pieces.length} delen: de vide is eruit geknipt. De delen hebben een open verbinding.`);
 }
 function finishPoly(){const pts=drawPts.filter((p,i)=>i===0||dist(p,drawPts[i-1])>1e-6);drawPts=[];hover=null;
   if(pts.length>=3&&Math.abs(polyArea(pts))>0.01)makeRoom(pts);else renderCanvas();}
@@ -1153,6 +1157,48 @@ function splitTarget(line){ // the room on this floor that line runs straight th
       if(onBoundary(r,m,tol)>=0||!pointInPoly(m,r.pts))return false;
       for(let i=0;i<r.pts.length;i++){const e=edge(r,i);if(crossesProper(a,b,e.a,e.b))return false;}}
     return !!splitRoomParts(r,line);})||null;}
+/* ---------- vides: a room on a higher floor may not overlap a room that continues from below (a vide or stairwell) ----------
+   The part inside the vide is cut away along the vide's outline, using the same cut as the wall tool. */
+function segCross(p,q,a,b){const d=(q.x-p.x)*(b.y-a.y)-(q.y-p.y)*(b.x-a.x);if(Math.abs(d)<1e-12)return null;
+  const t=((a.x-p.x)*(b.y-a.y)-(a.y-p.y)*(b.x-a.x))/d,u=((a.x-p.x)*(q.y-p.y)-(a.y-p.y)*(q.x-p.x))/d;return t>-1e-9&&t<1+1e-9&&u>-1e-9&&u<1+1e-9?t:null;}
+// the pieces of outline V that run through the inside of room A, each from A's outline to A's outline
+function chainsInside(A,V){const tol=2e-3,inA=p=>onBoundary(A,p,tol)<0&&pointInPoly(p,A.pts),seq=[];
+  V.forEach((p,k)=>{const q=V[(k+1)%V.length];seq.push(p);const ts=[];
+    A.pts.forEach((a,i)=>{const b=A.pts[(i+1)%A.pts.length];const t=segCross(p,q,a,b);if(t!=null&&t>1e-6&&t<1-1e-6)ts.push(t);
+      const h=onSeg(a,p,q,tol);if(h&&h.t>1e-6&&h.t<1-1e-6)ts.push(h.t);});
+    ts.sort((x,y)=>x-y).forEach(t=>seq.push({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t}));});
+  const m=seq.length,ins=seq.map((p,k)=>{const q=seq[(k+1)%m];return dist(p,q)>1e-6&&inA({x:(p.x+q.x)/2,y:(p.y+q.y)/2});});
+  if(ins.every(Boolean))return{hole:true,chains:[]};
+  const st=ins.findIndex(v=>!v),chains=[];let cur=null;
+  for(let n=1;n<=m;n++){const k=(st+n)%m;if(ins[k]){if(!cur)cur=[seq[k]];cur.push(seq[(k+1)%m]);}else if(cur){chains.push(cur);cur=null;}}
+  if(cur)chains.push(cur);return{hole:false,chains:chains.filter(c=>c.length>=2)};}
+// where to put a room's label: the centre if that lies well inside, otherwise the inside point furthest from the walls (L and U shapes)
+const _lab=new Map();
+function labelPt(pts){const key=pts.map(p=>p.x+','+p.y).join(' ');if(_lab.has(key))return _lab.get(key);
+  const dEdge=p=>{let d=1e9;pts.forEach((a,i)=>{const b=pts[(i+1)%pts.length],dx=b.x-a.x,dy=b.y-a.y,L2=dx*dx+dy*dy;const t=L2?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.y-a.y)*dy)/L2)):0;d=Math.min(d,Math.hypot(p.x-a.x-dx*t,p.y-a.y-dy*t));});return d;};
+  const c=centroid(pts);let best=pointInPoly(c,pts)?c:null,bd=best?dEdge(c):-1;
+  const xs=pts.map(p=>p.x),ys=pts.map(p=>p.y),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),N=16;
+  if(!best||bd<0.35*Math.min(x1-x0,y1-y0)/2)for(let i=0;i<=N;i++)for(let j=0;j<=N;j++){const p={x:x0+(x1-x0)*i/N,y:y0+(y1-y0)*j/N};if(!pointInPoly(p,pts))continue;const d=dEdge(p);if(d>bd+1e-6){bd=d;best=p;}}
+  best=best||c;if(_lab.size>500)_lab.clear();_lab.set(key,best);return best;}
+function innerPoint(room){for(let i=0;i<room.pts.length;i++){const e=edge(room,i);if(e.L<0.03)continue;const p={x:(e.a.x+e.b.x)/2-e.nx*0.01,y:(e.a.y+e.b.y)/2-e.ny*0.01};if(pointInPoly(p,room.pts))return p;}return centroid(room.pts);}
+function cutOutVide(room,V,depth){depth=depth||0;if(depth>14)return[room];
+  const c=chainsInside(room,V.pts);
+  for(const ch of c.chains){const parts=splitRoomParts(room,ch,false);if(parts)return[...cutOutVide(parts.big,V,depth+1),...cutOutVide(parts.small,V,depth+1)];}
+  if(c.hole||V.pts.some(p=>onBoundary(room,p)<0&&pointInPoly(p,room.pts))){ // the vide lies inside the room: cut the room in two through the vide first
+    const cc=centroid(V.pts),y=r3(cc.y),xs=[];room.pts.forEach((a,i)=>{const b=room.pts[(i+1)%room.pts.length];if((a.y-y)*(b.y-y)<0)xs.push(a.x+(b.x-a.x)*(y-a.y)/(b.y-a.y));});
+    const xl=Math.max(...xs.filter(x=>x<cc.x)),xr=Math.min(...xs.filter(x=>x>cc.x));
+    if(isFinite(xl)&&isFinite(xr)){const parts=splitRoomParts(room,[{x:xl,y},{x:xr,y}],true);if(parts)return[...cutOutVide(parts.big,V,depth+1),...cutOutVide(parts.small,V,depth+1)];}
+    return[room];}
+  return pointInPoly(innerPoint(room),V.pts)&&onBoundary(V,innerPoint(room))<0?[]:[room];}
+const bboxHit=(a,b)=>{const bb=p=>[Math.min(...p.map(q=>q.x)),Math.max(...p.map(q=>q.x)),Math.min(...p.map(q=>q.y)),Math.max(...p.map(q=>q.y))];const A=bb(a.pts),B=bb(b.pts);return A[0]<B[1]-1e-3&&B[0]<A[1]-1e-3&&A[2]<B[3]-1e-3&&B[2]<A[3]-1e-3;};
+// cut every vide that runs through this room's floor out of the room; returns the pieces that remain
+function clipToVides(room){let pieces=[room];P.rooms.filter(v=>v!==room&&v.floorId!==room.floorId&&presentOn(v,room.floorId)).forEach(v=>{pieces=pieces.flatMap(p=>bboxHit(p,v)?cutOutVide(p,v):[p]);});return pieces;}
+// a room that now continues upwards: cut it out of the rooms on the floors above
+function clipAbove(vide){if(!spans(vide))return 0;let n=0;const l=levelsOf(vide);
+  P.floors.slice(l[0]+1,l[1]+1).forEach(f=>{P.rooms.filter(r=>r.floorId===f.id&&bboxHit(r,vide)).forEach(r=>{const ps=cutOutVide(r,vide);if(ps.length===1&&ps[0]===r)return;n++;
+    ps.forEach((x,k)=>{if(k>0){x.id=rid();x.name=r.name+' ('+(k+1)+')';}});P.rooms.splice(P.rooms.indexOf(r),1,...ps);});});
+  if(n)P.transfers=P.transfers.filter(t=>getRoom(t.from)&&getRoom(t.to));return n;}
+
 function wallClick(p){
   const onAny=curRooms().some(r=>onBoundary(r,p)>=0);
   if(!drawPts.length){if(!onAny){toast('Begin de wand op de rand van een ruimte.');return;}drawPts.push({x:p.x,y:p.y});renderCanvas();return;}
@@ -1823,8 +1869,10 @@ function applyField(el,final){
   if(undoArmed){pushUndo();undoArmed=false;}
   switch(parts[0]){
     case'room':{if(!room)return;const k=parts[1];
-      if(k==='kind'){room.kind=['trap','vide'].includes(v)?v:'normaal';if(room.kind!=='normaal'&&!spans(room)){const nf=P.floors[floorIdx(room.floorId)+1];if(nf){room.spanTo=nf.id;room.height=r3(room.height*2);}}changed=true;break;}
-      if(k==='spanTo'){const was=spans(room);room.spanTo=v||null;if(!spans(room))room.spanTo=null;else if(!was){const l=levelsOf(room);room.height=r3(room.height*(l[1]-l[0]+1));}changed=true;break;}
+      if(k==='kind'){room.kind=['trap','vide'].includes(v)?v:'normaal';if(room.kind!=='normaal'&&!spans(room)){const nf=P.floors[floorIdx(room.floorId)+1];if(nf){room.spanTo=nf.id;room.height=r3(room.height*2);}}
+        if(clipAbove(room)){toast('De vide is uitgeknipt uit de ruimtes op de verdieping(en) erboven.');renderAll();}changed=true;break;}
+      if(k==='spanTo'){const was=spans(room);room.spanTo=v||null;if(!spans(room))room.spanTo=null;else if(!was){const l=levelsOf(room);room.height=r3(room.height*(l[1]-l[0]+1));}
+        if(clipAbove(room)){toast('De vide is uitgeknipt uit de ruimtes op de verdieping(en) erboven.');renderAll();}changed=true;break;}
       if(k==='name'){room.name=v;changed=true;}else{const n=num(v);if(n==null)return;if(k==='height'&&n<=0)return;if((k==='sup'||k==='ext')&&n<0)return;room[k]=n;changed=true;}break;}
     case'seg':{const sg=selSeg();if(!sg)return;const wasOpen=sg.adj==='open';if(parts[1]==='adjT'){const n=num(v);if(n==null)return;sg.adjT=n;}else sg[parts[1]]=v;
       if(parts[1]==='adj'&&(v==='open'||wasOpen)){ // an open connection is the same on both sides
