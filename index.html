@@ -576,7 +576,7 @@ function normalizeProject(p){
     r.walls.length=r.pts.length;
     r.walls.forEach(w=>{w.cuts=(w.cuts||[]).map(Number).filter(Number.isFinite).sort((a,b)=>a-b);w.segs=w.segs||[];
       while(w.segs.length<w.cuts.length+1)w.segs.push(seg('','auto'));w.segs.length=w.cuts.length+1;
-      w.segs.forEach(s=>{s.adj=s.adj||'auto';s.adjT=Number.isFinite(+s.adjT)?+s.adjT:20;s.openings=(s.openings||[]).map(o=>({id:o.id||rid(),name:o.name||'Raam',w:+o.w||0,h:+o.h||0,cid:o.cid||'',...(o.lk?{lk:String(o.lk)}:{})}));});});
+      w.segs.forEach(s=>{s.adj=s.adj||'auto';s.adjT=Number.isFinite(+s.adjT)?+s.adjT:20;s.openings=(s.openings||[]).map(o=>({id:o.id||rid(),name:o.name||'Raam',w:+o.w||0,h:+o.h||0,cid:o.cid||'',...(o.lk?{lk:String(o.lk)}:{}),...(typeof o.at==='number'&&isFinite(o.at)?{at:o.at}:{})}));});});
   });
   return p;
 }
@@ -652,7 +652,7 @@ function sharedParts(room,i,s0,s1){const e=edge(room,i);if(e.L<1e-6)return[];con
 function cutAt(r,i,t){const w=r.walls[i],L=edge(r,i).L;if(t<=0.02||t>=L-0.02||w.cuts.some(c=>Math.abs(c-t)<0.02))return;
   const j=w.cuts.filter(c=>c<t).length,lo=j>0?w.cuts[j-1]:0,hi=j<w.cuts.length?w.cuts[j]:L,src=w.segs[j];
   w.cuts.splice(j,0,r3(t));const nw={cid:src.cid,adj:src.adj,adjT:src.adjT,openings:[]};if(t-lo<hi-t){nw.openings=src.openings;src.openings=[];}w.segs.splice(j+1,0,nw);}
-function partnersOf(room,i,j){const b=bounds(room,i);if(!room.walls[i]||room.walls[i].segs[j].adj!=='auto')return[];
+function partnersOf(room,i,j){const b=bounds(room,i);if(!room.walls[i]||!['auto','open'].includes(room.walls[i].segs[j].adj))return[];
   return sharedParts(room,i,b[j],b[j+1]).map(p=>{const bo=bounds(p.o,p.k),mid=(p.u0+p.u1)/2;let jj=0;while(jj<bo.length-2&&mid>bo[jj+1])jj++;
     return{...p,jj,exact:Math.abs(bo[jj]-p.u0)<0.03&&Math.abs(bo[jj+1]-p.u1)<0.03,whole:Math.abs(p.t0-b[j])<0.03&&Math.abs(p.t1-b[j+1])<0.03};});}
 // give the shared pieces in the neighbouring rooms their own wall part, so they can follow this one
@@ -660,6 +660,18 @@ function isolatePartners(room,i,j){partnersOf(room,i,j).forEach(p=>{cutAt(p.o,p.
 // the one wall part on the other side when this part lies entirely against a single room: windows and doors are mirrored there
 function mirrorPartner(room,i,j){const ps=isolatePartners(room,i,j);return ps.length===1&&ps[0].whole&&ps[0].exact?ps[0]:null;}
 function linkedOpenings(lk,fn){if(!lk)return;P.rooms.forEach(r=>r.walls.forEach(w=>w.segs.forEach(sg=>sg.openings.slice().forEach(o=>{if(o.lk===lk)fn(o,sg);}))));}
+
+/* ---------- windows and doors: position along the wall ----------
+   o.at = distance in m from the corner where the wall starts to the left side of the opening.
+   Without o.at (older projects, new openings) the openings sit side by side in the middle of their wall part. */
+function opLayout(room,i,j){const b=bounds(room,i),s0=b[j],s1=b[j+1],ops=room.walls[i].segs[j].openings.filter(o=>o.w>0);
+  const auto=ops.filter(o=>!Number.isFinite(o.at)),tot=auto.reduce((a,o)=>a+o.w,0)+0.3*Math.max(0,auto.length-1);let t=(s0+s1)/2-Math.min(tot,s1-s0)/2;
+  return ops.map(o=>{const w=Math.min(o.w,s1-s0);let t0;if(Number.isFinite(o.at))t0=o.at;else{t0=t;t+=w+0.3;}t0=Math.max(s0,Math.min(s1-w,t0));return{o,t0,t1:t0+w};});}
+function freezeOpenings(room,i,j){opLayout(room,i,j).forEach(x=>{if(!Number.isFinite(x.o.at))x.o.at=r3(x.t0);});}
+// a mirrored opening in the room on the other side gets the same place in the world
+function syncLinkedAt(o,room,i){if(!o.lk||!Number.isFinite(o.at))return;const e=edge(room,i);const p0={x:e.a.x+e.ux*o.at,y:e.a.y+e.uy*o.at},p1={x:p0.x+e.ux*o.w,y:p0.y+e.uy*o.w};
+  P.rooms.forEach(r=>r.walls.forEach((w,k)=>w.segs.forEach(sg=>sg.openings.forEach(x=>{if(x===o||x.lk!==o.lk)return;const f=edge(r,k);
+    const u=p=>(p.x-f.a.x)*f.ux+(p.y-f.a.y)*f.uy;x.at=r3(Math.max(0,Math.min(u(p0),u(p1))));}))));}
 
 /* ---------- layer build-up (NEN-EN-ISO 6946, simplified) ---------- */
 function airR(d,kind){const t=AIR[kind==='dak'?'up':kind==='vloer'?'down':'h'];d=Math.max(0,Math.min(300,d||0));
@@ -746,7 +758,7 @@ function transLines(room){
   room.pts.forEach((_,i)=>{
     const w=room.walls[i];const b=bounds(room,i);const nb=neighbourIntervals(room,i);
     w.segs.forEach((sg,j)=>{
-      const s0=b[j],s1=b[j+1],len=s1-s0;if(len<=1e-4)return;
+      const s0=b[j],s1=b[j+1],len=s1-s0;if(len<=1e-4||sg.adj==='open')return; // open connection: no wall, no loss
       const con=conById(sg.cid);const nm='Wand '+(i+1)+(w.segs.length>1?LET[j]||j:'');
       const opType=sg.adj==='auto'?'buiten':sg.adj;const opT=sg.adj==='auto'?S.te:adjTemp(sg.adj,sg.adjT);
       let Aop=0;sg.openings.forEach(o=>{const A=Math.max(0,o.w*o.h);Aop+=A;push({label:nm+' · '+(o.name||'Opening'),sub:(conById(o.cid)||{}).name||'geen constructie',A,con:conById(o.cid),t:opT,type:opType,w:i,s:j,group:'open'});});
@@ -837,6 +849,9 @@ function floorElev(){const el={};let z=0;P.floors.forEach(f=>{el[f.id]=z;const r
 function pr3(p,z,raw){const c=Math.cos(v3.th),s=Math.sin(v3.th),xr=p.x*c-p.y*s,yr=p.x*s+p.y*c,se=Math.sin(v3.el),ce=Math.cos(v3.el);
   const k=raw?1:v3.s,ox=raw?0:v3.tx,oy=raw?0:v3.ty;return{X:ox+k*xr,Y:oy+k*(yr*se-z*ce),d:yr*ce+z*se};}
 const zTop=(room,R,p)=>R?R.z(R.sOf(p)):room.height;
+// the point on the current floor level that lies under screen position (X,Y): the centre of rotation
+function unproject3(X,Y,z){const c=Math.cos(v3.th),s=Math.sin(v3.th),se=Math.max(0.05,Math.sin(v3.el)),ce=Math.cos(v3.el);
+  const xr=(X-v3.tx)/v3.s,yr=((Y-v3.ty)/v3.s+z*ce)/se;return{x:xr*c+yr*s,y:-xr*s+yr*c};}
 function rooms3d(){const ci=floorIdx(curFloor),el=floorElev();return P.rooms.filter(r=>floorIdx(r.floorId)<=ci).map(r=>({r,z0:el[r.floorId],fi:floorIdx(r.floorId)}));}
 function fit3d(){const W=stage.clientWidth,H=stage.clientHeight;const ps=[];
   rooms3d().forEach(({r,z0})=>r.pts.forEach(p=>{ps.push(pr3(p,z0,true));ps.push(pr3(p,z0+r.height,true));}));if(!ps.length||!W||!H)return;
@@ -845,7 +860,7 @@ function fit3d(){const W=stage.clientWidth,H=stage.clientHeight;const ps=[];
   v3.tx=W/2-v3.s*(X0+X1)/2;v3.ty=(H+40)/2-v3.s*(Y0+Y1)/2;}
 function set3d(on){if(pendSplit)closeAsk();if(on&&tool!=='select')setTool('select');view3d=on;drawPts=[];hover=null;drag3=null;
   stage.classList.toggle('is3d',on);const b=$('z-3d');b.setAttribute('aria-pressed',String(on));b.textContent=on?'2D':'2,5D';
-  $('hint').textContent=on?'Sleep om te draaien en te kantelen. Shift+slepen of de rechtermuisknop schuift, scrollen zoomt. Klik op een vloer of wand om die in het paneel te bewerken. Druk D voor de plattegrond.':HINTS[tool];
+  $('hint').textContent=on?'Draaien en kantelen: sleep met ingedrukt scrollwiel (of Shift + slepen) vanaf het punt waar je omheen wilt draaien. Slepen schuift, scrollen zoomt. Klik op een vloer of wand om die te bewerken. D: terug naar de plattegrond.':HINTS[tool];
   if(on)fit3d();renderCanvas();}
 function render3d(){const c=Math.cos(v3.th),sn=Math.sin(v3.th),ci=floorIdx(curFloor);const P3=(p,z)=>pr3(p,z);const pt=q=>q.X.toFixed(1)+','+q.Y.toFixed(1);
   const L={x:-0.5,y:-0.8},Ll=Math.hypot(L.x,L.y);let out='';const labels=[];
@@ -867,17 +882,18 @@ function render3d(){const c=Math.cos(v3.th),sn=Math.sin(v3.th),ci=floorIdx(curFl
           ts.sort((x,y)=>x-y);const bot=ts.map(t=>P3(at(t),z0)),tp=ts.map(t=>P3(at(t),z0+zTop(r,R,at(t))));
           const con=conById(sg.cid),col=con?con.color:'var(--warn)',isSel=top&&sel&&sel.t==='seg'&&sel.r===r.id&&sel.w===i&&sel.s===j;
           const poly=bot.concat(tp.slice().reverse()).map(pt).join(' ');const d=bot.concat(tp).reduce((a,q)=>a+q.d,0)/(bot.length*2);
+          if(sg.adj==='open'){items.push({d,near:true,svg:`<polygon ${top?`data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}"`:''} points="${poly}" fill="${isSel?'var(--heat)':'none'}" fill-opacity=".15" stroke="var(--muted)" stroke-opacity=".6" stroke-width="1" stroke-dasharray="5 5" pointer-events="${top?'stroke':'none'}" style="cursor:pointer"/>`});return;}
           const op=!top?(near?0.18:0.55):(near?0.22:0.9);const shade=Math.max(0,Math.min(0.45,0.22-0.22*lit));
           let g=`<polygon points="${poly}" fill="${col}" fill-opacity="${op}" stroke="var(--wall)" stroke-opacity="${near?0.35:0.8}" stroke-width="1" stroke-linejoin="round" pointer-events="none"/>`;
           if(!near)g+=`<polygon points="${poly}" fill="#000" fill-opacity="${(shade*op).toFixed(3)}" pointer-events="none"/>`;
           // windows and doors: side by side in the middle of the wall part (their exact place is not stored)
-          const ops=sg.openings.filter(o=>o.w>0&&o.h>0);const tot=ops.reduce((a,o)=>a+o.w,0)+0.3*Math.max(0,ops.length-1);let t=(s0+s1)/2-Math.min(tot,s1-s0)/2;
-          ops.forEach(o=>{const ow=Math.min(o.w,s1-s0),hh=Math.min(o.h,zTop(r,R,at(t+ow/2))-0.05);if(hh<=0)return;const sill=o.h>=1.9?0:Math.max(0,Math.min(0.9,zTop(r,R,at(t+ow/2))-hh-0.1));
+          opLayout(r,i,j).filter(x=>x.o.h>0).forEach(({o,t0,t1})=>{const t=t0,ow=t1-t0,hh=Math.min(o.h,zTop(r,R,at(t+ow/2))-0.05);if(hh<=0)return;const sill=o.h>=1.9?0:Math.max(0,Math.min(0.9,zTop(r,R,at(t+ow/2))-hh-0.1));
             const q=[P3(at(t),z0+sill),P3(at(t+ow),z0+sill),P3(at(t+ow),z0+sill+hh),P3(at(t),z0+sill+hh)];
-            g+=`<polygon points="${q.map(pt).join(' ')}" fill="var(--heat)" fill-opacity="${near?0.25:0.55}" stroke="var(--heat)" stroke-width="1.2" pointer-events="none"/>`;t+=ow+0.3;});
+            g+=`<polygon points="${q.map(pt).join(' ')}" fill="var(--heat)" fill-opacity="${near?0.25:0.55}" stroke="var(--heat)" stroke-width="1.2" pointer-events="none"/>`;});
           const isHov=top&&hoverSeg&&hoverSeg.r===r.id&&hoverSeg.w===i&&hoverSeg.s===j;
           if(isSel||isHov)g+=`<polygon points="${poly}" fill="${isSel?'var(--heat)':'var(--accent)'}" fill-opacity=".25" stroke="${isSel?'var(--heat)':'var(--accent)'}" stroke-width="3" stroke-linejoin="round" pointer-events="none"/>`;
-          if(top)g+=`<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="transparent" stroke="none" style="cursor:pointer"/>`;
+          if(top)g+=near?`<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="none" stroke="transparent" stroke-width="8" pointer-events="stroke" style="cursor:pointer"/>`
+            :`<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="transparent" stroke="none" style="cursor:pointer"/>`;
           items.push({d:d+(near?0.0001:0),near,svg:g});});});
       if(R)roofLines(R).forEach(cv=>{const sg=lineAcross(r,R,cv);if(!sg)return;const z=z0+R.z(cv),a=P3(sg[0],z),b=P3(sg[1],z);
         items.push({d:(a.d+b.d)/2,svg:`<line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--heat)" stroke-width="2" stroke-dasharray="7 5" pointer-events="none"/>`});});});
@@ -912,12 +928,14 @@ function renderCanvas(){
       const con=conById(sg.cid);const isSel=sel&&sel.t==='seg'&&sel.r===r.id&&sel.w===i&&sel.s===j,isHov=hoverSeg&&hoverSeg.r===r.id&&hoverSeg.w===i&&hoverSeg.s===j;
       if(isHov&&!isSel)out+=`<line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--accent)" stroke-opacity=".45" stroke-width="16" stroke-linecap="round"/>`;
       if(isSel)out+=`<line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--heat)" stroke-opacity=".55" stroke-width="16" stroke-linecap="round"/>`;
-      out+=`<line x1="${a.x}" y1="${a.y}" x2="${bb.x}" y2="${bb.y}" stroke="${con?con.color:'var(--warn)'}" stroke-width="${isSel?4:3}" stroke-linecap="round" ${con?'':'stroke-dasharray="3 3"'}/>`;
-      // openings: orange accent in the wall
-      const opW=sg.openings.reduce((t,o)=>t+Math.max(0,o.w),0);
-      if(opW>0){const ow=Math.min(opW,s1-s0)*0.9;const mid=(s0+s1)/2;const p0=P2(e,mid-ow/2,0),p1=P2(e,mid+ow/2,0);
-        out+=`<line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--heat)" stroke-width="7"/><line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--paper)" stroke-width="1.2"/>`;}
-      out+=`<line class="hit" data-k="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke-width="18"/>`;});
+      if(sg.adj==='open')out+=`<line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--paper)" stroke-width="7"/><line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--room)" stroke-width="7"/><line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="6 5"/>`;
+      else out+=`<line x1="${a.x}" y1="${a.y}" x2="${bb.x}" y2="${bb.y}" stroke="${con?con.color:'var(--warn)'}" stroke-width="${isSel?4:3}" stroke-linecap="round" ${con?'':'stroke-dasharray="3 3"'}/>`;
+      out+=`<line class="hit" data-k="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke-width="18"/>`;
+      // windows and doors: orange in the wall, each at its own place; drag them along the wall
+      opLayout(r,i,j).forEach(({o,t0,t1})=>{const p0=P2(e,t0+0.02,0),p1=P2(e,t1-0.02,0),moving=drag&&drag.type==='op'&&drag.o===o.id;
+        out+=`<line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--heat)" stroke-width="${moving?9:7}"/><line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--paper)" stroke-width="1.2"/>`;
+        if(tool==='select')out+=`<line class="hit" data-k="op" data-r="${r.id}" data-w="${i}" data-s="${j}" data-o="${o.id}" x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke-width="16" style="cursor:grab"><title>${esc(o.name)}: sleep om te verplaatsen</title></line>`;
+        if(moving){const m=P2(e,(t0+t1)/2,-22/view.s);out+=`<text x="${m.x}" y="${m.y+4}" text-anchor="middle" class="dim" pointer-events="none">${fmt(t0-s0)} | ${esc(o.name)} | ${fmt(s1-t1)} m</text>`;}});});
     // cut markers
     w.cuts.forEach((c,ci)=>{if(c<=0||c>=e.L)return;const m=P2(e,c,off/2);const big=selR===r.id;
       const tx=e.nx*9,ty=e.ny*9;out+=`<line x1="${m.x-tx}" y1="${m.y-ty}" x2="${m.x+tx}" y2="${m.y+ty}" stroke="var(--ink)" stroke-width="2"/>`;
@@ -1049,7 +1067,7 @@ function removeCut(room,i,c){const w=room.walls[i];if(c<0||c>=w.cuts.length)retu
   w.cuts.splice(c,1);w.segs.splice(c+1,1);w.segs[c].openings=merged;sel={t:'seg',r:room.id,w:i,s:c};markDirty();renderAll();}
 function insertVertex(room,i,t){const e=edge(room,i);if(t<0.05||t>e.L-0.05)return;pushUndo();const p={x:r3(e.a.x+e.ux*t),y:r3(e.a.y+e.uy*t)};const w=room.walls[i];
   const j=w.cuts.filter(c=>c<t).length;const w1={cuts:w.cuts.slice(0,j),segs:w.segs.slice(0,j+1).map(clone)};
-  const tail=w.segs.slice(j).map(clone);tail[0].openings=[];tail.forEach((s,k)=>{if(k>0)s.openings.forEach(o=>o.id=rid());});
+  const tail=w.segs.slice(j).map(clone);tail[0].openings=[];tail.forEach((s,k)=>{if(k>0)s.openings.forEach(o=>{if(Number.isFinite(o.at))o.at=r3(o.at-t);});});
   const w2={cuts:w.cuts.slice(j).map(c=>r3(c-t)),segs:tail};room.pts.splice(i+1,0,p);room.walls.splice(i,1,w1,w2);sel={t:'vtx',r:room.id,i:i+1};markDirty();renderAll();}
 function deleteSelection(){if(!sel)return;const room=getRoom(sel.r);if(!room)return;
   if(sel.t==='em'){pushUndo();room.emitters=(room.emitters||[]).filter(x=>x.id!==sel.e);sel={t:'room',r:room.id};markDirty();renderAll();toast('Afgifte-element verwijderd.',true);return;}
@@ -1087,17 +1105,18 @@ function splitEdgeAt(room,i,t){ // put a corner point in wall i at distance t; b
   else{const j=w.cuts.filter(c=>c<t).length,lo=j>0?w.cuts[j-1]:0,hi=j<w.cuts.length?w.cuts[j]:e.L;
     head={cuts:w.cuts.slice(0,j),segs:w.segs.slice(0,j+1).map(clone)};tail={cuts:w.cuts.slice(j).map(c=>r3(c-t)),segs:w.segs.slice(j).map(clone)};
     if(t-lo>=hi-t)tail.segs[0].openings=[];else head.segs[j].openings=[];} // windows of the part that is cut stay with the longer half
+  tail.segs.forEach(sg=>sg.openings.forEach(o=>{if(Number.isFinite(o.at))o.at=r3(Math.max(0,o.at-t));}));
   head._o=tail._o=w._o;room.pts.splice(i+1,0,p);room.walls.splice(i,1,head,tail);return p;}
 function ensureVertex(room,p){const n=room.pts.length;const v=room.pts.find(q=>dist(q,p)<2e-3);if(v)return v;
   for(let i=0;i<n;i++){const e=edge(room,i);const h=onSeg(p,e.a,e.b,2e-3);if(!h)continue;const t=h.t*e.L;
     if(t<0.01)return room.pts[i];if(t>e.L-0.01)return room.pts[(i+1)%n];return splitEdgeAt(room,i,t);}
   return null;}
 const innerWallCid=()=>(P.constructions.find(c=>c.kind==='wand'&&c.inner)||{}).id||defaultCid('wand');
-function splitRoomParts(room,line){ // two new rooms {big,small} from cutting room along line, or null if the line does not divide it cleanly
+function splitRoomParts(room,line,open){ // two new rooms {big,small} from cutting room along line, or null if the line does not divide it cleanly
   const R=clone(room);R.walls.forEach((w,i)=>w._o=i);
   const va=ensureVertex(R,line[0]),vb=ensureVertex(R,line[line.length-1]);if(!va||!vb||va===vb)return null;
   const n=R.pts.length,a=R.pts.indexOf(va),b=R.pts.indexOf(vb),inner=line.slice(1,-1).map(p=>({x:r3(p.x),y:r3(p.y)}));
-  const ic=innerWallCid(),nw=()=>({cuts:[],segs:[seg(ic,'auto')],_o:-1});
+  const ic=innerWallCid(),nw=()=>({cuts:[],segs:[seg(ic,open?'open':'auto')],_o:-1});
   const ring=(from,to)=>{const pts=[],walls=[];for(let k=from;;k=(k+1)%n){pts.push(R.pts[k]);if(k===to)break;walls.push(R.walls[k]);}return{pts,walls};};
   const A=ring(a,b),B=ring(b,a);
   A.pts.push(...inner.slice().reverse());B.pts.push(...inner);for(let k=0;k<=inner.length;k++){A.walls.push(nw());B.walls.push(nw());}
@@ -1132,13 +1151,14 @@ function askSplit(room,line){const parts=splitRoomParts(room,line);if(!parts)ret
   const box=$('ask');box.innerHTML=`<b>Ruimte splitsen?</b>
     <p>De lijn deelt <b>${esc(room.name)}</b> in ${fmt(aB,1)} m² en ${fmt(aS,1)} m². Beide delen houden de wanden, ramen, vloer, plafond, hoogte en temperatuur van ${esc(room.name)}. De nieuwe wand krijgt ${c?'de constructie <b>'+esc(c.name)+'</b>':'nog geen constructie'} en grenst aan de andere ruimte.${room.sup||room.ext?' Toevoer en afzuiging worden naar oppervlak verdeeld.':''}${room.roof&&room.roof.type!=='plat'?' Controleer daarna het dak van beide ruimtes.':''}</p>
     <label class="f" for="ask-name">Naam van het gemarkeerde deel<input class="in" id="ask-name" value="${esc('Ruimte '+(P.rooms.length+1))}"></label>
+    <label class="f" for="ask-kind">De nieuwe scheiding is<select class="in" id="ask-kind"><option value="wand">een binnenwand</option><option value="open">een open verbinding (geen wand, bijvoorbeeld hal en trapvide)</option></select></label>
     <div class="row"><button class="btn primary" id="ask-ok">Splitsen</button><button class="btn" id="ask-no">Annuleren</button></div>`;
   box.hidden=false;$('ask-ok').onclick=doSplit;$('ask-no').onclick=closeAsk;
   box.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();doSplit();}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeAsk();}};
   const inp=$('ask-name');inp.focus();inp.select();renderCanvas();}
 function closeAsk(){pendSplit=null;const box=$('ask');box.hidden=true;box.innerHTML='';renderCanvas();}
-function doSplit(){const ps=pendSplit;const name=(($('ask-name')||{}).value||'').trim();closeAsk();if(!ps)return;
-  const room=getRoom(ps.r);const parts=room&&splitRoomParts(room,ps.line);if(!parts)return;
+function doSplit(){const ps=pendSplit;const name=(($('ask-name')||{}).value||'').trim(),open=(($('ask-kind')||{}).value)==='open';closeAsk();if(!ps)return;
+  const room=getRoom(ps.r);const parts=room&&splitRoomParts(room,ps.line,open);if(!parts)return;
   pushUndo();parts.small.name=name||('Ruimte '+(P.rooms.length+1));P.rooms.splice(P.rooms.indexOf(room),1,parts.big,parts.small);
   sel={t:'room',r:parts.small.id};tab='sel';markDirty();renderAll();toast(`${room.name} gesplitst in ${parts.big.name} en ${parts.small.name}.`,true);}
 
@@ -1146,8 +1166,11 @@ function doSplit(){const ps=pendSplit;const name=(($('ask-name')||{}).value||'')
 function capture(e){try{svg.setPointerCapture(e.pointerId);}catch(_){}}
 function beginPan(e){pan={x:e.clientX,y:e.clientY,tx:view.tx,ty:view.ty};stage.classList.add('panning');capture(e);}
 svg.addEventListener('contextmenu',e=>e.preventDefault());
+svg.addEventListener('mousedown',e=>{if(e.button===1)e.preventDefault();}); // no autoscroll on the middle button
 svg.addEventListener('pointerdown',e=>{
-  if(view3d){const t3=e.target.closest?e.target.closest('[data-k3]'):null;drag3={x:e.clientX,y:e.clientY,th:v3.th,el:v3.el,tx:v3.tx,ty:v3.ty,pan:e.button!==0||e.shiftKey||spaceDown,moved:false,
+  if(view3d){e.preventDefault();const t3=e.target.closest?e.target.closest('[data-k3]'):null;const rb=svg.getBoundingClientRect(),X=e.clientX-rb.left,Y=e.clientY-rb.top;
+    const rot=e.button===1||(e.button===0&&e.shiftKey),zc=floorElev()[curFloor]||0;
+    drag3={x:e.clientX,y:e.clientY,th:v3.th,el:v3.el,tx:v3.tx,ty:v3.ty,pan:!rot,X,Y,zc,pivot:rot?unproject3(X,Y,zc):null,moved:false,
     k:t3&&t3.dataset.k3,r:t3&&t3.dataset.r,w:t3&&+t3.dataset.w,s:t3&&+t3.dataset.s};if(drag3.pan)stage.classList.add('panning');capture(e);return;}
   const wp=toWorld(e);const tgt=e.target.closest?e.target.closest('[data-k]'):null;const k=tgt&&tgt.dataset.k;
   if(e.button===1||e.button===2||spaceDown){beginPan(e);return;}
@@ -1157,6 +1180,8 @@ svg.addEventListener('pointerdown',e=>{
     if(k==='vide'){const r=getRoom(tgt.dataset.r);if(r){setFloor(r.floorId,true);sel={t:'room',r:r.id};tab='sel';renderAll();}return;}
     if(k==='em'){const r=getRoom(tgt.dataset.r);const em=(r.emitters||[]).find(x=>x.id===tgt.dataset.e);if(!em)return;sel={t:'em',r:r.id,e:em.id};tab='sel';
       drag={type:'em',r:r.id,e:em.id,start:wp,orig:clone(em),moved:false};capture(e);renderAll();return;}
+    if(k==='op'){const r=getRoom(tgt.dataset.r),i=+tgt.dataset.w,j=+tgt.dataset.s;const it=opLayout(r,i,j).find(x=>x.o.id===tgt.dataset.o);if(!it)return;const ed=edge(r,i);
+      sel={t:'seg',r:r.id,w:i,s:j};tab='sel';drag={type:'op',r:r.id,w:i,s:j,o:it.o.id,grab:(wp.x-ed.a.x)*ed.ux+(wp.y-ed.a.y)*ed.uy-it.t0,moved:false};capture(e);renderAll();return;}
     if(k==='cut'){drag={type:'cut',r:tgt.dataset.r,w:+tgt.dataset.w,c:+tgt.dataset.c,moved:false};capture(e);return;}
     if(k==='seg'){const r=tgt.dataset.r,w=+tgt.dataset.w,now=Date.now();
       if(lastSegDown&&lastSegDown.r===r&&lastSegDown.w===w&&now-lastSegDown.t<400&&Math.hypot(e.clientX-lastSegDown.x,e.clientY-lastSegDown.y)<8){
@@ -1177,7 +1202,10 @@ svg.addEventListener('pointerdown',e=>{
 });
 svg.addEventListener('pointermove',e=>{
   if(view3d){if(!drag3)return;const dx=e.clientX-drag3.x,dy=e.clientY-drag3.y;if(!drag3.moved&&Math.hypot(dx,dy)<4)return;drag3.moved=true;
-    if(drag3.pan){v3.tx=drag3.tx+dx;v3.ty=drag3.ty+dy;}else{v3.th=drag3.th+dx*0.008;v3.el=Math.max(0.12,Math.min(1.5,drag3.el+dy*0.006));}renderCanvas();return;}
+    if(drag3.pan){v3.tx=drag3.tx+dx;v3.ty=drag3.ty+dy;}
+    else{v3.th=drag3.th+dx*0.008;v3.el=Math.max(0.12,Math.min(1.5,drag3.el+dy*0.006));v3.tx=drag3.tx;v3.ty=drag3.ty;
+      const q=pr3(drag3.pivot,drag3.zc);v3.tx+=drag3.X-q.X;v3.ty+=drag3.Y-q.Y;} // keep the clicked point in place
+    renderCanvas();return;}
   const wp=toWorld(e);cursorW=wp;updateCoords();
   if(pan){view.tx=pan.tx+(e.clientX-pan.x);view.ty=pan.ty+(e.clientY-pan.y);renderCanvas();return;}
   if(drag){
@@ -1190,6 +1218,11 @@ svg.addEventListener('pointermove',e=>{
       if(!drag.moved&&(dx||dy)){pushUndo();drag.moved=true;}if(!drag.moved)return;r.pts=drag.orig.map(p=>({x:r3(p.x+dx),y:r3(p.y+dy)}));r.emitters=drag.oem.map(em=>shiftEm(em,dx,dy));renderCanvas();return;}
     if(drag.type==='em'){const r=getRoom(drag.r);const st=e.altKey?0.001:Math.max(0.001,P.settings.snap);const dx=r3(Math.round((wp.x-drag.start.x)/st)*st),dy=r3(Math.round((wp.y-drag.start.y)/st)*st);
       if(!drag.moved&&(dx||dy)){pushUndo();drag.moved=true;}if(!drag.moved)return;const i=r.emitters.findIndex(x=>x.id===drag.e);if(i>=0)r.emitters[i]=shiftEm(drag.orig,dx,dy);renderCanvas();return;}
+    if(drag.type==='op'){const r=getRoom(drag.r),ed=edge(r,drag.w),b=bounds(r,drag.w),o=r.walls[drag.w].segs[drag.s].openings.find(x=>x.id===drag.o);if(!o)return;
+      const st=e.altKey?0.001:Math.max(0.001,P.settings.snap),w=Math.min(o.w,b[drag.s+1]-b[drag.s]);
+      let t=r3(Math.round(((wp.x-ed.a.x)*ed.ux+(wp.y-ed.a.y)*ed.uy-drag.grab)/st)*st);t=r3(Math.max(b[drag.s],Math.min(b[drag.s+1]-w,t)));
+      if(!drag.moved){if(Number.isFinite(o.at)&&o.at===t)return;pushUndo();drag.moved=true;freezeOpenings(r,drag.w,drag.s);}
+      o.at=t;syncLinkedAt(o,r,drag.w);renderCanvas();return;}
     if(drag.type==='emline'){drag.p1=snapPoint(wp,{prev:drag.p0,alt:e.altKey});renderCanvas();return;}
     if(drag.type==='emrect'){drag.p1=snapPoint(wp,{alt:e.altKey});renderCanvas();return;}
     if(drag.type==='cut'){const r=getRoom(drag.r);const w=r.walls[drag.w];let t=splitT(r,drag.w,wp,e.altKey);const lo=(drag.c>0?w.cuts[drag.c-1]:0)+0.02,hi=(drag.c<w.cuts.length-1?w.cuts[drag.c+1]:edge(r,drag.w).L)-0.02;
@@ -1209,7 +1242,7 @@ function endPointer(){
     if(d.type==='emline'){if(dist(d.p0,d.p1)>=0.2)addEmitter('line',{a:{x:d.p0.x,y:d.p0.y},b:{x:d.p1.x,y:d.p1.y}});else renderCanvas();return;}
     if(d.type==='emrect'){const w=Math.abs(d.p1.x-d.p0.x),hh=Math.abs(d.p1.y-d.p0.y);if(w>=0.3&&hh>=0.3){const x0=Math.min(d.p0.x,d.p1.x),y0=Math.min(d.p0.y,d.p1.y);addEmitter('vv',{pts:rectPts(x0,y0,x0+w,y0+hh)});}else renderCanvas();return;}
     if(d.type==='rect'){const w=Math.abs(d.p1.x-d.p0.x),h=Math.abs(d.p1.y-d.p0.y);if(w>=0.1&&h>=0.1){const x0=Math.min(d.p0.x,d.p1.x),y0=Math.min(d.p0.y,d.p1.y);makeRoom(rectPts(x0,y0,x0+w,y0+h));}else renderCanvas();return;}
-    if(d.moved){const r=getRoom(d.r);if(r)normalizeWalls(r);markDirty();renderAll();}}
+    if(d.moved){const r=getRoom(d.r);if(r)normalizeWalls(r);markDirty();renderAll();}else if(d.type==='op')renderCanvas();}
 }
 svg.addEventListener('pointerup',endPointer);svg.addEventListener('pointercancel',endPointer);
 svg.addEventListener('pointerleave',()=>{if(!drag&&!pan){hover=null;hoverSplit=null;cursorW=null;updateCoords();if(tool!=='select')renderCanvas();}});
@@ -1249,11 +1282,12 @@ function conOptions(selected,prefer){const order=[prefer,...Object.keys(KINDS).f
   order.forEach(k=>{const cs=P.constructions.filter(c=>c.kind===k);if(!cs.length)return;h+=`<optgroup label="${KINDS[k]}">`+cs.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${esc(c.name)} · U ${nv(c.U,3)}</option>`).join('')+`</optgroup>`;});
   return h;}
 function adjOptions(selected,withAuto){let h='';if(withAuto)h+=`<option value="auto" ${selected==='auto'?'selected':''}>Automatisch (uit tekening)</option>`;
-  Object.entries(ADJ).forEach(([k,v])=>h+=`<option value="${k}" ${selected===k?'selected':''}>${v}</option>`);return h;}
+  Object.entries(ADJ).forEach(([k,v])=>h+=`<option value="${k}" ${selected===k?'selected':''}>${v}</option>`);
+  if(withAuto)h+=`<option value="open" ${selected==='open'?'selected':''}>Open verbinding (geen wand)</option>`;return h;}
 function numField(id,f,label,unit,val,d){return `<label class="f" for="${id}">${label} <span class="u">${unit}</span><input class="in num" id="${id}" data-f="${f}" inputmode="decimal" value="${nv(val,d==null?3:d)}"></label>`;}
 function wallBar(room,i,curS){const b=bounds(room,i);const L=b[b.length-1]||1;const w=room.walls[i];
   return `<div class="wallbar">`+w.segs.map((sg,j)=>{const len=b[j+1]-b[j];const c=conById(sg.cid);const pct=Math.max(0,len/L*100);
-    return `<button class="segbtn ${c?'':'none'} ${curS===j?'cur':''}" style="flex:${pct} 0 0;${c?'background:'+esc(c.color):''}" data-act="selseg" data-r="${room.id}" data-w="${i}" data-s="${j}" title="${esc((c?c.name:'Geen constructie')+' · '+fmt(len)+' m')}">${w.segs.length>1?(LET[j]||j)+' ':''}${fmt(len)}</button>`;}).join('')+`</div>`;}
+    const op=sg.adj==='open';return `<button class="segbtn ${c||op?'':'none'} ${curS===j?'cur':''}" style="flex:${pct} 0 0;${op?'background:none;color:var(--muted);outline:1.5px dashed var(--muted);outline-offset:-3px':c?'background:'+esc(c.color):''}" data-act="selseg" data-r="${room.id}" data-w="${i}" data-s="${j}" title="${esc((c?c.name:'Geen constructie')+' · '+fmt(len)+' m')}">${w.segs.length>1?(LET[j]||j)+' ':''}${fmt(len)}</button>`;}).join('')+`</div>`;}
 function calcTable(lines,extra){
   let h=`<div class="tablewrap"><table class="calc"><thead><tr><th>Onderdeel</th><th>A m²</th><th>U</th><th>Δθ K</th><th>Φ W</th></tr></thead><tbody>`;
   lines.forEach(l=>{h+=`<tr class="${l.miss&&l.A>0.0001?'miss':''}"><td>${esc(l.label)}<small>${esc(l.sub||'')}</small></td><td>${fmt(l.A)}</td><td>${Number.isFinite(l.Ueff)?nv(l.Ueff,3):'?'}</td><td>${nv(l.dT,1)}</td><td>${fmtW(l.phi)}</td></tr>`;});
@@ -1322,10 +1356,11 @@ function viewRoom(room){
   <div class="sec"><h3>Wanden</h3><p class="note">Klik een wand om de constructie, ramen en deuren en wat erachter ligt in te stellen.</p>`;
   room.pts.forEach((_,i)=>{const w=room.walls[i];const b=bounds(room,i);
     w.segs.forEach((sg,j)=>{const len=b[j+1]-b[j];if(len<1e-4)return;const c=conById(sg.cid);
-      let to;if(sg.adj==='auto'){const ps=sharedParts(room,i,b[j],b[j+1]);const used=ps.reduce((a,p)=>a+p.t1-p.t0,0);
+      let to;if(sg.adj==='open'){const ps=sharedParts(room,i,b[j],b[j+1]);to='open naar '+(ps.map(p=>esc(p.o.name)).filter((v,k,a)=>a.indexOf(v)===k).join(', ')||'?');}
+      else if(sg.adj==='auto'){const ps=sharedParts(room,i,b[j],b[j+1]);const used=ps.reduce((a,p)=>a+p.t1-p.t0,0);
         to=ps.map(p=>esc(p.o.name)).filter((v,k,a)=>a.indexOf(v)===k);if(len-used>0.01)to.push('buiten');to=to.join(', ');}else to=esc(ADJ[sg.adj].toLowerCase());
       const nop=sg.openings.length;
-      h+=`<button class="segrow" data-act="selseg" data-r="${room.id}" data-w="${i}" data-s="${j}"><span class="sw" style="background:${c?esc(c.color):'var(--warn)'}"></span><span class="sr-t"><b>Wand ${i+1}${w.segs.length>1?(LET[j]||j):''}</b> · ${fmt(len)} m${nop?' · '+nop+(nop>1?' openingen':' opening'):''}<small>${c?esc(c.name):'⚠ geen constructie'} → ${to}</small></span><span aria-hidden="true">›</span></button>`;});});
+      h+=`<button class="segrow" data-act="selseg" data-r="${room.id}" data-w="${i}" data-s="${j}"><span class="sw" style="${sg.adj==='open'?'background:none;border:1.5px dashed var(--muted)':'background:'+(c?esc(c.color):'var(--warn)')}"></span><span class="sr-t"><b>${sg.adj==='open'?'Open':'Wand'} ${i+1}${w.segs.length>1?(LET[j]||j):''}</b> · ${fmt(len)} m${nop&&sg.adj!=='open'?' · '+nop+(nop>1?' openingen':' opening'):''}<small>${sg.adj==='open'?'geen wand, geen warmteverlies':(c?esc(c.name):'⚠ geen constructie')} → ${to}</small></span><span aria-hidden="true">›</span></button>`;});});
   const surfCard=(k,lab,kind,extra)=>{const s=room[k];
     return `<div class="card"><b>${lab}</b>${extra||''}<label class="f" for="f-${k}-cid">Constructie<select class="in" id="f-${k}-cid" data-f="${k}.cid">${conOptions(s.cid,kind)}</select></label>
     <div class="row"><label class="f grow" for="f-${k}-adj">Grenst aan<select class="in" id="f-${k}-adj" data-f="${k}.adj">${adjOptions(s.adj,false)}</select></label>${s.adj==='temp'?`<label class="f" style="width:110px" for="f-${k}-t">Temperatuur <span class="u">°C</span><input class="in num" id="f-${k}-t" data-f="${k}.t" inputmode="decimal" value="${nv(s.t,1)}"></label>`:''}</div></div>`;};
@@ -1339,9 +1374,14 @@ function viewSeg(room,i,j){
   let h=`<div class="sec"><button class="crumb" data-act="selroom" data-r="${room.id}">← ${esc(room.name)}</button><h2>${nm}</h2>
     <p class="note">Wand van hoek ${i+1} naar hoek ${(i+1)%room.pts.length+1}, totaal ${fmt(e.L)} m. Dit deel: ${fmt(s0)} – ${fmt(s1)} m (${fmt(s1-s0)} m × ${fmt(room.height)} m hoog).</p>
     ${wallBar(room,i,j)}<div class="scale"><span>0</span><span>${fmt(e.L)} m</span></div></div>
-  <div class="sec"><h3>Constructie</h3><select class="in" id="f-seg-cid" data-f="seg.cid">${conOptions(sg.cid,'wand')}</select>
+  <div class="sec" ${sg.adj==='open'?'style="display:none"':''}><h3>Constructie</h3><select class="in" id="f-seg-cid" data-f="seg.cid">${conOptions(sg.cid,'wand')}</select>
     ${con?`<p class="note">U = ${nv(con.U,3)} W/m²K${DU_TYPES.has(sg.adj==='auto'?'buiten':sg.adj)?` + ΔU koudebrug ${nv(P.settings.dU,3)}`:''}. Wijzig de waarde onder <button class="crumb" data-act="gocon" data-c="${con.id}">Constructies</button>.</p>`:`<p class="note">Nog geen constructie. Maak er een aan onder <button class="crumb" data-act="gocon">Constructies</button> met de U-waarde uit ubakus.de.</p>`}</div>
   <div class="sec"><h3>Grenst aan</h3><div class="row"><select class="in grow" id="f-seg-adj" data-f="seg.adj">${adjOptions(sg.adj,true)}</select>${sg.adj==='temp'?`<label class="f" style="width:110px" for="f-seg-t">Temp. <span class="u">°C</span><input class="in num" id="f-seg-t" data-f="seg.adjT" inputmode="decimal" value="${nv(sg.adjT,1)}"></label>`:''}</div>`;
+  if(sg.adj==='open'){const ps=partnersOf(room,i,j);const dT=ps.filter(p=>Math.abs(p.o.temp-room.temp)>0.05);
+    h+=`<p class="note">Hier zit geen wand: deze ruimte loopt open over in ${ps.length?ps.map(p=>'<b>'+esc(p.o.name)+'</b>').join(' en '):'een andere ruimte'}, bijvoorbeeld een hal die overgaat in een trapvide. Er gaat geen warmte door dit stuk en het heeft geen constructie nodig. De andere ruimte heeft hier ook een open verbinding.</p>
+      ${ps.length?'':`<p class="note" style="color:var(--warn)">⚠ Er ligt hier geen andere ruimte tegenaan. Een open verbinding naar buiten telt niet mee in het warmteverlies.</p>`}
+      ${dT.length?`<p class="note" style="color:var(--warn)">⚠ ${esc(room.name)} (${nv(room.temp,1)} °C) en ${dT.map(p=>esc(p.o.name)+' ('+nv(p.o.temp,1)+' °C)').join(', ')} hebben een andere temperatuur. Bij een open verbinding is dat in de praktijk ongeveer gelijk.</p>`:''}
+      <p class="note">Lucht stroomt hier vrij. Geef onder <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie</button> de overstroom op als de ene ruimte lucht toevoert en de andere afzuigt.</p>`;}
   if(sg.adj==='auto'){const nb=neighbourIntervals(room,i);let rows=[],used=0;nb.forEach(n=>{let l=0;n.ivs.forEach(iv=>l+=Math.max(0,Math.min(s1,iv[1])-Math.max(s0,iv[0])));if(l>0.005){rows.push(`${fmt(l)} m → ${esc(n.room.name)} (${nv(n.room.temp,1)} °C)`);used+=l;}});
     const rest=s1-s0-used;if(rest>0.005)rows.push(`${fmt(rest)} m → buiten (${nv(P.settings.te,1)} °C)`);
     h+=`<div class="det">${rows.join('<br>')}</div><p class="note">Herkend uit de tekening: wanden van andere ruimtes die evenwijdig liggen binnen ${fmt(P.settings.maxWall)} m wanddikte.</p>`;
@@ -1355,10 +1395,11 @@ function viewSeg(room,i,j){
   if(w.cuts.length){w.cuts.forEach((c,ci)=>{h+=`<div class="row"><label class="f grow" for="f-cut-${ci}">Grens ${LET[ci]||ci}|${LET[ci+1]||ci+1} op <span class="u">m vanaf hoek ${i+1}</span><input class="in num" id="f-cut-${ci}" data-f="cut.${ci}" inputmode="decimal" value="${nv(c,3)}"></label><button class="btn small" data-act="delcut" data-c="${ci}" style="align-self:flex-end">Weghalen</button></div>`;});}
   else h+=`<p class="note">Deze wand bestaat uit één deel.</p>`;
   h+=`<div class="row"><label class="f grow" for="f-newcut">Nieuwe splitsing op <span class="u">m vanaf hoek ${i+1}</span><input class="in num" id="f-newcut" inputmode="decimal" placeholder="${nv(r3((s0+s1)/2),2)}"></label><button class="btn small" data-act="addcut" style="align-self:flex-end">Splitsen</button><button class="btn small" data-act="splitmid" style="align-self:flex-end">In het midden</button></div></div>`;
-  h+=`<div class="sec"><h3>Ramen en deuren in dit deel</h3>`;
+  h+=`<div class="sec" ${sg.adj==='open'?'style="display:none"':''}><h3>Ramen en deuren in dit deel</h3>`;
   sg.openings.forEach(o=>{h+=`<div class="card"><div class="opgrid"><label class="f" for="f-op-${o.id}-n">Naam<input class="in" id="f-op-${o.id}-n" data-f="op.${o.id}.name" value="${esc(o.name)}"></label>${numField('f-op-'+o.id+'-w','op.'+o.id+'.w','Breedte','m',o.w,2)}${numField('f-op-'+o.id+'-h','op.'+o.id+'.h','Hoogte','m',o.h,2)}<button class="btn small" data-act="delop" data-o="${o.id}" aria-label="Verwijder ${esc(o.name)}">✕</button></div>
+    <div class="row">${numField('f-op-'+o.id+'-at','op.'+o.id+'.at','Begint op','m vanaf hoek '+(i+1),(opLayout(room,i,j).find(x=>x.o===o)||{t0:NaN}).t0,2)}</div>
     <select class="in" id="f-op-${o.id}-c" data-f="op.${o.id}.cid" aria-label="Constructie opening">${conOptions(o.cid,'raam')}</select></div>`;});
-  h+=`<div class="row"><button class="btn small" data-act="addop">+ Raam of deur</button><span class="note">Het oppervlak gaat van de wand af.</span></div></div>`;
+  h+=`<div class="row"><button class="btn small" data-act="addop">+ Raam of deur</button><span class="note">Het oppervlak gaat van de wand af. Sleep een raam of deur in de tekening om het te verplaatsen.</span></div></div>`;
   const c=calcRoom(room);const mine=c.lines.filter(l=>l.w===i&&l.s===j);
   h+=`<div class="sec" id="calc-out"><h3>Verlies van dit deel</h3>${calcTable(mine)}<p class="note">Subtotaal ${fmtW(mine.reduce((a,l)=>a+l.phi,0))} W van ${fmtW(c.total)} W voor ${esc(room.name)}.</p></div>`;
   return h;}
@@ -1725,9 +1766,11 @@ function viewSet(){const S=P.settings;const list=Object.values(all).sort((a,b)=>
     <div class="row">${confirmDel?`<span class="note">“${esc(P.name)}” definitief verwijderen?</span><button class="btn small danger" data-act="delproj-yes">Ja, verwijderen</button><button class="btn small" data-act="delproj-no">Annuleren</button>`:`<button class="btn small danger" data-act="delproj" ${list.length<2?'disabled title="Er moet minstens één project blijven"':''}>Project verwijderen</button>`}</div>
     <p class="note" id="store-note">${storeNote()}</p></div>`;}
 let conFocus=null;
+let panelKey='';
 function renderPanel(){
   document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));
-  const st=pbody.scrollTop;let h='';
+  // keep the scroll position while editing the same thing; start at the top when something else is shown
+  const key=tab+'|'+(tab==='sel'&&sel?[sel.t,sel.r,sel.w,sel.s,sel.e,sel.i].join(':'):'');const st=key===panelKey?pbody.scrollTop:0;panelKey=key;let h='';
   if(tab==='sel'){validateSel();const room=sel&&getRoom(sel.r);
     if(!room)h=viewNone();else if(sel.t==='seg')h=viewSeg(room,sel.w,sel.s);else if(sel.t==='em'&&selEm())h=viewEm(room,selEm());else h=viewRoom(room);}
   else if(tab==='con')h=viewCon(conFocus);else if(tab==='vent')h=viewVent();else if(tab==='res')h=viewRes();else h=viewSet();
@@ -1759,12 +1802,16 @@ function applyField(el,final){
       if(k==='kind'){room.kind=['trap','vide'].includes(v)?v:'normaal';if(room.kind!=='normaal'&&!spans(room)){const nf=P.floors[floorIdx(room.floorId)+1];if(nf){room.spanTo=nf.id;room.height=r3(room.height*2);}}changed=true;break;}
       if(k==='spanTo'){const was=spans(room);room.spanTo=v||null;if(!spans(room))room.spanTo=null;else if(!was){const l=levelsOf(room);room.height=r3(room.height*(l[1]-l[0]+1));}changed=true;break;}
       if(k==='name'){room.name=v;changed=true;}else{const n=num(v);if(n==null)return;if(k==='height'&&n<=0)return;if((k==='sup'||k==='ext')&&n<0)return;room[k]=n;changed=true;}break;}
-    case'seg':{const sg=selSeg();if(!sg)return;if(parts[1]==='adjT'){const n=num(v);if(n==null)return;sg.adjT=n;}else sg[parts[1]]=v;
+    case'seg':{const sg=selSeg();if(!sg)return;const wasOpen=sg.adj==='open';if(parts[1]==='adjT'){const n=num(v);if(n==null)return;sg.adjT=n;}else sg[parts[1]]=v;
+      if(parts[1]==='adj'&&(v==='open'||wasOpen)){ // an open connection is the same on both sides
+        sg.adj='open';const ps=isolatePartners(room,sel.w,sel.s);sg.adj=v;
+        ps.forEach(p=>{const x=p.o.walls[p.k].segs[p.jj];if(v==='open')x.adj='open';else if(x.adj==='open')x.adj='auto';});}
       if(parts[1]==='cid'&&final)isolatePartners(room,sel.w,sel.s).forEach(p=>p.o.walls[p.k].segs[p.jj].cid=v);changed=true;break;}
     case'cut':{if(!final)return;const r=room;const w=r.walls[sel.w];const ci=+parts[1];let n=num(v);if(n==null)return;const L=edge(r,sel.w).L;
       const lo=(ci>0?w.cuts[ci-1]:0)+0.02,hi=(ci<w.cuts.length-1?w.cuts[ci+1]:L)-0.02;n=Math.max(lo,Math.min(hi,n));w.cuts[ci]=r3(n);changed=true;break;}
     case'op':{const sg=selSeg();const o=sg&&sg.openings.find(o=>o.id===parts[1]);if(!o)return;const k=parts[2];if(k==='name'||k==='cid')o[k]=v;else{const n=num(v);if(n==null||n<0)return;o[k]=n;}
-      linkedOpenings(o.lk,x=>{x[k]=o[k];});changed=true;break;}
+      if(k==='at'){if(!final)return;const b=bounds(room,sel.w);freezeOpenings(room,sel.w,sel.s);o.at=r3(Math.max(b[sel.s],Math.min(b[sel.s+1]-Math.min(o.w,b[sel.s+1]-b[sel.s]),o.at)));syncLinkedAt(o,room,sel.w);changed=true;break;}
+      linkedOpenings(o.lk,x=>{x[k]=o[k];});if(k==='w')syncLinkedAt(o,room,sel.w);changed=true;break;}
     case'roof':{if(!room)return;const r=room.roof,k=parts[1];
       if(k==='pitch'||k==='knee'){const n=num(v);if(n==null||n<0)return;if(k==='pitch'&&(n<1||n>80))return;r[k]=n;changed=true;break;}
       if(k==='edge'){r.edge=Math.max(0,Math.min(room.pts.length-1,parseInt(v,10)||0));changed=true;break;}
@@ -1915,7 +1962,7 @@ function toHeatlossjs(){
     (r.emitters||[]).forEach(em=>{if(em.kind==='rad'||em.kind==='conv')rooms[nm].radiators.push({name:em.name+(em.boost?' (met boosters)':''),heat50k:Math.round(em.p*(em.boost?1+(em.boostPct||0)/100:1)),model:'pow'});
       else if(em.kind==='vv')rooms[nm].ufh.push({name:em.name,area:r3(emArea(em)),flooring:(VV_COVER[em.cover]||VV_COVER.tegels)[1]});});
     r.pts.forEach((_,i)=>{const w=r.walls[i],b=bounds(r,i),nb=neighbourIntervals(r,i);
-      w.segs.forEach((sg,j)=>{const s0=b[j],s1=b[j+1],len=s1-s0;if(len<=1e-4)return;
+      w.segs.forEach((sg,j)=>{const s0=b[j],s1=b[j+1],len=s1-s0;if(len<=1e-4||sg.adj==='open')return;
         let parts;
         if(sg.adj==='auto')parts=wallParts(r,i,s0,s1,nb,R).map(p=>p.room?{len:p.len,A:p.A,type:'ruimte',bnd:names[p.room.id]}:{len:p.len,A:p.A,type:'buiten',bnd:'external'});
         else parts=[{len,A:wallArea(r,edge(r,i),s0,s1,R),type:sg.adj,bnd:bnd(sg.adj,sg.adjT)}];
