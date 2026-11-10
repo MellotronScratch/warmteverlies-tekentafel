@@ -8,7 +8,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 
 ## Wat het doet
 
-- **Tekenen**: ruimtes als rechthoek of veelhoek, meerdere verdiepingen met de verdieping eronder als ondergrond, trappenhuizen en vides die doorlopen.
+- **Tekenen**: ruimtes als rechthoek of veelhoek, binnenwanden trekken die een ruimte in tweeën delen, meerdere verdiepingen met de verdieping eronder als ondergrond, trappenhuizen en vides die doorlopen.
 - **Wanddelen**: splits een wand in delen met elk een eigen constructie. De app herkent aan welke ruimte een wand grenst.
 - **Constructies**: opbouw in lagen (R = d / λ) met luchtspouwen, geventileerde spouwen en stijlen of regels volgens NEN-EN-ISO 6946, of direct een U-waarde.
 - **Schuine daken**: zadeldak en lessenaarsdak met knieschot en hanenbalk, inclusief juiste wand- en dakoppervlakken en inhoud.
@@ -31,6 +31,23 @@ Je tekent geen losse muren, maar **ruimtes**. Elke zijde van een ruimte is een w
 2. Punten klikken vast op het raster (standaard 5 cm, in te stellen onder **Project → Tekenen**) en op hoeken van andere ruimtes. Houd Alt ingedrukt om niet vast te klikken.
 3. Met **Selecteer** (`V`) sleep je hoekpunten of een hele ruimte. Dubbelklik op een wand om er een hoekpunt bij te zetten.
 4. Klik een ruimte aan en vul in het paneel de naam, ontwerptemperatuur en hoogte in.
+
+### Eerst de omtrek, dan de binnenwanden
+
+Je kunt ook eerst de hele verdieping als één vlak tekenen en dat daarna opdelen:
+
+1. Teken de buitenomtrek met **Rechthoek** of **Veelhoek** en stel de buitenwanden, ramen, vloer en plafond in.
+2. Kies **Wand** (`W`). Klik op de rand van de ruimte waar de binnenwand begint. Zet eventueel knikpunten binnen de ruimte voor een wand met een hoek, en klik op de rand waar hij eindigt.
+3. Er verschijnt een venster *Ruimte splitsen?*. Het deel dat een nieuwe ruimte wordt, is gemarkeerd. Geef het een naam en kies **Splitsen** (of Enter). Met Esc of **Annuleren** gebeurt er niets.
+
+Beide delen nemen over wat al bij de oorspronkelijke ruimte was ingesteld:
+
+- De **buitenwanden** houden per stuk hun constructie, wat erachter ligt en hun splitsingen. Ramen en deuren gaan mee met het langste deel van het wanddeel waarin ze zaten.
+- Temperatuur, hoogte, vloer, plafond en dak blijven gelijk.
+- Toevoer en afzuiging worden naar oppervlak verdeeld. Radiatoren en vloerverwarming gaan mee met het deel waarin hun midden ligt.
+- De **nieuwe wand** krijgt de eerste wandconstructie die *aan beide kanten binnen* is, en staat op *Automatisch*. Hij grenst dus aan de andere ruimte.
+
+De twee delen delen dezelfde lijn, net als bij hart-op-hart tekenen. Ongedaan maken kan met Ctrl+Z.
 
 ### Binnenmaat of buitenmaat?
 

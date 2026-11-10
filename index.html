@@ -178,7 +178,11 @@ svg .dim{fill:var(--heat);font-size:11px;font-weight:600}
 svg .pilltxt{fill:var(--heat);font-size:10.5px;font-weight:600;stroke:none}
 .hit{stroke:transparent;fill:none;cursor:pointer}
 .stage.t-select .room{cursor:move}
-.stage.t-poly,.stage.t-rect,.stage.t-split{cursor:crosshair}
+.stage.t-poly,.stage.t-rect,.stage.t-split,.stage.t-wall{cursor:crosshair}
+.ask{position:absolute;left:50%;top:96px;transform:translateX(-50%);width:min(380px,calc(100% - 32px));background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:13px;z-index:5}
+.ask[hidden]{display:none}
+.stage:has(.ask:not([hidden])) .hint{display:none}
+.ask p{margin:0;color:var(--muted);line-height:1.45}
 .stage.panning{cursor:grabbing}
 .hprow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;text-align:left;width:100%}
 .hprow:hover{border-color:var(--c-hp)}
@@ -256,6 +260,7 @@ label.chk{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--m
       <button class="tool" data-tool="rect" aria-pressed="false" title="Rechthoekige ruimte (R)"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12"/></svg>Rechthoek<kbd>R</kbd></button>
       <button class="tool" data-tool="poly" aria-pressed="false" title="Vrije ruimte tekenen (P)"><svg viewBox="0 0 24 24"><path d="M4 18V6h9v5h7v7z"/><circle cx="4" cy="6" r="1.3"/><circle cx="13" cy="6" r="1.3"/><circle cx="20" cy="18" r="1.3"/></svg>Veelhoek<kbd>P</kbd></button>
       <button class="tool" data-tool="split" aria-pressed="false" title="Wand splitsen in delen (S)"><svg viewBox="0 0 24 24"><path d="M3 12h7M14 12h7"/><path d="M12 5v14" stroke-dasharray="2 2"/></svg>Splits<kbd>S</kbd></button>
+      <button class="tool" data-tool="wall" aria-pressed="false" title="Wand trekken en ruimte opdelen (W)"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14"/><path d="M11 5v6h9" stroke-width="2.6"/></svg>Wand<kbd>W</kbd></button>
       <span class="sep"></span>
       <button class="tool" data-tool="emit" aria-pressed="false" title="Radiator, convector of fancoil tekenen (A)"><svg viewBox="0 0 24 24"><rect x="3.5" y="8.5" width="17" height="7" rx="1.5"/><path d="M8 8.5v7M12 8.5v7M16 8.5v7"/></svg>Radiator<kbd>A</kbd></button>
       <button class="tool" data-tool="vv" aria-pressed="false" title="Vloerverwarming tekenen (H)"><svg viewBox="0 0 24 24"><path d="M5 5h14v3.5H5V12h14v3.5H5V19h14"/></svg>Vloerverw.<kbd>H</kbd></button>
@@ -266,6 +271,7 @@ label.chk{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--m
       <svg id="cv" role="img" aria-label="Plattegrond"></svg>
       <div class="floorbar" id="floorbar"></div>
       <div class="hint"><span id="hint"></span></div>
+      <div class="ask" id="ask" role="dialog" aria-label="Ruimte splitsen" hidden></div>
       <div class="legend" id="legend" hidden></div>
       <div class="hud"><div class="scalebar" id="scalebar"></div><div class="coords" id="coords">x –  y –</div></div>
       <div class="zoom"><button class="btn" id="z-out" aria-label="Uitzoomen">−</button><button class="btn" id="z-in" aria-label="Inzoomen">+</button></div>
@@ -581,7 +587,7 @@ function presentOn(r,fid){const i=floorIdx(fid),l=levelsOf(r);return i>=l[0]&&i<
 function levelsMeet(r,o){const a=levelsOf(r),b=levelsOf(o);return a[0]<=b[1]&&b[0]<=a[1];}
 const videRooms=()=>P.rooms.filter(r=>r.floorId!==curFloor&&presentOn(r,curFloor));
 const snapRooms=()=>curRooms().concat(underRooms(),videRooms());
-function setFloor(id,keepSel){if(!P.floors.some(f=>f.id===id))id=P.floors[0].id;if(curFloor===id)return;curFloor=id;if(!keepSel)sel=null;drawPts=[];drag=null;
+function setFloor(id,keepSel){if(!P.floors.some(f=>f.id===id))id=P.floors[0].id;if(curFloor===id)return;if(pendSplit)closeAsk();curFloor=id;if(!keepSel)sel=null;drawPts=[];drag=null;
   try{localStorage.setItem('wvt.floor.'+P.id,id);}catch(_){}renderAll();}
 function renderFloorbar(){const uf=underFloor();
   $('floorbar').innerHTML=`<div class="floors" role="group" aria-label="Verdieping">${P.floors.map(f=>`<button data-floor="${f.id}" aria-pressed="${f.id===curFloor}">${esc(f.name)} <span style="opacity:.7">${P.rooms.filter(r=>r.floorId===f.id).length}</span></button>`).join('')}<button data-floor="__add" title="Verdieping toevoegen" aria-label="Verdieping toevoegen">+</button></div>
@@ -872,6 +878,17 @@ function renderCanvas(){
   if(tool==='split'&&hoverSplit){const r=getRoom(hoverSplit.r);if(r){const e=edge(r,hoverSplit.w);const t=hoverSplit.t;const m=S({x:e.a.x+e.ux*t-e.nx*off,y:e.a.y+e.uy*t-e.ny*off});
     out+=`<line x1="${m.x-e.nx*12}" y1="${m.y-e.ny*12}" x2="${m.x+e.nx*12}" y2="${m.y+e.ny*12}" stroke="var(--accent)" stroke-width="2.5"/>`;
     out+=`<text x="${m.x-e.nx*26}" y="${m.y-e.ny*26+4}" text-anchor="middle" class="dim">${fmt(t)} | ${fmt(e.L-t)} m</text>`;}}
+  // wall tool: line being drawn, and the part that becomes a new room while the dialog is open
+  if(pendSplit){const r=getRoom(pendSplit.r),parts=r&&splitRoomParts(r,pendSplit.line);
+    if(parts){const pts=parts.small.pts.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
+      out+=`<polygon points="${pts}" fill="var(--accent)" fill-opacity=".18" stroke="none" pointer-events="none"/>`;}
+    const lp=pendSplit.line.map(S);out+=`<path d="M${lp.map(p=>p.x+' '+p.y).join('L')}" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linejoin="round" pointer-events="none"/>`;}
+  if(tool==='wall'&&!pendSplit){const pts=drawPts.map(S);
+    if(pts.length)out+=`<path d="M${pts.map(p=>p.x+' '+p.y).join('L')}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linejoin="round"/>`;
+    if(hover&&pts.length){const h=S(hover),l=pts[pts.length-1];out+=`<line x1="${l.x}" y1="${l.y}" x2="${h.x}" y2="${h.y}" stroke="var(--accent)" stroke-width="3" stroke-dasharray="6 4"/>`;
+      out+=`<text x="${(l.x+h.x)/2}" y="${(l.y+h.y)/2-8}" text-anchor="middle" class="dim">${fmt(dist(hover,drawPts[drawPts.length-1]))} m</text>`;}
+    pts.forEach(p=>out+=`<circle cx="${p.x}" cy="${p.y}" r="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>`);
+    if(hover){const h=S(hover),edgeHit=hover.kind==='vtx'||hover.kind==='edge';out+=`<circle cx="${h.x}" cy="${h.y}" r="${edgeHit?7:3.5}" fill="${edgeHit?'var(--accent-soft-2)':'none'}" stroke="var(--accent)" stroke-width="1.8"/>`;}}
   // drawing previews
   if(tool==='poly'&&drawPts.length){const pts=drawPts.map(S);let d='M'+pts.map(p=>p.x+' '+p.y).join('L');
     out+=`<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`;
@@ -898,10 +915,11 @@ const HINTS={
   select:'Klik een wanddeel of ruimte om te bewerken. Sleep hoekpunten of een hele ruimte. Dubbelklik op een wand om een hoekpunt toe te voegen. Sleep een lege plek om te schuiven, scroll om te zoomen.',
   rect:'Sleep een rechthoek voor een nieuwe ruimte. Punten klikken vast op het raster en op hoeken van andere ruimtes. Alt: niet vastklikken.',
   poly:'Klik de hoekpunten. Sluit door op het eerste punt te klikken, te dubbelklikken of Enter. Backspace haalt het laatste punt weg, Esc annuleert.',
+  wall:'Klik op de rand van een ruimte, zet eventueel knikpunten binnen de ruimte en eindig op een andere rand. Daarna kun je de ruimte langs die lijn in tweeën splitsen. Backspace haalt het laatste punt weg, Esc annuleert.',
   split:'Klik op een wand om hem op die plek in twee delen te splitsen. Elk deel krijgt een eigen constructie en isolatiewaarde.',
   emit:'Sleep een lijn binnen een ruimte voor een radiator, convector of fancoil. Daarna kies je de soort en vul je het vermogen en de aansluitleiding in.',
   vv:'Sleep een rechthoek binnen een ruimte voor vloerverwarming. Daarna kies je de hart-op-hartafstand, de vloerafwerking en de aansluitleiding.'};
-function setTool(t){tool=t;drawPts=[];drag=null;hover=null;hoverSplit=null;
+function setTool(t){if(pendSplit)closeAsk();tool=t;drawPts=[];drag=null;hover=null;hoverSplit=null;
   document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   stage.className='stage t-'+t;$('hint').textContent=HINTS[t];renderCanvas();}
 
@@ -944,6 +962,87 @@ function splitT(room,i,w,alt){const e=edge(room,i);let t=(w.x-e.a.x)*e.ux+(w.y-e
     if(best!=null)return r3(best);const st=Math.max(0.001,P.settings.snap);t=r3(Math.round(t/st)*st);}
   return t;}
 
+/* ---------- wall tool: draw a line through a room and split the room along it ---------- */
+let pendSplit=null; // {r, line} while the "split this room?" dialog is open
+function onSeg(p,a,b,tol){const dx=b.x-a.x,dy=b.y-a.y,L2=dx*dx+dy*dy;if(L2<1e-12)return null;let t=((p.x-a.x)*dx+(p.y-a.y)*dy)/L2;
+  if(t<-1e-9||t>1+1e-9)return null;t=Math.max(0,Math.min(1,t));const q={x:a.x+dx*t,y:a.y+dy*t};return dist(p,q)<=tol?{q,t}:null;}
+function onBoundary(room,p,tol){for(let i=0;i<room.pts.length;i++){const e=edge(room,i);if(onSeg(p,e.a,e.b,tol||2e-3))return i;}return -1;}
+function wallSnap(wp,o){ // corner points first, then the nearest wall of a room, otherwise the grid
+  o=o||{};const prev=o.prev,v=snapPoint(wp,{prev,alt:o.alt});if(v.kind==='vtx'||o.alt)return v;
+  const tol=10/view.s;let best=null,bd=tol;
+  curRooms().forEach(r=>r.pts.forEach((_,i)=>{const e=edge(r,i);const h=onSeg(wp,e.a,e.b,tol);if(h&&dist(wp,h.q)<bd){bd=dist(wp,h.q);best={e,q:h.q};}}));
+  if(!best)return v;
+  const e=best.e,st=Math.max(0.001,P.settings.snap),al=8/view.s;let x=best.q.x,y=best.q.y;
+  const clampTo=(val,a,b)=>Math.max(Math.min(a,b),Math.min(Math.max(a,b),val));
+  if(Math.abs(e.uy)<1e-9){y=e.a.y;x=clampTo(prev&&Math.abs(x-prev.x)<al?prev.x:r3(Math.round(x/st)*st),e.a.x,e.b.x);}
+  else if(Math.abs(e.ux)<1e-9){x=e.a.x;y=clampTo(prev&&Math.abs(y-prev.y)<al?prev.y:r3(Math.round(y/st)*st),e.a.y,e.b.y);}
+  else{x=r3(x);y=r3(y);}
+  return{x,y,kind:'edge'};}
+function crossesProper(p1,p2,q1,q2){const o=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);const E=1e-9;
+  const d1=o(q1,q2,p1),d2=o(q1,q2,p2),d3=o(p1,p2,q1),d4=o(p1,p2,q2);
+  return((d1>E&&d2<-E)||(d1<-E&&d2>E))&&((d3>E&&d4<-E)||(d3<-E&&d4>E));}
+function splitEdgeAt(room,i,t){ // put a corner point in wall i at distance t; both halves keep their wall parts. Returns the new point.
+  const e=edge(room,i),w=room.walls[i],p={x:r3(e.a.x+e.ux*t),y:r3(e.a.y+e.uy*t)};let head,tail;
+  const near=w.cuts.findIndex(c=>Math.abs(c-t)<=0.01);
+  if(near>=0){head={cuts:w.cuts.slice(0,near),segs:w.segs.slice(0,near+1).map(clone)};tail={cuts:w.cuts.slice(near+1).map(c=>r3(c-t)),segs:w.segs.slice(near+1).map(clone)};}
+  else{const j=w.cuts.filter(c=>c<t).length,lo=j>0?w.cuts[j-1]:0,hi=j<w.cuts.length?w.cuts[j]:e.L;
+    head={cuts:w.cuts.slice(0,j),segs:w.segs.slice(0,j+1).map(clone)};tail={cuts:w.cuts.slice(j).map(c=>r3(c-t)),segs:w.segs.slice(j).map(clone)};
+    if(t-lo>=hi-t)tail.segs[0].openings=[];else head.segs[j].openings=[];} // windows of the part that is cut stay with the longer half
+  head._o=tail._o=w._o;room.pts.splice(i+1,0,p);room.walls.splice(i,1,head,tail);return p;}
+function ensureVertex(room,p){const n=room.pts.length;const v=room.pts.find(q=>dist(q,p)<2e-3);if(v)return v;
+  for(let i=0;i<n;i++){const e=edge(room,i);const h=onSeg(p,e.a,e.b,2e-3);if(!h)continue;const t=h.t*e.L;
+    if(t<0.01)return room.pts[i];if(t>e.L-0.01)return room.pts[(i+1)%n];return splitEdgeAt(room,i,t);}
+  return null;}
+const innerWallCid=()=>(P.constructions.find(c=>c.kind==='wand'&&c.inner)||{}).id||defaultCid('wand');
+function splitRoomParts(room,line){ // two new rooms {big,small} from cutting room along line, or null if the line does not divide it cleanly
+  const R=clone(room);R.walls.forEach((w,i)=>w._o=i);
+  const va=ensureVertex(R,line[0]),vb=ensureVertex(R,line[line.length-1]);if(!va||!vb||va===vb)return null;
+  const n=R.pts.length,a=R.pts.indexOf(va),b=R.pts.indexOf(vb),inner=line.slice(1,-1).map(p=>({x:r3(p.x),y:r3(p.y)}));
+  const ic=innerWallCid(),nw=()=>({cuts:[],segs:[seg(ic,'auto')],_o:-1});
+  const ring=(from,to)=>{const pts=[],walls=[];for(let k=from;;k=(k+1)%n){pts.push(R.pts[k]);if(k===to)break;walls.push(R.walls[k]);}return{pts,walls};};
+  const A=ring(a,b),B=ring(b,a);
+  A.pts.push(...inner.slice().reverse());B.pts.push(...inner);for(let k=0;k<=inner.length;k++){A.walls.push(nw());B.walls.push(nw());}
+  const a0=Math.abs(polyArea(room.pts)),aA=Math.abs(polyArea(A.pts)),aB=Math.abs(polyArea(B.pts));
+  if(aA<0.05||aB<0.05||Math.abs(aA+aB-a0)>0.01+a0*1e-3)return null;
+  const mk=(g,area,id)=>{const r=clone({...R,pts:g.pts,walls:g.walls});r.id=id;const f=area/a0;
+    r.sup=Math.round(room.sup*f*10)/10;r.ext=Math.round(room.ext*f*10)/10;
+    r.roof.edge=Math.max(0,r.walls.findIndex(w=>w._o===(room.roof.edge|0)));r.walls.forEach(w=>delete w._o);normalizeWalls(r);return r;};
+  const bigA=aA>=aB,big=mk(bigA?A:B,bigA?aA:aB,room.id),small=mk(bigA?B:A,bigA?aB:aA,rid());
+  const inSmall=em=>pointInPoly(emMid(em),small.pts);
+  small.emitters=(room.emitters||[]).filter(inSmall).map(clone);big.emitters=(room.emitters||[]).filter(em=>!inSmall(em)).map(clone);
+  return{big,small};}
+function splitTarget(line){ // the room on this floor that line runs straight through, from wall to wall
+  const n=line.length,tol=2e-3;
+  return curRooms().find(r=>{if(onBoundary(r,line[0],tol)<0||onBoundary(r,line[n-1],tol)<0)return false;
+    for(let k=1;k<n-1;k++)if(onBoundary(r,line[k],tol)>=0||!pointInPoly(line[k],r.pts))return false;
+    for(let k=0;k<n-1;k++){const a=line[k],b=line[k+1],m={x:(a.x+b.x)/2,y:(a.y+b.y)/2};
+      if(onBoundary(r,m,tol)>=0||!pointInPoly(m,r.pts))return false;
+      for(let i=0;i<r.pts.length;i++){const e=edge(r,i);if(crossesProper(a,b,e.a,e.b))return false;}}
+    return !!splitRoomParts(r,line);})||null;}
+function wallClick(p){
+  const onAny=curRooms().some(r=>onBoundary(r,p)>=0);
+  if(!drawPts.length){if(!onAny){toast('Begin de wand op de rand van een ruimte.');return;}drawPts.push({x:p.x,y:p.y});renderCanvas();return;}
+  const last=drawPts[drawPts.length-1];if(dist(p,last)<1e-6)return;
+  const line=drawPts.concat([{x:p.x,y:p.y}]);
+  if(onAny){const r=splitTarget(line);if(r){drawPts=[];hover=null;askSplit(r,line);return;}
+    toast('Deze lijn deelt geen ruimte in tweeën. Trek hem binnen één ruimte van wand naar wand.');return;}
+  if(!curRooms().some(r=>pointInPoly(p,r.pts))){toast('Zet knikpunten binnen de ruimte.');return;}
+  drawPts.push({x:p.x,y:p.y});renderCanvas();}
+function askSplit(room,line){const parts=splitRoomParts(room,line);if(!parts)return;pendSplit={r:room.id,line};
+  const c=conById(innerWallCid()),aB=Math.abs(polyArea(parts.big.pts)),aS=Math.abs(polyArea(parts.small.pts));
+  const box=$('ask');box.innerHTML=`<b>Ruimte splitsen?</b>
+    <p>De lijn deelt <b>${esc(room.name)}</b> in ${fmt(aB,1)} m² en ${fmt(aS,1)} m². Beide delen houden de wanden, ramen, vloer, plafond, hoogte en temperatuur van ${esc(room.name)}. De nieuwe wand krijgt ${c?'de constructie <b>'+esc(c.name)+'</b>':'nog geen constructie'} en grenst aan de andere ruimte.${room.sup||room.ext?' Toevoer en afzuiging worden naar oppervlak verdeeld.':''}${room.roof&&room.roof.type!=='plat'?' Controleer daarna het dak van beide ruimtes.':''}</p>
+    <label class="f" for="ask-name">Naam van het gemarkeerde deel<input class="in" id="ask-name" value="${esc('Ruimte '+(P.rooms.length+1))}"></label>
+    <div class="row"><button class="btn primary" id="ask-ok">Splitsen</button><button class="btn" id="ask-no">Annuleren</button></div>`;
+  box.hidden=false;$('ask-ok').onclick=doSplit;$('ask-no').onclick=closeAsk;
+  box.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();doSplit();}else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeAsk();}};
+  const inp=$('ask-name');inp.focus();inp.select();renderCanvas();}
+function closeAsk(){pendSplit=null;const box=$('ask');box.hidden=true;box.innerHTML='';renderCanvas();}
+function doSplit(){const ps=pendSplit;const name=(($('ask-name')||{}).value||'').trim();closeAsk();if(!ps)return;
+  const room=getRoom(ps.r);const parts=room&&splitRoomParts(room,ps.line);if(!parts)return;
+  pushUndo();parts.small.name=name||('Ruimte '+(P.rooms.length+1));P.rooms.splice(P.rooms.indexOf(room),1,parts.big,parts.small);
+  sel={t:'room',r:parts.small.id};tab='sel';markDirty();renderAll();toast(`${room.name} gesplitst in ${parts.big.name} en ${parts.small.name}.`,true);}
+
 /* ---------- pointer interaction ---------- */
 function capture(e){try{svg.setPointerCapture(e.pointerId);}catch(_){}}
 function beginPan(e){pan={x:e.clientX,y:e.clientY,tx:view.tx,ty:view.ty};stage.classList.add('panning');capture(e);}
@@ -973,6 +1072,7 @@ svg.addEventListener('pointerdown',e=>{
   if(tool==='rect'){const p=snapPoint(wp,{alt:e.altKey});drag={type:'rect',p0:p,p1:p};capture(e);renderCanvas();return;}
   if(tool==='emit'||tool==='vv'){const p=snapPoint(wp,{alt:e.altKey});drag={type:tool==='emit'?'emline':'emrect',p0:p,p1:p};capture(e);renderCanvas();return;}
   if(tool==='split'){if(k==='seg'){const r=getRoom(tgt.dataset.r);const i=+tgt.dataset.w;addCut(r,i,splitT(r,i,wp,e.altKey));}return;}
+  if(tool==='wall'){if(!pendSplit)wallClick(wallSnap(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey}));return;}
 });
 svg.addEventListener('pointermove',e=>{
   const wp=toWorld(e);cursorW=wp;updateCoords();
@@ -993,6 +1093,7 @@ svg.addEventListener('pointermove',e=>{
       t=Math.max(lo,Math.min(hi,t));if(t===w.cuts[drag.c])return;if(!drag.moved){pushUndo();drag.moved=true;}w.cuts[drag.c]=r3(t);sel={t:'seg',r:r.id,w:drag.w,s:drag.c};renderCanvas();return;}
     if(drag.type==='rect'){drag.p1=snapPoint(wp,{alt:e.altKey});renderCanvas();return;}
   }
+  if(tool==='wall'){hover=pendSplit?null:wallSnap(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey});renderCanvas();return;}
   if(tool==='poly'||tool==='rect'||tool==='emit'||tool==='vv'){hover=snapPoint(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey});renderCanvas();return;}
   if(tool==='split'){const tgt=e.target.closest?e.target.closest('[data-k="seg"]'):null;
     if(tgt){const r=getRoom(tgt.dataset.r);const i=+tgt.dataset.w;hoverSplit={r:r.id,w:i,t:splitT(r,i,wp,e.altKey)};}else hoverSplit=null;renderCanvas();}
@@ -1025,10 +1126,10 @@ document.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(e.key==='PageUp'||e.key==='PageDown'){e.preventDefault();const i=floorIdx(curFloor)+(e.key==='PageUp'?1:-1);if(i>=0&&i<P.floors.length)setFloor(P.floors[i].id);return;}
   if(k==='o'){const b=$('btn-under');if(b&&!b.disabled)b.click();return;}
-  if(k==='v')setTool('select');else if(k==='r')setTool('rect');else if(k==='p')setTool('poly');else if(k==='s')setTool('split');else if(k==='a')setTool('emit');else if(k==='h')setTool('vv');else if(k==='f')fit();
-  else if(e.key==='Escape'){if(drawPts.length){drawPts=[];renderCanvas();}else if(tool!=='select')setTool('select');else{sel=null;renderAll();}}
+  if(k==='v')setTool('select');else if(k==='r')setTool('rect');else if(k==='p')setTool('poly');else if(k==='s')setTool('split');else if(k==='w')setTool('wall');else if(k==='a')setTool('emit');else if(k==='h')setTool('vv');else if(k==='f')fit();
+  else if(e.key==='Escape'){if(pendSplit)closeAsk();else if(drawPts.length){drawPts=[];renderCanvas();}else if(tool!=='select')setTool('select');else{sel=null;renderAll();}}
   else if(e.key==='Enter'&&tool==='poly'){finishPoly();}
-  else if(e.key==='Backspace'&&tool==='poly'&&drawPts.length){e.preventDefault();drawPts.pop();renderCanvas();}
+  else if(e.key==='Backspace'&&(tool==='poly'||tool==='wall')&&drawPts.length){e.preventDefault();drawPts.pop();renderCanvas();}
   else if((e.key==='Delete'||e.key==='Backspace')&&tool==='select'&&sel){e.preventDefault();deleteSelection();}
 });
 document.addEventListener('keyup',e=>{if(e.key===' ')spaceDown=false;});
@@ -1097,7 +1198,7 @@ function roomCalcHtml(room){const c=calcRoom(room);const S=P.settings;
     ['Infiltratie',S.infMode==='qv10'?`${fmt(c.qi,1)} m³/h · aandeel via ${fmt(c.env,1)} m² buitenschil`:`n = ${nv(S.nInf,2)} /h × ${fmt(c.V,1)} m³`,c.inf]])}`;}
 function viewNone(){
   const c=calcAll();const fl=P.floors[floorIdx(curFloor)]||P.floors[0];const per=c.per.filter(x=>x.room.floorId===curFloor);
-  return `<div class="sec"><h2>${esc(P.name)}</h2><p class="note">Klik in de tekening op een ruimte of een wanddeel. Een nieuwe ruimte teken je met <b>Rechthoek</b> (R) of <b>Veelhoek</b> (P). Een wand die uit twee materialen bestaat, splits je met <b>Splits</b> (S). Wissel van verdieping met de knoppen boven de tekening of met PageUp en PageDown.</p></div>
+  return `<div class="sec"><h2>${esc(P.name)}</h2><p class="note">Klik in de tekening op een ruimte of een wanddeel. Een nieuwe ruimte teken je met <b>Rechthoek</b> (R) of <b>Veelhoek</b> (P). Een wand die uit twee materialen bestaat, splits je met <b>Splits</b> (S). Een ruimte opdelen doe je met <b>Wand</b> (W): trek een lijn van rand naar rand. Wissel van verdieping met de knoppen boven de tekening of met PageUp en PageDown.</p></div>
   <div class="sec"><h3>Ruimtes op ${esc(fl.name)}</h3>${per.length?`<div class="roomcards">${per.map(roomCard).join('')}</div>`:'<p class="note">Nog geen ruimtes. Kies Rechthoek en sleep in het tekenvlak.</p>'}</div>
   ${P.example?`<div class="sec"><p class="note">Dit is een voorbeeldproject met verzonnen waarden. Pas het aan, of start een leeg project onder <b>Project</b>.</p></div>`:''}`;}
 function viewRoom(room){
