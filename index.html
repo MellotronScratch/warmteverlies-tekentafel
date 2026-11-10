@@ -472,6 +472,8 @@ const $=id=>document.getElementById(id);
 function rectPts(x0,y0,x1,y1){return [{x:x0,y:y0},{x:x1,y:y0},{x:x1,y:y1},{x:x0,y:y1}];}
 function seg(cid,adj,openings){return {cid:cid||'',adj:adj||'auto',adjT:20,openings:openings||[]};}
 function opening(name,w,h,cid){return {id:rid(),name,w,h,cid};}
+// an ordinary inner door (hollow core or thin solid wood): about 2,2 W/m²K with room air on both sides. Indicative.
+const INNER_DOOR={id:'c10',name:'Binnendeur, niet geïsoleerd',kind:'raam',U:2.2,color:'#9F1239',inner:true};
 function exampleProject(){
   const Ly=(mid,d,extra)=>Object.assign({id:rid(),mid,d,vent:'niet',mix:null},extra||{});
   const C=[
@@ -484,6 +486,7 @@ function exampleProject(){
     {id:'c7',name:'Woningscheidende wand kalkzandsteen',kind:'wand',U:1.9,color:PALETTE[2]},
     {id:'c4',name:'HR++ glas in houten kozijn',kind:'raam',U:1.8,color:PALETTE[0]},
     {id:'c8',name:'Geïsoleerde voordeur',kind:'raam',U:1.4,color:PALETTE[5]},
+    clone(INNER_DOOR),
     {id:'c5',name:'Begane grondvloer Rc 3,7',kind:'vloer',U:0.26,color:PALETTE[3]},
     {id:'c6',name:'Houten verdiepingsvloer',kind:'dak',U:1.6,color:PALETTE[7]},
     {id:'c9',name:'Hellend dak 160 mm minerale wol',kind:'dak',U:0.24,color:PALETTE[8]}
@@ -543,6 +546,8 @@ function normalizeProject(p){
   if(legacy){const S=p.settings;S.infMode='n';S.ventSys='C';
     if(S.tSupply>S.te){S.ventSys='D';S.eta=Math.max(0,Math.min(1,Math.round((S.tSupply-S.te)/(S.tRet-S.te)*1000)/1000));}}
   p.constructions=Array.isArray(p.constructions)?p.constructions:[];
+  // constructions added to the presets later: added once to existing projects (removing them afterwards is respected)
+  if((p.conPresetV|0)<1){[INNER_DOOR].forEach(c=>{if(!p.constructions.some(x=>x.id===c.id||x.name===c.name))p.constructions.push(clone(c));});p.conPresetV=1;}
   p.materials=Array.isArray(p.materials)&&p.materials.length?p.materials:presetMaterials();
   {const v=p.matPresetV|0;Object.keys(MAT_ADDED).map(Number).filter(k=>k>v).forEach(k=>MAT_ADDED[k].forEach(id=>{if(!p.materials.some(m=>m.id===id))p.materials.push(presetMaterials().find(m=>m.id===id));}));
    p.matPresetV=Math.max(v,...Object.keys(MAT_ADDED).map(Number));}
@@ -576,7 +581,7 @@ function normalizeProject(p){
     r.walls.length=r.pts.length;
     r.walls.forEach(w=>{w.cuts=(w.cuts||[]).map(Number).filter(Number.isFinite).sort((a,b)=>a-b);w.segs=w.segs||[];
       while(w.segs.length<w.cuts.length+1)w.segs.push(seg('','auto'));w.segs.length=w.cuts.length+1;
-      w.segs.forEach(s=>{s.adj=s.adj||'auto';s.adjT=Number.isFinite(+s.adjT)?+s.adjT:20;s.openings=(s.openings||[]).map(o=>({id:o.id||rid(),name:o.name||'Raam',w:+o.w||0,h:+o.h||0,cid:o.cid||'',...(o.lk?{lk:String(o.lk)}:{}),...(typeof o.at==='number'&&isFinite(o.at)?{at:o.at}:{})}));});});
+      w.segs.forEach(s=>{s.adj=s.adj||'auto';s.adjT=Number.isFinite(+s.adjT)?+s.adjT:20;s.openings=(s.openings||[]).map(o=>({id:o.id||rid(),name:o.name||'Raam',w:+o.w||0,h:+o.h||0,cid:o.cid||'',...(o.lk?{lk:String(o.lk)}:{}),...(typeof o.at==='number'&&isFinite(o.at)?{at:o.at}:{}),...(typeof o.sill==='number'&&isFinite(o.sill)&&o.sill>=0?{sill:o.sill}:{})}));});});
   });
   return p;
 }
@@ -667,6 +672,9 @@ function linkedOpenings(lk,fn){if(!lk)return;P.rooms.forEach(r=>r.walls.forEach(
 function opLayout(room,i,j){const b=bounds(room,i),s0=b[j],s1=b[j+1],ops=room.walls[i].segs[j].openings.filter(o=>o.w>0);
   const auto=ops.filter(o=>!Number.isFinite(o.at)),tot=auto.reduce((a,o)=>a+o.w,0)+0.3*Math.max(0,auto.length-1);let t=(s0+s1)/2-Math.min(tot,s1-s0)/2;
   return ops.map(o=>{const w=Math.min(o.w,s1-s0);let t0;if(Number.isFinite(o.at))t0=o.at;else{t0=t;t+=w+0.3;}t0=Math.max(s0,Math.min(s1-w,t0));return{o,t0,t1:t0+w};});}
+// o.sill = height of the bottom of the opening above the floor (m). Only for the picture, not for the calculation.
+// Without it a door (1,9 m or higher) stands on the floor and a window starts at 0,9 m.
+function opSill(o,top){const def=o.h>=1.9?0:Math.max(0,Math.min(0.9,top-o.h-0.1));return Math.max(0,Math.min(Number.isFinite(o.sill)?o.sill:def,top-0.05));}
 function freezeOpenings(room,i,j){opLayout(room,i,j).forEach(x=>{if(!Number.isFinite(x.o.at))x.o.at=r3(x.t0);});}
 // a mirrored opening in the room on the other side gets the same place in the world
 function syncLinkedAt(o,room,i){if(!o.lk||!Number.isFinite(o.at))return;const e=edge(room,i);const p0={x:e.a.x+e.ux*o.at,y:e.a.y+e.uy*o.at},p1={x:p0.x+e.ux*o.w,y:p0.y+e.uy*o.w};
@@ -760,13 +768,19 @@ function transLines(room){
     w.segs.forEach((sg,j)=>{
       const s0=b[j],s1=b[j+1],len=s1-s0;if(len<=1e-4||sg.adj==='open')return; // open connection: no wall, no loss
       const con=conById(sg.cid);const nm='Wand '+(i+1)+(w.segs.length>1?LET[j]||j:'');
-      const opType=sg.adj==='auto'?'buiten':sg.adj;const opT=sg.adj==='auto'?S.te:adjTemp(sg.adj,sg.adjT);
-      let Aop=0;sg.openings.forEach(o=>{const A=Math.max(0,o.w*o.h);Aop+=A;push({label:nm+' · '+(o.name||'Opening'),sub:(conById(o.cid)||{}).name||'geen constructie',A,con:conById(o.cid),t:opT,type:opType,w:i,s:j,group:'open'});});
+      // a window or door loses heat to whatever lies behind it at its own place: outside, or the room next door (an inner door)
+      const lay=sg.adj==='auto'?opLayout(room,i,j):[];
+      const target=o=>{if(sg.adj!=='auto')return{t:adjTemp(sg.adj,sg.adjT),type:sg.adj,key:'adj',lab:ADJ[sg.adj].toLowerCase()};
+        const it=lay.find(x=>x.o===o),tc=it?(it.t0+it.t1)/2:(s0+s1)/2,n=nb.find(n=>n.ivs.some(v=>tc>=v[0]-1e-6&&tc<=v[1]+1e-6));
+        return n?{t:n.room.temp,type:'ruimte',key:n.room.id,lab:n.room.name}:{t:S.te,type:'buiten',key:'buiten',lab:'buiten'};};
+      const opA={};sg.openings.forEach(o=>{const A=Math.max(0,o.w*o.h),tg=target(o);opA[tg.key]=(opA[tg.key]||0)+A;
+        push({label:nm+' · '+(o.name||'Opening'),sub:((conById(o.cid)||{}).name||'geen constructie')+' → '+tg.lab,A,con:conById(o.cid),t:tg.t,type:tg.type,w:i,s:j,group:'open'});});
       let parts=[];
-      if(sg.adj==='auto')parts=wallParts(room,i,s0,s1,nb,R).map(p=>p.room?{len:p.len,A:p.A,t:p.room.temp,type:'ruimte',lab:p.room.name}:{len:p.len,A:p.A,t:S.te,type:'buiten',lab:'buiten'});
-      else parts.push({len,A:wallArea(room,edge(room,i),s0,s1,R),t:adjTemp(sg.adj,sg.adjT),type:sg.adj,lab:ADJ[sg.adj].toLowerCase()});
-      let rem=Aop;const order=parts.slice().sort((a,b)=>(b.type===opType)-(a.type===opType));
-      for(const p of order){const d=Math.min(p.A,rem);p.A-=d;rem-=d;}
+      if(sg.adj==='auto')parts=wallParts(room,i,s0,s1,nb,R).map(p=>p.room?{len:p.len,A:p.A,t:p.room.temp,type:'ruimte',lab:p.room.name,key:p.room.id}:{len:p.len,A:p.A,t:S.te,type:'buiten',lab:'buiten',key:'buiten'});
+      else parts.push({len,A:wallArea(room,edge(room,i),s0,s1,R),t:adjTemp(sg.adj,sg.adjT),type:sg.adj,lab:ADJ[sg.adj].toLowerCase(),key:'adj'});
+      // the opening comes off the wall part it sits in; whatever does not fit there comes off the rest of the wall
+      let rem=0;Object.entries(opA).forEach(([k,A])=>{const p=parts.find(x=>x.key===k);const d=p?Math.min(p.A,A):0;if(p)p.A-=d;rem+=A-d;});
+      for(const p of parts){const d=Math.min(p.A,rem);p.A-=d;rem-=d;}
       parts.forEach(p=>push({label:nm,sub:(con?con.name:'geen constructie')+' → '+p.lab,A:p.A,con,t:p.t,type:p.type,w:i,s:j,group:'wall'}));
     });
   });
@@ -887,7 +901,7 @@ function render3d(){const c=Math.cos(v3.th),sn=Math.sin(v3.th),ci=floorIdx(curFl
           let g=`<polygon points="${poly}" fill="${col}" fill-opacity="${op}" stroke="var(--wall)" stroke-opacity="${near?0.35:0.8}" stroke-width="1" stroke-linejoin="round" pointer-events="none"/>`;
           if(!near)g+=`<polygon points="${poly}" fill="#000" fill-opacity="${(shade*op).toFixed(3)}" pointer-events="none"/>`;
           // windows and doors: side by side in the middle of the wall part (their exact place is not stored)
-          opLayout(r,i,j).filter(x=>x.o.h>0).forEach(({o,t0,t1})=>{const t=t0,ow=t1-t0,hh=Math.min(o.h,zTop(r,R,at(t+ow/2))-0.05);if(hh<=0)return;const sill=o.h>=1.9?0:Math.max(0,Math.min(0.9,zTop(r,R,at(t+ow/2))-hh-0.1));
+          opLayout(r,i,j).filter(x=>x.o.h>0).forEach(({o,t0,t1})=>{const t=t0,ow=t1-t0,top=zTop(r,R,at(t+ow/2)),sill=opSill(o,top),hh=Math.min(o.h,top-sill-0.02);if(hh<=0)return;
             const q=[P3(at(t),z0+sill),P3(at(t+ow),z0+sill),P3(at(t+ow),z0+sill+hh),P3(at(t),z0+sill+hh)];
             g+=`<polygon points="${q.map(pt).join(' ')}" fill="var(--heat)" fill-opacity="${near?0.25:0.55}" stroke="var(--heat)" stroke-width="1.2" pointer-events="none"/>`;});
           const isHov=top&&hoverSeg&&hoverSeg.r===r.id&&hoverSeg.w===i&&hoverSeg.s===j;
@@ -956,6 +970,8 @@ function renderCanvas(){
       out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--c-hp)" stroke-width="7" stroke-linecap="round" pointer-events="none"/>`;
       if(em.kind!=='rad')out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--paper)" stroke-width="1.5" stroke-dasharray="${em.kind==='fan'?'1 4':'5 3'}" pointer-events="none"/>`;
       out+=`<line class="hit" data-k="em" data-r="${r.id}" data-e="${em.id}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke-width="18"/>`;
+      if(isSel&&tool==='select')[['a',a],['b',b]].forEach(([end,q])=>out+=`<circle data-k="emend" data-r="${r.id}" data-e="${em.id}" data-end="${end}" cx="${q.x}" cy="${q.y}" r="6" fill="var(--surface)" stroke="var(--c-hp)" stroke-width="2" style="cursor:crosshair"><title>Sleep om de lengte te veranderen</title></circle>`);
+      if(drag&&drag.type==='emend'&&drag.e===em.id){const mm=S(emMid(em));out+=`<text x="${mm.x}" y="${mm.y-14}" text-anchor="middle" class="dim" pointer-events="none">${fmt(emLen(em))} m</text>`;}
       const m=S(emMid(em)),c=S(centroid(r.pts)),dx=c.x-m.x,dy=c.y-m.y,dd=Math.hypot(dx,dy)||1;
       out+=`<text x="${m.x+dx/dd*16}" y="${m.y+dy/dd*16+3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${pc.state!=='ok'?'⚠ ':''}${fmt(o/1000,2)} kW${em.boost?' ⟳':''}</text>`;}}));
   if(drag&&drag.type==='emline'){const a=S(drag.p0),b=S(drag.p1);out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--c-hp)" stroke-width="7" stroke-linecap="round" stroke-opacity=".7"/><text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-10}" text-anchor="middle" class="dim">${fmt(dist(drag.p0,drag.p1))} m</text>`;}
@@ -1178,6 +1194,7 @@ svg.addEventListener('pointerdown',e=>{
   if(tool==='select'){
     if(k==='vtx'){sel={t:'vtx',r:tgt.dataset.r,i:+tgt.dataset.i};drag={type:'vtx',r:sel.r,i:sel.i,moved:false};capture(e);tab='sel';renderAll();return;}
     if(k==='vide'){const r=getRoom(tgt.dataset.r);if(r){setFloor(r.floorId,true);sel={t:'room',r:r.id};tab='sel';renderAll();}return;}
+    if(k==='emend'){drag={type:'emend',r:tgt.dataset.r,e:tgt.dataset.e,end:tgt.dataset.end,moved:false};capture(e);return;}
     if(k==='em'){const r=getRoom(tgt.dataset.r);const em=(r.emitters||[]).find(x=>x.id===tgt.dataset.e);if(!em)return;sel={t:'em',r:r.id,e:em.id};tab='sel';
       drag={type:'em',r:r.id,e:em.id,start:wp,orig:clone(em),moved:false};capture(e);renderAll();return;}
     if(k==='op'){const r=getRoom(tgt.dataset.r),i=+tgt.dataset.w,j=+tgt.dataset.s;const it=opLayout(r,i,j).find(x=>x.o.id===tgt.dataset.o);if(!it)return;const ed=edge(r,i);
@@ -1223,6 +1240,9 @@ svg.addEventListener('pointermove',e=>{
       let t=r3(Math.round(((wp.x-ed.a.x)*ed.ux+(wp.y-ed.a.y)*ed.uy-drag.grab)/st)*st);t=r3(Math.max(b[drag.s],Math.min(b[drag.s+1]-w,t)));
       if(!drag.moved){if(Number.isFinite(o.at)&&o.at===t)return;pushUndo();drag.moved=true;freezeOpenings(r,drag.w,drag.s);}
       o.at=t;syncLinkedAt(o,r,drag.w);renderCanvas();return;}
+    if(drag.type==='emend'){const r=getRoom(drag.r),em=(r.emitters||[]).find(x=>x.id===drag.e);if(!em)return;const other=drag.end==='a'?em.b:em.a;
+      const p=snapPoint(wp,{prev:other,alt:e.altKey});if(dist(p,other)<0.2)return;const cur=em[drag.end];if(cur.x===p.x&&cur.y===p.y)return;
+      if(!drag.moved){pushUndo();drag.moved=true;}em[drag.end]={x:p.x,y:p.y};if(RAD_TYPES[em.rt]){em.rl=Math.round(emLen(em)*1000);syncRad(em);}renderCanvas();return;}
     if(drag.type==='emline'){drag.p1=snapPoint(wp,{prev:drag.p0,alt:e.altKey});renderCanvas();return;}
     if(drag.type==='emrect'){drag.p1=snapPoint(wp,{alt:e.altKey});renderCanvas();return;}
     if(drag.type==='cut'){const r=getRoom(drag.r);const w=r.walls[drag.w];let t=splitT(r,drag.w,wp,e.altKey);const lo=(drag.c>0?w.cuts[drag.c-1]:0)+0.02,hi=(drag.c<w.cuts.length-1?w.cuts[drag.c+1]:edge(r,drag.w).L)-0.02;
@@ -1397,7 +1417,8 @@ function viewSeg(room,i,j){
   h+=`<div class="row"><label class="f grow" for="f-newcut">Nieuwe splitsing op <span class="u">m vanaf hoek ${i+1}</span><input class="in num" id="f-newcut" inputmode="decimal" placeholder="${nv(r3((s0+s1)/2),2)}"></label><button class="btn small" data-act="addcut" style="align-self:flex-end">Splitsen</button><button class="btn small" data-act="splitmid" style="align-self:flex-end">In het midden</button></div></div>`;
   h+=`<div class="sec" ${sg.adj==='open'?'style="display:none"':''}><h3>Ramen en deuren in dit deel</h3>`;
   sg.openings.forEach(o=>{h+=`<div class="card"><div class="opgrid"><label class="f" for="f-op-${o.id}-n">Naam<input class="in" id="f-op-${o.id}-n" data-f="op.${o.id}.name" value="${esc(o.name)}"></label>${numField('f-op-'+o.id+'-w','op.'+o.id+'.w','Breedte','m',o.w,2)}${numField('f-op-'+o.id+'-h','op.'+o.id+'.h','Hoogte','m',o.h,2)}<button class="btn small" data-act="delop" data-o="${o.id}" aria-label="Verwijder ${esc(o.name)}">✕</button></div>
-    <div class="row">${numField('f-op-'+o.id+'-at','op.'+o.id+'.at','Begint op','m vanaf hoek '+(i+1),(opLayout(room,i,j).find(x=>x.o===o)||{t0:NaN}).t0,2)}</div>
+    ${(()=>{const it=opLayout(room,i,j).find(x=>x.o===o),R=roofOf(room),mid=it?(it.t0+it.t1)/2:(s0+s1)/2,top=R?R.z(R.sOf({x:e.a.x+e.ux*mid,y:e.a.y+e.uy*mid})):room.height,sl=opSill(o,top);
+      return `<div class="fields">${numField('f-op-'+o.id+'-at','op.'+o.id+'.at','Begint op','m vanaf hoek '+(i+1),it?it.t0:NaN,2)}${numField('f-op-'+o.id+'-sill','op.'+o.id+'.sill','Onderkant','m boven vloer',sl,2)}</div>${sl+o.h>top+0.01?`<p class="note" style="color:var(--warn)">⚠ De bovenkant (${fmt(sl+o.h)} m) komt boven de wand uit (${fmt(top)} m hoog op deze plek).</p>`:''}`;})()}
     <select class="in" id="f-op-${o.id}-c" data-f="op.${o.id}.cid" aria-label="Constructie opening">${conOptions(o.cid,'raam')}</select></div>`;});
   h+=`<div class="row"><button class="btn small" data-act="addop">+ Raam of deur</button><span class="note">Het oppervlak gaat van de wand af. Sleep een raam of deur in de tekening om het te verplaatsen.</span></div></div>`;
   const c=calcRoom(room);const mine=c.lines.filter(l=>l.w===i&&l.s===j);
@@ -1487,6 +1508,8 @@ const EM_NOM={rad:[75,65,20],conv:[75,65,20],fan:[35,30,20]}; // conditions the 
 const RAD_TYPES={T10:[640,'Type 10 · één plaat, geen lamellen'],T11:[1000,'Type 11 · één plaat met lamellen'],T20:[1080,'Type 20 · twee platen, geen lamellen'],
   T21:[1300,'Type 21 · twee platen, één rij lamellen'],T22:[1700,'Type 22 · twee platen, twee rijen lamellen'],T33:[2450,'Type 33 · drie platen met lamellen']};
 const radP=(t,h,l)=>RAD_TYPES[t]?Math.round(RAD_TYPES[t][0]*Math.pow(Math.max(100,h)/600,0.9)*Math.max(0,l)/1000/10)*10:0;
+// change the length of a radiator/convector line: the start stays, the end moves along the same direction
+function setEmLen(em,mm){const L=emLen(em),ux=L>1e-6?(em.b.x-em.a.x)/L:1,uy=L>1e-6?(em.b.y-em.a.y)/L:0;em.b={x:r3(em.a.x+ux*mm/1000),y:r3(em.a.y+uy*mm/1000)};}
 function syncRad(em){if(em.kind==='rad'&&RAD_TYPES[em.rt])em.p=radP(em.rt,em.rh,em.rl);}
 const PIPES={koper:{label:'Koper',d:{'10':8,'12':10,'15':13,'18':16,'22':20,'28':26}},pex:{label:'PEX / alupex',d:{'14':10,'16':12,'17':13,'20':16,'26':20}},staal:{label:'Staal (gasbuis)',d:{'3/8"':12.5,'1/2"':16.1,'3/4"':21.6,'1"':27.3}}};
 const VV_COVER={tegels:['Tegels / natuursteen',0.01],pvc:['PVC / vinyl',0.03],laminaat:['Laminaat met ondervloer',0.07],parket:['Parket',0.10],tapijt:['Tapijt',0.15]};
@@ -1543,12 +1566,13 @@ function viewEm(room,em){const S=P.settings,out=emOutput(em,room),pc=pipeCheck(e
   if(!isV){const nom=EM_NOM[em.kind],byType=em.kind==='rad'&&RAD_TYPES[em.rt];
     h+=`</div>`;
     if(em.kind==='rad')h+=`<label class="f" for="f-em-rt">Vermogen bepalen<select class="in" id="f-em-rt" data-f="em.rt"><option value="" ${byType?'':'selected'}>Zelf invullen (typeplaat of catalogus)</option>${Object.entries(RAD_TYPES).map(([k,v])=>`<option value="${k}" ${em.rt===k?'selected':''}>${v[1]}</option>`).join('')}</select></label>`;
-    if(byType)h+=`<div class="fields">${numField('f-em-rh','em.rh','Hoogte','mm',em.rh,0)}${numField('f-em-rl','em.rl','Lengte','mm',em.rl,0)}</div>
+    if(byType)h+=`<div class="fields">${numField('f-em-rh','em.rh','Hoogte','mm',em.rh,0)}${numField('f-em-rl','em.rl','Lengte','mm',em.rl,0)}</div>${Math.abs(em.rl-emLen(em)*1000)>5?`<p class="note">In de tekening is deze radiator ${fmt(emLen(em))} m lang. Vul de lengte opnieuw in of sleep een uiteinde om ze gelijk te maken.</p>`:''}
       <div class="det">${esc(em.rt)}: ${fmtW(RAD_TYPES[em.rt][0])} W/m bij 600 mm hoog<br>× (${fmtW(em.rh)}/600)^0,9 × ${fmt(em.rl/1000,2)} m<br><b>= ${fmtW(em.p)} W bij 75/65/20 °C</b></div>
       <div class="fields">${numField('f-em-n','em.n','Exponent n','–',em.n,2)}</div>
-      <p class="note">Indicatief voor stalen paneelradiatoren, ongeveer ±10 %. Weet je merk en model, kies dan <i>Zelf invullen</i> en neem de waarde uit de tabel van de fabrikant. Lengte in de tekening ${fmt(emLen(em))} m.</p>`;
+      <p class="note">Indicatief voor stalen paneelradiatoren, ongeveer ±10 %. Weet je merk en model, kies dan <i>Zelf invullen</i> en neem de waarde uit de tabel van de fabrikant. Een andere lengte, ingevuld of door een uiteinde in de tekening te slepen, past het vermogen meteen aan.</p>`;
     else h+=`<div class="fields">${numField('f-em-p','em.p',`Vermogen bij ${nom[0]}/${nom[1]}/${nom[2]} °C`,'W',em.p,0)+numField('f-em-n','em.n','Exponent n','–',em.n,2)}</div>
-    <p class="note">${em.kind==='conv'?'Bij convectoren hangt het vermogen sterk af van de bouwhoogte, de lamellen en de inbouw (vloerput, omkasting). Neem de waarde uit de catalogus van de fabrikant bij 75/65/20 °C. ':em.kind==='rad'?'Vul het vermogen van de typeplaat of uit de documentatie in (EN 442, 75/65/20 °C), of laat het afleiden uit type, hoogte en lengte. ':'Vul het vermogen uit de documentatie in (fancoils worden meestal bij 35 °C opgegeven). '}De app rekent het om naar ${nv(S.twSup,1)}/${nv(S.twRet,1)} °C met exponent n (radiator 1,3, convector 1,4, fancoil 1,0). Lengte in de tekening ${fmt(emLen(em))} m.</p>`;
+    <div class="fields">${numField('f-em-len','em.len','Lengte','mm',Math.round(emLen(em)*1000),0)}</div>
+    <p class="note">${em.kind==='conv'?'Bij convectoren hangt het vermogen sterk af van de bouwhoogte, de lamellen en de inbouw (vloerput, omkasting). Neem de waarde uit de catalogus van de fabrikant bij 75/65/20 °C. ':em.kind==='rad'?'Vul het vermogen van de typeplaat of uit de documentatie in (EN 442, 75/65/20 °C), of laat het afleiden uit type, hoogte en lengte. ':'Vul het vermogen uit de documentatie in (fancoils worden meestal bij 35 °C opgegeven). '}De app rekent het om naar ${nv(S.twSup,1)}/${nv(S.twRet,1)} °C met exponent n (radiator 1,3, convector 1,4, fancoil 1,0). De lengte verander je hier of door een uiteinde in de tekening te slepen; het vermogen blijft dan wat je hebt ingevuld.</p>`;
     h+=`${em.kind==='rad'||em.kind==='conv'?`<div class="card"><label class="chk"><input type="checkbox" id="f-em-boost" data-f="em.boost" ${em.boost?'checked':''}> Voorzien van boosters (ventilatoren)</label>
       ${em.boost?`<div class="fields">${numField('f-em-bp','em.boostPct','Meerafgifte door boosters','%',em.boostPct,0)}</div>
       <p class="note">Zonder boosters ${fmt(emOutput({...em,boost:false},room)/1000,2)} kW, met boosters ${fmt(out/1000,2)} kW. Fabrikanten noemen bij lage watertemperatuur 30 tot 100% meer afgifte, afhankelijk van radiatortype en aantal ventilatoren. 40% is een voorzichtige waarde; gebruik bij voorkeur de opgave van de fabrikant.</p>`:''}</div>`:''}`;}
@@ -1839,8 +1863,9 @@ function applyField(el,final){
     case'adv':{const r=P.settings.advice[parts[1]];if(!r)return;const n=num(v);if(n==null||n<=0)return;r[parts[2]]=n;changed=true;break;}
     case'em':{const em=selEm();if(!em)return;const k=parts[1];
       if(k==='name')em.name=v;else if(k==='boost')em.boost=el.checked;else if(k==='kind'){if(!EM_KINDS[v]||v==='vv')return;em.kind=v;em.n=EM_N[v];syncRad(em);}
-      else if(k==='rt'){if(v&&!RAD_TYPES[v])return;em.rt=v;if(v&&!(em.rl>0))em.rl=Math.max(300,Math.round(emLen(em)*10)*100);syncRad(em);}
-      else if(k==='rh'||k==='rl'){const n=num(v);if(n==null||n<100||n>(k==='rh'?1500:6000))return;em[k]=n;syncRad(em);}
+      else if(k==='rt'){if(v&&!RAD_TYPES[v])return;em.rt=v;if(v)em.rl=Math.max(100,Math.round(emLen(em)*1000));syncRad(em);}
+      else if(k==='len'){if(!final)return;const n=num(v);if(n==null||n<200||n>6000)return;setEmLen(em,n);if(RAD_TYPES[em.rt])em.rl=n;syncRad(em);}
+      else if(k==='rh'||k==='rl'){const n=num(v);if(n==null||n<100||n>(k==='rh'?1500:6000))return;em[k]=n;if(k==='rl'&&final&&n>=200)setEmLen(em,n);syncRad(em);}
       else if(k==='cover'){if(!VV_COVER[v])return;em.cover=v;}else if(k==='spacing')em.spacing=[10,15,20].includes(+v)?+v:15;
       else if(k==='pipe'){if(parts[2]==='mat'){if(!PIPES[v])return;em.pipe.mat=v;if(!PIPES[v].d[em.pipe.dn])em.pipe.dn=v==='koper'?'15':v==='pex'?'16':'1/2"';}else{if(!PIPES[em.pipe.mat].d[v])return;em.pipe.dn=v;}}
       else{const n=num(v);if(n==null||n<0)return;if(k==='n'&&(n<0.8||n>2))return;if(k==='boostPct'&&n>300)return;em[k]=n;}changed=true;break;}
@@ -1883,7 +1908,7 @@ function act(a,b){
     case'splitmid':{if(!room)return;const bb=bounds(room,sel.w);addCut(room,sel.w,r3((bb[sel.s]+bb[sel.s+1])/2));break;}
     case'delcut':if(room)removeCut(room,sel.w,+b.dataset.c);break;
     case'addop':{const sg=selSeg();if(!sg)return;pushUndo();const o=opening('Raam '+(sg.openings.length+1),1.2,1.4,defaultCid('raam'));sg.openings.push(o);
-      const m=mirrorPartner(room,sel.w,sel.s);if(m){o.name='Deur '+(sg.openings.length);o.w=0.9;o.h=2.1;o.lk=rid();m.o.walls[m.k].segs[m.jj].openings.push({...o,id:rid()});}markDirty();renderAll();break;}
+      const m=mirrorPartner(room,sel.w,sel.s);if(m){o.name='Binnendeur '+(sg.openings.length);o.w=0.9;o.h=2.1;o.lk=rid();o.cid=(P.constructions.find(c=>c.kind==='raam'&&c.inner)||{}).id||o.cid;m.o.walls[m.k].segs[m.jj].openings.push({...o,id:rid()});}markDirty();renderAll();break;}
     case'delop':{const sg=selSeg();if(!sg)return;pushUndo();const o=sg.openings.find(x=>x.id===b.dataset.o);sg.openings=sg.openings.filter(x=>x.id!==b.dataset.o);
       if(o&&o.lk)P.rooms.forEach(r=>r.walls.forEach(w=>w.segs.forEach(s2=>{s2.openings=s2.openings.filter(x=>x.lk!==o.lk);})));markDirty();renderAll();break;}
     case'syncseg':{const sg=selSeg();if(!sg)return;pushUndo();isolatePartners(room,sel.w,sel.s).forEach(p=>p.o.walls[p.k].segs[p.jj].cid=sg.cid);markDirty();renderAll();toast('Constructie overgenomen in de aangrenzende ruimte.');break;}
@@ -1964,15 +1989,18 @@ function toHeatlossjs(){
     r.pts.forEach((_,i)=>{const w=r.walls[i],b=bounds(r,i),nb=neighbourIntervals(r,i);
       w.segs.forEach((sg,j)=>{const s0=b[j],s1=b[j+1],len=s1-s0;if(len<=1e-4||sg.adj==='open')return;
         let parts;
-        if(sg.adj==='auto')parts=wallParts(r,i,s0,s1,nb,R).map(p=>p.room?{len:p.len,A:p.A,type:'ruimte',bnd:names[p.room.id]}:{len:p.len,A:p.A,type:'buiten',bnd:'external'});
-        else parts=[{len,A:wallArea(r,edge(r,i),s0,s1,R),type:sg.adj,bnd:bnd(sg.adj,sg.adjT)}];
-        const opType=sg.adj==='auto'?'buiten':sg.adj,opBnd=sg.adj==='auto'?'external':bnd(sg.adj,sg.adjT);
-        const Aop=sg.openings.reduce((a,o)=>a+Math.max(0,o.w*o.h),0);
+        if(sg.adj==='auto')parts=wallParts(r,i,s0,s1,nb,R).map(p=>p.room?{len:p.len,A:p.A,type:'ruimte',bnd:names[p.room.id],key:p.room.id}:{len:p.len,A:p.A,type:'buiten',bnd:'external',key:'buiten'});
+        else parts=[{len,A:wallArea(r,edge(r,i),s0,s1,R),type:sg.adj,bnd:bnd(sg.adj,sg.adjT),key:'adj'}];
+        // each opening sits in the wall part at its own place (outside, or a neighbouring room for an inner door)
+        const lay=sg.adj==='auto'?opLayout(r,i,j):[];
+        const hostOf=o=>{if(sg.adj!=='auto')return parts[0];const it=lay.find(x=>x.o===o),tc=it?(it.t0+it.t1)/2:(s0+s1)/2,n=nb.find(n=>n.ivs.some(v=>tc>=v[0]-1e-6&&tc<=v[1]+1e-6));
+          return parts.find(p=>p.key===(n?n.room.id:'buiten'))||parts[0];};
+        const ops=sg.openings.map(o=>({o,A:Math.max(0,o.w*o.h),host:hostOf(o)}));
         // width × height only works for straight-topped walls; under a sloped roof every piece goes as a net area
-        const host=parts.find(p=>p.type===opType)||parts[0];const simple=!R&&!spans(r)&&(!host||Aop<=host.len*h+1e-9);
-        if(!simple){let rem=Aop;parts.slice().sort((a,b)=>(b.type===opType)-(a.type===opType)).forEach(p=>{const d=Math.min(p.A,rem);p.A-=d;rem-=d;});}
+        const simple=!R&&!spans(r)&&parts.every(p=>ops.filter(x=>x.host===p).reduce((a,x)=>a+x.A,0)<=p.len*h+1e-9);
+        if(!simple){let rem=0;ops.forEach(x=>{const d=x.host?Math.min(x.host.A,x.A):0;if(x.host)x.host.A-=d;rem+=x.A-d;});parts.forEach(p=>{const d=Math.min(p.A,rem);p.A-=d;rem-=d;});}
         parts.forEach(p=>{const el={type:tname(sg.cid,p.type),orientation:''};if(simple){el.width=r3(p.len);el.height=h;}else el.area=r3(p.A);p.idx=add(nm,el,p.bnd);});
-        sg.openings.forEach(o=>{const el={type:tname(o.cid,opType),orientation:'',width:o.w,height:o.h};if(simple&&host)el.subtractfrom=host.idx;add(nm,el,opBnd);});
+        ops.forEach(({o,host})=>{const el={type:tname(o.cid,host?host.type:'buiten'),orientation:'',width:o.w,height:o.h};if(simple&&host)el.subtractfrom=host.idx;add(nm,el,host?host.bnd:'external');});
       });});
     transLines(r).lines.filter(l=>l.group==='floor'||l.group==='ceil'||l.group==='roof').forEach(l=>{const s=r[l.group];if(!s||l.A<1e-4)return;
       add(nm,{type:tname(s.cid,s.adj),orientation:'',area:r3(l.A)},bnd(s.adj,s.t));});
