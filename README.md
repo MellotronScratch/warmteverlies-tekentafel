@@ -12,7 +12,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 - **Wanddelen**: splits een wand in delen met elk een eigen constructie. De app herkent aan welke ruimte een wand grenst. Een wand tussen twee ruimtes heeft aan beide kanten dezelfde constructie en deuren.
 - **2,5D-weergave**: bekijk de verdiepingen gestapeld en van opzij. Klik een vloer of wand aan om hem te bewerken.
 - **Constructies**: opbouw in lagen (R = d / λ) met luchtspouwen, geventileerde spouwen en stijlen of regels volgens NEN-EN-ISO 6946, of direct een U-waarde.
-- **Schuine daken**: zadeldak en lessenaarsdak met knieschot en hanenbalk, inclusief juiste wand- en dakoppervlakken en inhoud.
+- **Schuine daken**: zadeldak en lessenaarsdak met muurplaathoogte en vlak plafond (hanenbalk), inclusief juiste wand- en dakoppervlakken en inhoud.
 - **Ventilatie en infiltratie**: systeem A, C of D met WTW, overstroom tussen ruimtes en infiltratie uit qv10.
 - **Afgifte**: radiatoren (vermogen zelf invullen of afleiden uit type, hoogte en lengte), convectoren, fancoils (met boosters) en vloerverwarming bij je eigen aanvoer- en retourtemperatuur. Met controle van de aansluitleiding en de minimaal nodige aanvoertemperatuur.
 - **Verbeteradviezen** en **warmtepompkeuze**: vergelijk warmtepompen met het warmteverlies bij −10 °C en +10 °C.
@@ -62,7 +62,7 @@ Teken je op zo'n hogere verdieping een ruimte die over de vide heen valt, dan kn
 
 ### Schuine daken
 
-Kies bij een ruimte onder *Dak en plafond* een **Zadeldak** of **Lessenaarsdak**, en vul de dakhelling en de hoogte van het knieschot in. De nokhoogte rekent de app zelf uit met de breedte van de ruimte. Standaard loopt het dak door tot in de nok, met een punt.
+Kies bij een ruimte onder *Dak en plafond* een **Zadeldak** of **Lessenaarsdak**, en vul de dakhelling en de **hoogte van de muurplaat** in: de hoogte boven de vloer waar het schuine dak begint, meestal de bovenkant van de gevelmuur. Teken je de ruimte tot een laag wandje op zolder, vul dan de hoogte van dat wandje in. De nokhoogte rekent de app zelf uit met de breedte van de ruimte. Standaard loopt het dak door tot in de nok, met een punt.
 
 Heeft de zolder een vlak plafond, bijvoorbeeld een zoldervloer of hanenbalk, vink dan **Vlak plafond** aan en vul de **Plafondhoogte** in. Alleen het stuk boven die hoogte wordt dan vlak. Komt de nok niet hoger dan het plafond, dan blijft het gewoon een punt. Projecten van voor deze wijziging houden hun vlakke plafond op de hoogte die al was ingevuld.
 
