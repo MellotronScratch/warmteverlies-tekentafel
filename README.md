@@ -60,6 +60,12 @@ Teken je op zo'n hogere verdieping een ruimte die over de vide heen valt, dan kn
 - Ligt de vide helemaal binnen de nieuwe ruimte, dan zou er een gat in de ruimte komen. Dat kan niet, dus de app maakt er twee delen van, met een open verbinding ertussen.
 - Valt de ruimte helemaal binnen de vide, dan wordt hij niet toegevoegd.
 
+### Schuine daken
+
+Kies bij een ruimte onder *Dak en plafond* een **Zadeldak** of **Lessenaarsdak**, en vul de dakhelling en de hoogte van het knieschot in. De nokhoogte rekent de app zelf uit met de breedte van de ruimte. Standaard loopt het dak door tot in de nok, met een punt.
+
+Heeft de zolder een vlak plafond, bijvoorbeeld een zoldervloer of hanenbalk, vink dan **Vlak plafond** aan en vul de **Plafondhoogte** in. Alleen het stuk boven die hoogte wordt dan vlak. Komt de nok niet hoger dan het plafond, dan blijft het gewoon een punt. Projecten van voor deze wijziging houden hun vlakke plafond op de hoogte die al was ingevuld.
+
 ### Binnenmaat of buitenmaat?
 
 De muurdikte wordt niet getekend. De getekende lijn is de rand van de ruimte zelf:

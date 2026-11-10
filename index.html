@@ -575,7 +575,8 @@ function normalizeProject(p){
     r.kind=['normaal','trap','vide'].includes(r.kind)?r.kind:'normaal';
     {const bi=p.floors.findIndex(x=>x.id===r.floorId),ti=p.floors.findIndex(x=>x.id===r.spanTo);if(!(ti>bi))r.spanTo=null;}
     r.roof=Object.assign({type:'plat',pitch:45,knee:0.6,edge:0,low:'min',cid:dakC,adj:'buiten',t:20},r.roof||{});
-    if(!ROOF_TYPES[r.roof.type])r.roof.type='plat';r.roof.edge=Math.max(0,Math.min(r.pts.length-1,r.roof.edge|0));
+    if(!ROOF_TYPES[r.roof.type])r.roof.type='plat';
+    if(typeof r.roof.flat!=='boolean')r.roof.flat=true; // older projects: the room height always acted as a flat ceiling under a sloped roofr.roof.edge=Math.max(0,Math.min(r.pts.length-1,r.roof.edge|0));
     r.walls=Array.isArray(r.walls)?r.walls:[];
     while(r.walls.length<r.pts.length)r.walls.push({cuts:[],segs:[seg('','auto')]});
     r.walls.length=r.pts.length;
@@ -717,7 +718,7 @@ const ROOF_TYPES={plat:'Plat plafond',zadel:'Zadeldak',lessenaar:'Lessenaarsdak'
 function roofOf(room){const r=room.roof;if(!r||r.type==='plat'||room.pts.length<3)return null;
   const n=room.pts.length,ei=Math.max(0,Math.min(n-1,r.edge|0)),e=edge(room,ei);if(e.L<1e-6)return null;
   const v={x:-e.uy,y:e.ux},sOf=p=>p.x*v.x+p.y*v.y,ss=room.pts.map(sOf),smin=Math.min(...ss),smax=Math.max(...ss);
-  const k=Math.tan(Math.max(1,Math.min(80,+r.pitch||45))*Math.PI/180),knee=Math.max(0,+r.knee||0),cap=room.height;
+  const k=Math.tan(Math.max(1,Math.min(80,+r.pitch||45))*Math.PI/180),knee=Math.max(0,+r.knee||0),cap=r.flat?room.height:Infinity; // flat ceiling (collar beam) or open to the ridge
   const base={v,sOf,smin,smax,k,knee,cap,cosA:1/Math.sqrt(1+k*k),u:{x:e.ux,y:e.uy}};
   if(r.type==='zadel'){const sr=(smin+smax)/2,nok=knee+k*(sr-smin);const wc=nok>cap?(nok-cap)/k:0;
     return{...base,type:'zadel',sr,nok,wc,crit:[sr,sr-wc,sr+wc,sr-nok/k,sr+nok/k],z:s=>Math.max(0,Math.min(cap,nok-k*Math.abs(s-sr)))};}
@@ -859,16 +860,17 @@ function gridSvg(W,H){const s=view.s;let st=s>=70?0.1:s>=25?0.5:s>=10?1:5;const 
 /* ---------- 2.5D view: the floors up to the current one, stacked, seen from an angle ---------- */
 let view3d=false,drag3=null;
 const v3={th:-0.55,el:0.72,s:40,tx:0,ty:0};
-function floorElev(){const el={};let z=0;P.floors.forEach(f=>{el[f.id]=z;const rs=P.rooms.filter(r=>r.floorId===f.id&&!spans(r));z+=rs.length?Math.max(...rs.map(r=>r.height)):P.settings.height;});return el;}
+function floorElev(){const el={};let z=0;P.floors.forEach(f=>{el[f.id]=z;const rs=P.rooms.filter(r=>r.floorId===f.id&&!spans(r));z+=rs.length?Math.max(...rs.map(roomTop)):P.settings.height;});return el;}
 function pr3(p,z,raw){const c=Math.cos(v3.th),s=Math.sin(v3.th),xr=p.x*c-p.y*s,yr=p.x*s+p.y*c,se=Math.sin(v3.el),ce=Math.cos(v3.el);
   const k=raw?1:v3.s,ox=raw?0:v3.tx,oy=raw?0:v3.ty;return{X:ox+k*xr,Y:oy+k*(yr*se-z*ce),d:yr*ce+z*se};}
 const zTop=(room,R,p)=>R?R.z(R.sOf(p)):room.height;
+const roomTop=r=>{const R=roofOf(r);return R?Math.min(R.cap,R.nok):r.height;};
 // the point on the current floor level that lies under screen position (X,Y): the centre of rotation
 function unproject3(X,Y,z){const c=Math.cos(v3.th),s=Math.sin(v3.th),se=Math.max(0.05,Math.sin(v3.el)),ce=Math.cos(v3.el);
   const xr=(X-v3.tx)/v3.s,yr=((Y-v3.ty)/v3.s+z*ce)/se;return{x:xr*c+yr*s,y:-xr*s+yr*c};}
 function rooms3d(){const ci=floorIdx(curFloor),el=floorElev();return P.rooms.filter(r=>floorIdx(r.floorId)<=ci).map(r=>({r,z0:el[r.floorId],fi:floorIdx(r.floorId)}));}
 function fit3d(){const W=stage.clientWidth,H=stage.clientHeight;const ps=[];
-  rooms3d().forEach(({r,z0})=>r.pts.forEach(p=>{ps.push(pr3(p,z0,true));ps.push(pr3(p,z0+r.height,true));}));if(!ps.length||!W||!H)return;
+  rooms3d().forEach(({r,z0})=>r.pts.forEach(p=>{ps.push(pr3(p,z0,true));ps.push(pr3(p,z0+roomTop(r),true));}));if(!ps.length||!W||!H)return;
   const X0=Math.min(...ps.map(p=>p.X)),X1=Math.max(...ps.map(p=>p.X)),Y0=Math.min(...ps.map(p=>p.Y)),Y1=Math.max(...ps.map(p=>p.Y));
   v3.s=Math.max(4,Math.min(300,Math.min((W-120)/Math.max(.5,X1-X0),(H-170)/Math.max(.5,Y1-Y0))));
   v3.tx=W/2-v3.s*(X0+X1)/2;v3.ty=(H+40)/2-v3.s*(Y0+Y1)/2;}
@@ -1070,7 +1072,7 @@ function makeRoom(pts){
   const n=P.rooms.length+1;const wc=defaultCid('wand');
   const r={id:rid(),name:'Ruimte '+n,floorId:curFloor,temp:20,height:P.settings.height,sup:0,ext:0,pts:pts.map(p=>({x:r3(p.x),y:r3(p.y)})),
     walls:pts.map(()=>({cuts:[],segs:[seg(wc,'auto')]})),floor:{cid:defaultCid('vloer'),adj:'grond',t:20},ceil:{cid:defaultCid('dak'),adj:'temp',t:20},
-    roof:{type:'plat',pitch:45,knee:0.6,edge:0,low:'min',cid:defaultCid('dak'),adj:'buiten',t:20}};
+    roof:{type:'plat',pitch:45,knee:0.6,edge:0,low:'min',cid:defaultCid('dak'),adj:'buiten',t:20,flat:false}};
   const pieces=clipToVides(r);
   if(!pieces.length){toast('Deze ruimte valt helemaal in een vide van een verdieping lager.');renderCanvas();return;}
   pushUndo();pieces.forEach((x,k)=>{if(k>0){x.id=rid();x.name=r.name+' ('+(k+1)+')';}P.rooms.push(x);});sel={t:'room',r:pieces[0].id};tab='sel';markDirty();renderAll();
@@ -1388,8 +1390,10 @@ function roofEditor(room,surfCard){const r=room.roof,R=roofOf(room),rp=roofParts
     <div class="fields">${numField('f-roof-p','roof.pitch','Dakhelling','°',r.pitch,1)}${numField('f-roof-k','roof.knee','Knieschot','m',r.knee,2)}
     <label class="f" for="f-roof-e">Nok evenwijdig aan<select class="in" id="f-roof-e" data-f="roof.edge">${room.pts.map((_,i)=>`<option value="${i}" ${(r.edge|0)===i?'selected':''}>Wand ${i+1} (${fmt(edge(room,i).L)} m)</option>`).join('')}</select></label>
     ${R.type==='lessenaar'?`<label class="f" for="f-roof-l">Lage kant<select class="in" id="f-roof-l" data-f="roof.low"><option value="min" ${r.low!=='max'?'selected':''}>Aan de ene kant</option><option value="max" ${r.low==='max'?'selected':''}>Aan de andere kant</option></select></label>`:''}</div>
-    <div class="det">${R.type==='zadel'?'Nokhoogte':'Hoogste punt'} ${fmt(R.nok)} m${R.nok>R.cap?` · vlak plafond op ${fmt(R.cap)} m`:''}<br>Dakvlak ${fmt(slopeA/R.cosA,1)} m² (${fmt(slopeA,1)} m² horizontaal)${capA>0?` · vlak plafond ${fmt(capA,1)} m²`:''}<br>Inhoud ${fmt(roomVolume(room),1)} m³</div>
-    <p class="note">De hoogte van de ruimte (bovenaan) werkt als vlak plafond of hanenbalk: daarboven loopt het dak niet verder door. Zet die hoger dan de nok als het dak tot in de nok open is.</p></div>
+    <label class="chk"><input type="checkbox" id="f-roof-flat" data-f="roof.flat" ${r.flat?'checked':''}> Vlak plafond (zoldervloer of hanenbalk)</label>
+    ${r.flat?`<div class="fields">${numField('f-room-h2','room.height','Plafondhoogte','m',room.height,2)}</div>`:''}
+    <div class="det">${R.type==='zadel'?'Nokhoogte':'Hoogste punt'} ${fmt(R.nok)} m${!r.flat?' · open tot in de nok':R.nok>R.cap?` · vlak plafond op ${fmt(R.cap)} m`:' · plafond ligt boven de nok, dus open tot in de nok'}<br>Dakvlak ${fmt(slopeA/R.cosA,1)} m² (${fmt(slopeA,1)} m² horizontaal)${capA>0?` · vlak plafond ${fmt(capA,1)} m²`:''}<br>Inhoud ${fmt(roomVolume(room),1)} m³</div>
+    <p class="note">De nokhoogte volgt uit de dakhelling, het knieschot en de breedte van de ruimte. Zonder vlak plafond loopt het dak door tot in de nok. Met een vlak plafond wordt alleen het stuk boven de plafondhoogte afgevlakt. Ligt de nok lager dan het plafond, dan blijft het gewoon een punt.</p></div>
   ${isoSvg(room)}
   ${surfCard('roof','Dakvlak','dak')}`;
   if(capA>0)h+=surfCard('ceil','Vlak plafond','dak');
@@ -1411,7 +1415,7 @@ function viewNone(){
   ${P.example?`<div class="sec"><p class="note">Dit is een voorbeeldproject met verzonnen waarden. Pas het aan, of start een leeg project onder <b>Project</b>.</p></div>`:''}`;}
 function viewRoom(room){
   let h=`<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-room-name" data-f="room.name" value="${esc(room.name)}" aria-label="Naam ruimte"></div>
-  <div class="fields">${numField('f-room-temp','room.temp','Ontwerptemperatuur θi','°C',room.temp,1)}${numField('f-room-h','room.height',spans(room)?'Totale hoogte':room.roof&&room.roof.type!=='plat'?'Vlak plafond op':'Hoogte','m',room.height,2)}${numField('f-room-sup','room.sup',P.settings.ventSys==='D'?'Inblaas':'Toevoer (roosters)','m³/h',room.sup,0)}${numField('f-room-ext','room.ext','Afzuiging','m³/h',room.ext,0)}</div>
+  <div class="fields">${numField('f-room-temp','room.temp','Ontwerptemperatuur θi','°C',room.temp,1)}${roofOf(room)&&!spans(room)?'':numField('f-room-h','room.height',spans(room)?'Totale hoogte':'Hoogte','m',room.height,2)}${numField('f-room-sup','room.sup',P.settings.ventSys==='D'?'Inblaas':'Toevoer (roosters)','m³/h',room.sup,0)}${numField('f-room-ext','room.ext','Afzuiging','m³/h',room.ext,0)}</div>
   <div class="fields"><label class="f" for="f-room-kind">Soort ruimte<select class="in" id="f-room-kind" data-f="room.kind">${[['normaal','Normale ruimte'],['trap','Trappenhuis'],['vide','Vide']].map(([k,l])=>`<option value="${k}" ${room.kind===k?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="f" for="f-room-span">Loopt door tot<select class="in" id="f-room-span" data-f="room.spanTo"><option value="">Alleen ${esc((P.floors[floorIdx(room.floorId)]||{}).name||'deze verdieping')}</option>${P.floors.slice(floorIdx(room.floorId)+1).map(fl=>`<option value="${fl.id}" ${room.spanTo===fl.id?'selected':''}>${esc(fl.name)}</option>`).join('')}</select></label></div>
   ${spans(room)?`<p class="note">Deze ruimte loopt door tot ${esc(P.floors[levelsOf(room)[1]].name)}. Vul bij Totale hoogte de hoogte over alle verdiepingen in. Wanden van ruimtes op de verdiepingen erboven grenzen nu aan deze ruimte, en op die verdiepingen staat hij gearceerd. Warme lucht stijgt hier vrij op: geef onder <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie</button> de overstroom van en naar deze ruimte op.</p>`:(room.kind!=='normaal'&&P.floors.length<=floorIdx(room.floorId)+1?'<p class="note">Er is geen verdieping boven deze. Voeg eerst een verdieping toe om de ruimte te laten doorlopen.</p>':'')}
@@ -1887,7 +1891,9 @@ function applyField(el,final){
     case'roof':{if(!room)return;const r=room.roof,k=parts[1];
       if(k==='pitch'||k==='knee'){const n=num(v);if(n==null||n<0)return;if(k==='pitch'&&(n<1||n>80))return;r[k]=n;changed=true;break;}
       if(k==='edge'){r.edge=Math.max(0,Math.min(room.pts.length-1,parseInt(v,10)||0));changed=true;break;}
-      if(k==='type'||k==='low'){r[k]=v;changed=true;break;}}
+      if(k==='type'){if(r.type==='plat'&&v!=='plat')r.flat=false;r.type=v;changed=true;break;} // a new sloped roof starts open to the ridge
+      if(k==='low'){r[k]=v;changed=true;break;}
+      if(k==='flat'){r.flat=el.checked;changed=true;break;}}
     // falls through for cid / adj / t, which work the same as floor and ceiling
     case'floor':case'ceil':{if(!room)return;const s=room[parts[0]];if(parts[1]==='t'){const n=num(v);if(n==null)return;s.t=n;}else s[parts[1]]=v;changed=true;break;}
     case'con':{const c=conById(parts[1]);if(!c)return;const k=parts[2];
