@@ -209,7 +209,7 @@ function viewNone() {
   const c = calcAll();
   const fl = P.floors[floorIdx(curFloor)] || P.floors[0];
   const per = c.per.filter(x => x.room.floorId === curFloor);
-  return `<div class="sec"><h2>${esc(P.name)}</h2><p class="note">Klik in de tekening op een ruimte of een wanddeel. Een nieuwe ruimte teken je met <b>Rechthoek</b> (R) of <b>Veelhoek</b> (P). Een wand die uit twee materialen bestaat, splits je met <b>Splits</b> (S). Een ruimte opdelen doe je met <b>Wand</b> (W): trek een lijn van rand naar rand. Wissel van verdieping met de knoppen boven de tekening of met PageUp en PageDown.</p></div>
+  return `${sanityHtml(c)}<div class="sec"><h2>${esc(P.name)}</h2><p class="note">Klik in de tekening op een ruimte of een wanddeel. Een nieuwe ruimte teken je met <b>Rechthoek</b> (R) of <b>Veelhoek</b> (P). Een wand die uit twee materialen bestaat, splits je met <b>Splits</b> (S). Een ruimte opdelen doe je met <b>Wand</b> (W): trek een lijn van rand naar rand. Wissel van verdieping met de knoppen boven de tekening of met PageUp en PageDown.</p></div>
   <div class="sec"><h3>Ruimtes op ${esc(fl.name)}</h3>${per.length ? `<div class="roomcards">${per.map(roomCard).join('')}</div>` : '<p class="note">Nog geen ruimtes. Kies Rechthoek en sleep in het tekenvlak.</p>'}</div>
   ${P.example ? `<div class="sec"><p class="note">Dit is een voorbeeldproject met verzonnen waarden. Pas het aan, of start een leeg project onder <b>Project</b>.</p></div>` : ''}`;
 }

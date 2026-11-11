@@ -1,5 +1,22 @@
 // Resultaten, ventilatie en project, het paneel tekenen, invoer verwerken en knoppen.
 'use strict';
+// warnings for input that makes the results meaningless
+function sanityHtml(c) {
+  const S = P.settings,
+    w = [];
+  if (S.tRet < 5 || S.tRet > 35)
+    w.push(
+      `De temperatuur van de afvoer- en overstroomlucht staat op ${nv(S.tRet, 1)} °C. Dat is vrijwel zeker een tikfout (bedoeld is meestal 20 à 22 °C). Pas het aan onder <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie</button>.`
+    );
+  if (S.twSup <= S.twRet)
+    w.push('De aanvoertemperatuur is niet hoger dan de retourtemperatuur. Controleer het afgiftesysteem.');
+  const neg = c.per.filter(x => x.c.total < -1);
+  if (neg.length)
+    w.push(
+      `Negatief warmteverlies in ${neg.map(x => `<button class="crumb" data-act="selroom" data-r="${x.room.id}">${esc(x.room.name)}</button>`).join(', ')}. Dat wijst op een invoerfout, bijvoorbeeld een te hoge temperatuur van een buurruimte of van de ventilatielucht.`
+    );
+  return w.length ? `<div class="sec">${w.map(t => `<div class="warnbox">${t}</div>`).join('')}</div>` : '';
+}
 function viewRes() {
   const c = calcAll();
   const tb = {
@@ -8,6 +25,7 @@ function viewRes() {
     inf: c.per.reduce((a, x) => a + x.c.inf, 0)
   };
   let h = `<div class="sec"><h2>Resultaten</h2><div class="kcard"><div class="kh"><span>Som van alle ruimtes</span><b>${fmt(c.total / 1000, 2)} kW</b></div>${segHtml(tb, true)}</div></div>
+  ${sanityHtml(c)}
   ${P.floors
     .map(f => {
       const per = c.per.filter(x => x.room.floorId === f.id);
@@ -121,6 +139,7 @@ function transferRow(t) {
 function viewVent() {
   const S = P.settings;
   let h = `<div class="sec"><h2>Ventilatie</h2><p class="note">Kies het ventilatiesysteem en vul per ruimte de luchthoeveelheden in. Dat kan hieronder in één overzicht, of per ruimte onder Selectie.</p></div>
+  ${sanityHtml(calcAll())}
   ${ventSettingsHtml()}
   <div class="sec"><h3>Debieten per ruimte</h3><div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>θi</th><th>${S.ventSys === 'D' ? 'Inblaas' : 'Toevoer'} m³/h</th><th>Afzuig m³/h</th><th>Stroomt naar</th><th>Over&shy;stroom in/uit</th><th>Φ W</th></tr></thead><tbody>`;
   P.floors.forEach(f => {
@@ -563,6 +582,20 @@ function applyField(el, final) {
       if ((k === 'eta' && (n < 0 || n > 1)) || ((k === 'qv10' || k === 'fInf') && n < 0)) return;
       if ((k === 'snap' || k === 'height') && n <= 0) return;
       if (k === 'maxWall' && n < 0) return;
+      // temperatures that only make sense in a small range (a typo like 225 instead of 22,5 turns every result upside down)
+      const RANGE = {
+        tRet: [5, 35],
+        te: [-30, 15],
+        tGround: [-10, 25],
+        tUnheated: [-20, 30],
+        tNeighbour: [0, 30],
+        twSup: [20, 90],
+        twRet: [15, 85]
+      };
+      if (RANGE[k] && (n < RANGE[k][0] || n > RANGE[k][1])) {
+        toast(`Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} °C en is niet overgenomen.`);
+        return;
+      }
       P.settings[k] = n;
       changed = true;
       break;
