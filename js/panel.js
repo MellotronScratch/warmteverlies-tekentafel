@@ -280,22 +280,24 @@ function viewRoom(room) {
     });
   });
   const surfCard = (k, lab, kind, extra) => {
-    const s = room[k];
-    return `<div class="card"><b>${lab}</b>${extra || ''}<label class="f" for="f-${k}-cid">Constructie<select class="in" id="f-${k}-cid" data-f="${k}.cid">${conOptions(s.cid, kind)}</select></label>
+    const s = room[k],
+      auto = s.adj === 'auto' && k !== 'roof',
+      // ceilings, and floors of an upper storey, can have a second construction for the part with nothing above / below
+      two = k === 'ceil' || (k === 'floor' && levelsOf(room)[0] > 0),
+      ls = auto ? calcRoom(room).lines.filter(l => l.group === k) : [];
+    return `<div class="card"><b>${lab}</b>${extra || ''}<label class="f" for="f-${k}-cid">${two ? (k === 'ceil' ? 'Constructie onder een ruimte erboven' : 'Constructie boven een ruimte eronder') : 'Constructie'}<select class="in" id="f-${k}-cid" data-f="${k}.cid">${conOptions(s.cid, kind)}</select></label>
+    ${
+      two
+        ? `<label class="f" for="f-${k}-cidout">${k === 'ceil' ? 'Constructie waar niets boven ligt (bijv. plat dak van een uitbouw)' : 'Constructie waar niets onder ligt (bijv. overstek)'}<select class="in" id="f-${k}-cidout" data-f="${k}.cidOut">${conOptions(s.cidOut, kind).replace('— kies een constructie —', 'Zelfde als hierboven')}</select></label>`
+        : ''
+    }
     <div class="row"><label class="f grow" for="f-${k}-adj">Grenst aan<select class="in" id="f-${k}-adj" data-f="${k}.adj">${adjOptions(s.adj, k !== 'roof', false)}</select></label>${s.adj === 'temp' ? `<label class="f" style="width:110px" for="f-${k}-t">Temperatuur <span class="u">°C</span><input class="in num" id="f-${k}-t" data-f="${k}.t" inputmode="decimal" value="${nv(s.t, 1)}"></label>` : ''}</div>
     ${
-      s.adj === 'auto' && k !== 'roof'
-        ? (() => {
-            const ls = calcRoom(room).lines.filter(l => l.group === k);
-            const out = k === 'ceil' || levelsOf(room)[0] > 0;
-            return `<div class="det">${ls.map(l => `${fmt(l.A, 1)} m² → ${esc(l.sub.split(' → ').slice(1).join(' → '))} (${nv(l.t, 1)} °C)`).join('<br>') || '–'}</div><p class="note">Herkend uit de tekening van de verdieping ${k === 'floor' ? 'eronder' : 'erboven'}.</p>
-            ${
-              out
-                ? `<label class="f" for="f-${k}-cidout">${k === 'ceil' ? 'Constructie waar niets boven ligt (dak)' : 'Constructie waar niets onder ligt (overstek)'}<select class="in" id="f-${k}-cidout" data-f="${k}.cidOut">${conOptions(s.cidOut, kind).replace('— kies een constructie —', 'Zelfde als hierboven')}</select></label>`
-                : ''
-            }`;
-          })()
-        : ''
+      auto
+        ? `<div class="det">${ls.map(l => `${fmt(l.A, 1)} m² ${esc(l.sub)} (${nv(l.t, 1)} °C)`).join('<br>') || '–'}</div><p class="note">Welk deel ${k === 'floor' ? 'boven een ruimte ligt' : 'onder een ruimte ligt'} en welk niet, volgt uit de tekening van de verdieping ${k === 'floor' ? 'eronder' : 'erboven'}.</p>`
+        : two
+          ? `<p class="note">De tweede constructie werkt als <i>Grenst aan</i> op <b>Automatisch (uit tekening)</b> staat. Dan verdeelt de app het ${k === 'ceil' ? 'plafond' : 'de vloer'} zelf.</p>`
+          : ''
     }</div>`;
   };
   h += `</div><div class="sec"><h3>Vloer</h3>${surfCard('floor', 'Vloer', 'vloer')}</div>`;
