@@ -573,6 +573,7 @@ function normalizeProject(p){
         rt:RAD_TYPES[e.rt]?e.rt:'',rh:+e.rh>0?+e.rh:600,rl:+e.rl>0?+e.rl:0};});
     r.emitters.forEach(syncRad);
     r.kind=['normaal','trap','vide'].includes(r.kind)?r.kind:'normaal';
+    if(r.stair&&typeof r.stair==='object')r.stair={shape:STAIR_SHAPES[r.stair.shape]?r.stair.shape:'recht',edge:r.stair.edge|0,side:r.stair.side==='b'?'b':'a',w:+r.stair.w>0?+r.stair.w:0.85};else delete r.stair;
     {const bi=p.floors.findIndex(x=>x.id===r.floorId),ti=p.floors.findIndex(x=>x.id===r.spanTo);if(!(ti>bi))r.spanTo=null;}
     r.roof=Object.assign({type:'plat',pitch:45,knee:0.6,edge:0,low:'min',cid:dakC,adj:'buiten',t:20},r.roof||{});
     if(!ROOF_TYPES[r.roof.type])r.roof.type='plat';
@@ -682,6 +683,26 @@ function syncLinkedAt(o,room,i){if(!o.lk||!Number.isFinite(o.at))return;const e=
   P.rooms.forEach(r=>r.walls.forEach((w,k)=>w.segs.forEach(sg=>sg.openings.forEach(x=>{if(x===o||x.lk!==o.lk)return;const f=edge(r,k);
     const u=p=>(p.x-f.a.x)*f.ux+(p.y-f.a.y)*f.uy;x.at=r3(Math.max(0,Math.min(u(p0),u(p1))));}))));}
 
+/* ---------- floors and ceilings: the rooms directly below or above, found from the drawing ---------- */
+function triangulate(pts){ // ear clipping for a simple polygon (also L and U shapes)
+  const cross=(a,b,c)=>(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x),sg=polyArea(pts)>0?1:-1,tris=[];let idx=pts.map((_,i)=>i),guard=0;
+  const inTri=(p,a,b,c)=>{const d1=cross(a,b,p)*sg,d2=cross(b,c,p)*sg,d3=cross(c,a,p)*sg;return d1>=-1e-12&&d2>=-1e-12&&d3>=-1e-12;};
+  while(idx.length>3&&guard++<500){let cut=false;
+    for(let i=0;i<idx.length;i++){const ia=idx[(i+idx.length-1)%idx.length],ib=idx[i],ic=idx[(i+1)%idx.length],a=pts[ia],b=pts[ib],c=pts[ic];
+      if(cross(a,b,c)*sg<=1e-12)continue;if(idx.some(j=>j!==ia&&j!==ib&&j!==ic&&inTri(pts[j],a,b,c)))continue;tris.push([a,b,c]);idx.splice(i,1);cut=true;break;}
+    if(!cut)break;}
+  if(idx.length===3)tris.push(idx.map(j=>pts[j]));return tris;}
+function clipConvex(subject,clip){const sg=polyArea(clip)>0?1:-1;let out=subject;
+  for(let i=0;i<clip.length&&out.length;i++){const a=clip[i],b=clip[(i+1)%clip.length],side=p=>((b.x-a.x)*(p.y-a.y)-(b.y-a.y)*(p.x-a.x))*sg,inp=out;out=[];
+    inp.forEach((p,j)=>{const q=inp[(j+1)%inp.length],sp=side(p),sq=side(q);if(sp>=0)out.push(p);if((sp>=0)!==(sq>=0)){const t=sp/(sp-sq);out.push({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t});}});}
+  return out;}
+const _ov=new Map();
+function overlapArea(A,B){const key=A.map(p=>p.x+','+p.y).join(' ')+'|'+B.map(p=>p.x+','+p.y).join(' ');if(_ov.has(key))return _ov.get(key);
+  const v=triangulate(B).reduce((s,t)=>{const c=clipConvex(A,t);return s+(c.length>=3?Math.abs(polyArea(c)):0);},0);if(_ov.size>4000)_ov.clear();_ov.set(key,v);return v;}
+// k = 'floor' or 'ceil': rooms on the storey directly below / above, with the overlapping area. null when there is no such storey.
+function surfNeighbours(room,k,poly){const l=levelsOf(room),fi=k==='floor'?l[0]-1:l[1]+1;if(fi<0||fi>=P.floors.length)return null;const fid=P.floors[fi].id,res=[];
+  P.rooms.forEach(o=>{if(o===room||!presentOn(o,fid))return;const A=overlapArea(poly,o.pts);if(A>0.01)res.push({room:o,A});});return res;}
+
 /* ---------- layer build-up (NEN-EN-ISO 6946, simplified) ---------- */
 function airR(d,kind){const t=AIR[kind==='dak'?'up':kind==='vloer'?'down':'h'];d=Math.max(0,Math.min(300,d||0));
   for(let i=1;i<t.length;i++){if(d<=t[i][0]){const[d0,r0]=t[i-1],[d1,r1]=t[i];return r0+(r1-r0)*(d-d0)/(d1-d0);}}return t[t.length-1][1];}
@@ -763,7 +784,7 @@ function wallPartsSpan(room,i,s0,s1,nb,R){const e=edge(room,i),gross=wallArea(ro
 function transLines(room){
   const S=P.settings,ti=room.temp,lines=[],R=roofOf(room);let missing=0;
   const push=(o)=>{const c=o.con;const U=c?c.U:NaN;const Ueff=Number.isFinite(U)?U+(DU_TYPES.has(o.type)?S.dU:0):NaN;const dT=ti-o.t;const phi=o.A*Ueff*dT;
-    if(!c&&o.A>0.0001)missing++;lines.push({label:o.label,sub:o.sub,A:o.A,U,Ueff,dT,phi:Number.isFinite(phi)?phi:0,miss:!c,type:o.type,w:o.w,s:o.s,group:o.group,cid:c?c.id:''});};
+    if(!c&&o.A>0.0001)missing++;lines.push({label:o.label,sub:o.sub,A:o.A,U,Ueff,dT,phi:Number.isFinite(phi)?phi:0,miss:!c,type:o.type,w:o.w,s:o.s,group:o.group,cid:c?c.id:'',nb:o.nb||null,t:o.t});};
   room.pts.forEach((_,i)=>{
     const w=room.walls[i];const b=bounds(room,i);const nb=neighbourIntervals(room,i);
     w.segs.forEach((sg,j)=>{
@@ -786,13 +807,21 @@ function transLines(room){
     });
   });
   const Af=Math.abs(polyArea(room.pts));
-  const topLine=(k,lab,A,extra)=>{const s=room[k];if(!s||A<1e-4)return;push({label:lab,sub:((conById(s.cid)||{}).name||'geen constructie')+' → '+ADJ[s.adj].toLowerCase()+(extra||''),A,con:conById(s.cid),t:adjTemp(s.adj,s.t),type:s.adj,group:k});};
+  const topLine=(k,lab,A,extra,poly)=>{const s=room[k];if(!s||A<1e-4)return;const con=conById(s.cid),cn=(con||{}).name||'geen constructie';
+    if(s.adj==='auto'&&k!=='roof'){ // what lies below / above follows from the drawing of the storey below / above
+      const nb=surfNeighbours(room,k,poly||room.pts);
+      // with nothing drawn: ground under the lowest storey, the unheated space under the ridge above a flat ceiling under a sloped roof, otherwise outside
+      const rest=k==='floor'?(nb?'buiten':'grond'):(poly?'onverwarmd':'buiten'),restLab=ADJ[rest].toLowerCase()+(nb&&k==='floor'?' (niets eronder)':nb&&rest==='buiten'?' (niets erboven)':'');
+      const list=nb||[],sum=list.reduce((a,n)=>a+n.A,0),f=sum>A?A/sum:1;
+      list.forEach(n=>push({label:lab,sub:cn+' → '+n.room.name+(extra||''),A:n.A*f,con,t:n.room.temp,type:'ruimte',group:k,nb:n.room.id}));
+      if(A-sum*f>0.01)push({label:lab,sub:cn+' → '+restLab+(extra||''),A:A-sum*f,con,t:adjTemp(rest),type:rest,group:k});return;}
+    push({label:lab,sub:cn+' → '+ADJ[s.adj].toLowerCase()+(extra||''),A,con,t:adjTemp(s.adj,s.t),type:s.adj,group:k});};
   topLine('floor','Vloer',Af);
   const rp=roofParts(room);
   if(!rp)topLine('ceil','Plafond / dak',Af);
   else{const slopes=rp.parts.filter(p=>p.kind==='slope'),cap=rp.parts.filter(p=>p.kind==='cap').reduce((a,p)=>a+p.A,0);
     slopes.forEach((p,n)=>topLine('roof',slopes.length>1?`Dakvlak ${n+1}`:'Dakvlak',p.A/rp.R.cosA,` · ${fmt(p.A,1)} m² horizontaal, helling ${nv(room.roof.pitch,0)}°`));
-    topLine('ceil','Vlak plafond',cap);}
+    const capPolys=rp.parts.filter(p=>p.kind==='cap');capPolys.forEach(p=>topLine('ceil','Vlak plafond',p.A,'',p.poly));}
   return{lines,missing,Af};
 }
 const envOf=t=>t.lines.filter(l=>l.type==='buiten').reduce((a,l)=>a+l.A,0);
@@ -857,6 +886,40 @@ function gridSvg(W,H){const s=view.s;let st=s>=70?0.1:s>=25?0.5:s>=10?1:5;const 
   for(let x=Math.floor(x0/st)*st;x<=x1;x+=st){const X=(x*s+view.tx).toFixed(1);const isM=Math.abs(x/major-Math.round(x/major))<1e-6;if(isM)maj+=`M${X} 0V${H}`;else minor+=`M${X} 0V${H}`;}
   for(let y=Math.floor(y0/st)*st;y<=y1;y+=st){const Y=(y*s+view.ty).toFixed(1);const isM=Math.abs(y/major-Math.round(y/major))<1e-6;if(isM)maj+=`M0 ${Y}H${W}`;else minor+=`M0 ${Y}H${W}`;}
   return `<path d="${minor}" stroke="var(--grid)" stroke-width="1"/><path d="${maj}" stroke="var(--grid-major)" stroke-width="1"/>`;}
+/* ---------- staircases: treads in plan, for the 2.5D view and the floor plan ----------
+   room.stair = {shape:'recht'|'kwart'|'half', edge: wall where the stair starts, side:'a'|'b' (the end of that wall it runs along), w: width}
+   The stairwell is taken as the rectangle around the room, seen from the start wall. */
+const STAIR_SHAPES={recht:'Rechte trap',kwart:'Kwartslag (gaat de hoek om)',half:'Halve draai (met bordes)'};
+function stairOf(r){const st=r.stair||{};return{shape:STAIR_SHAPES[st.shape]?st.shape:'recht',edge:Math.max(0,Math.min(r.pts.length-1,st.edge|0)),side:st.side==='b'?'b':'a',w:+st.w>0?+st.w:0.85};}
+function stairTreads(r,H){const st=stairOf(r),e=edge(r,st.edge);if(e.L<0.3)return null;
+  const W=(u,v)=>({x:e.a.x+e.ux*u-e.nx*v,y:e.a.y+e.uy*u-e.ny*v});
+  const loc=r.pts.map(p=>({u:(p.x-e.a.x)*e.ux+(p.y-e.a.y)*e.uy,v:-((p.x-e.a.x)*e.nx+(p.y-e.a.y)*e.ny)}));
+  const u0=Math.min(...loc.map(p=>p.u)),u1=Math.max(...loc.map(p=>p.u)),vm=Math.max(...loc.map(p=>p.v));if(u1-u0<0.3||vm<0.3)return null;
+  const N=Math.max(3,Math.round(H/0.185)),T=N-1; // risers and treads (the last riser steps onto the floor above)
+  let w=Math.min(st.w,(u1-u0)/(st.shape==='half'?2:1),st.shape==='recht'?vm:vm/2);
+  const A=st.side==='a',sa=A?[u0,u0+w]:[u1-w,u1],sb=A?[u1-w,u1]:[u0,u0+w];
+  const out=[];
+  // a straight run of n treads over the rectangle u∈[ua,ub], v∈[va,vb], walking in direction dir
+  const run=(n,ua,ub,va,vb,dir)=>{for(let j=0;j<n;j++){let q;
+    if(dir==='v+'){const a=va+(vb-va)*j/n,b=va+(vb-va)*(j+1)/n;q={poly:[W(ua,a),W(ub,a),W(ub,b),W(ua,b)],front:[W(ua,a),W(ub,a)]};}
+    else if(dir==='v-'){const a=vb-(vb-va)*j/n,b=vb-(vb-va)*(j+1)/n;q={poly:[W(ua,a),W(ub,a),W(ub,b),W(ua,b)],front:[W(ua,a),W(ub,a)]};}
+    else if(dir==='u+'){const a=ua+(ub-ua)*j/n,b=ua+(ub-ua)*(j+1)/n;q={poly:[W(a,va),W(a,vb),W(b,vb),W(b,va)],front:[W(a,va),W(a,vb)]};}
+    else{const a=ub-(ub-ua)*j/n,b=ub-(ub-ua)*(j+1)/n;q={poly:[W(a,va),W(a,vb),W(b,vb),W(b,va)],front:[W(a,va),W(a,vb)]};}
+    out.push(q);}};
+  if(st.shape==='recht')run(T,sa[0],sa[1],0,vm,'v+');
+  else if(st.shape==='kwart'){const L1=vm-w,L2=(u1-u0)-w,rest=Math.max(2,T-3),n1=Math.max(1,Math.round(rest*L1/(L1+L2))),n2=Math.max(1,rest-n1);
+    run(n1,sa[0],sa[1],0,vm-w,'v+');
+    // three winders turning the corner: wedges from the inner corner to the outer sides of the corner square
+    const ui=A?sa[1]:sa[0],uo=A?sa[0]:sa[1],pin=W(ui,vm-w),outer=[W(uo,vm-w),W(uo,vm),W(ui,vm)],seg=[[outer[0],outer[1]],[outer[1],outer[2]]];
+    const along=t=>t<=1?{x:outer[0].x+(outer[1].x-outer[0].x)*t,y:outer[0].y+(outer[1].y-outer[0].y)*t}:{x:outer[1].x+(outer[2].x-outer[1].x)*(t-1),y:outer[1].y+(outer[2].y-outer[1].y)*(t-1)};
+    for(let k=0;k<3;k++){const t0=2*k/3,t1=2*(k+1)/3,pts=[pin,along(t0)];if(t0<1&&t1>1)pts.push(outer[1]);pts.push(along(t1));out.push({poly:pts,front:[pin,along(t0)]});}
+    if(A)run(n2,sa[1],u1,vm-w,vm,'u+');else run(n2,u0,sa[0],vm-w,vm,'u-');}
+  else{const n1=Math.max(1,Math.floor((T-1)/2)),n2=Math.max(1,T-1-n1);
+    run(n1,sa[0],sa[1],0,vm-w,'v+');
+    out.push({poly:[W(u0,vm-w),W(u1,vm-w),W(u1,vm),W(u0,vm)],front:[W(sa[0],vm-w),W(sa[1],vm-w)],landing:true});
+    run(n2,sb[0],sb[1],0,vm-w,'v-');}
+  const rise=H/N;out.forEach((q,k)=>q.z=rise*(k+1));return{treads:out,rise,N};}
+
 /* ---------- 2.5D view: the floors up to the current one, stacked, seen from an angle ---------- */
 let view3d=false,drag3=null;
 const v3={th:-0.55,el:0.72,s:40,tx:0,ty:0};
@@ -881,15 +944,29 @@ function set3d(on){if(pendSplit)closeAsk();if(on&&tool!=='select')setTool('selec
 function render3d(){const c=Math.cos(v3.th),sn=Math.sin(v3.th),ci=floorIdx(curFloor);const P3=(p,z)=>pr3(p,z);const pt=q=>q.X.toFixed(1)+','+q.Y.toFixed(1);
   const L={x:-0.5,y:-0.8},Ll=Math.hypot(L.x,L.y);let out='';const labels=[];
   const byFloor={};rooms3d().forEach(o=>(byFloor[o.fi]=byFloor[o.fi]||[]).push(o));
-  Object.keys(byFloor).map(Number).sort((a,b)=>a-b).forEach(fi=>{const list=byFloor[fi],top=fi===ci;const items=[];
+  // staircases: one flight per storey the stairwell runs through. A flight is sorted together with the storey it leads to,
+  // so the walls of that storey cover it (or not) depending on what is in front.
+  const stairItems={},el=floorElev();
+  rooms3d().forEach(({r})=>{if(r.kind!=='trap'||!spans(r))return;const l=levelsOf(r);
+    for(let lv=l[0];lv<l[1];lv++){if(lv>ci)break;const zb=el[P.floors[lv].id],zt=el[P.floors[lv+1].id],sg=stairTreads(r,zt-zb);if(!sg)continue;const tf=lv+1<=ci?lv+1:lv,arr=stairItems[tf]=stairItems[tf]||[];
+      sg.treads.forEach((q,k)=>{const z=zb+q.z,zp=zb+(k?sg.treads[k-1].z:0);const tp=q.poly.map(p=>P3(p,z)),fr=[P3(q.front[0],zp),P3(q.front[1],zp),P3(q.front[1],z),P3(q.front[0],z)];
+        const d=tp.reduce((a,p)=>a+p.d,0)/tp.length;
+        arr.push({mid:true,d:d-0.001,svg:`<polygon points="${fr.map(pt).join(' ')}" fill="#8A6236" fill-opacity=".9" stroke="#5C4022" stroke-width=".6" pointer-events="none"/>`});
+        // sides down to the floor, so the stair reads as one solid block
+        q.poly.forEach((a,i)=>{const b=q.poly[(i+1)%q.poly.length];if((dist(a,q.front[0])<1e-6&&dist(b,q.front[1])<1e-6)||(dist(b,q.front[0])<1e-6&&dist(a,q.front[1])<1e-6))return;
+          const f4=[P3(a,zb),P3(b,zb),P3(b,z),P3(a,z)],ds=f4.reduce((x,p)=>x+p.d,0)/4;
+          arr.push({mid:true,d:ds-0.002,svg:`<polygon points="${f4.map(pt).join(' ')}" fill="#9C7040" fill-opacity=".95" stroke="#5C4022" stroke-width=".4" pointer-events="none"/>`});});
+        arr.push({mid:true,d,svg:`<polygon points="${tp.map(pt).join(' ')}" fill="${q.landing?'#B88E5A':'#C9A46A'}" fill-opacity=".95" stroke="#5C4022" stroke-width=".6" pointer-events="none"/>`});});}});
+  [...new Set([...Object.keys(byFloor),...Object.keys(stairItems)].map(Number))].sort((a,b)=>a-b).forEach(fi=>{const list=byFloor[fi]||[],top=fi===ci;const items=[];
     // floors
     list.forEach(({r,z0})=>{const isSel=top&&sel&&sel.r===r.id;const k=calcRoom(r);
       out+=`<polygon points="${r.pts.map(p=>pt(P3(p,z0))).join(' ')}" fill="var(--paper)" stroke="var(--line)" stroke-width="1" ${top?'':'pointer-events="none"'}/>`;
       out+=`<polygon ${top?`data-k3="room" data-r="${r.id}"`:'pointer-events="none"'} points="${r.pts.map(p=>pt(P3(p,z0))).join(' ')}" fill="${isSel?'var(--accent-soft-2)':'var(--room)'}" stroke="none" style="cursor:pointer"/>`;
       (r.emitters||[]).forEach(em=>{if(em.kind==='vv'){out+=`<polygon points="${em.pts.map(p=>pt(P3(p,z0+0.01))).join(' ')}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="1" stroke-dasharray="5 4" pointer-events="none"/>`;}
-        else{const a=P3(em.a,z0+0.35),b=P3(em.b,z0+0.35),a2=P3(em.a,z0+0.85),b2=P3(em.b,z0+0.85);items.push({d:(a.d+b.d)/2-0.05,svg:`<polygon points="${[a,b,b2,a2].map(pt).join(' ')}" fill="var(--c-hp)" fill-opacity=".75" stroke="var(--c-hp)" stroke-width="1" pointer-events="none"/>`});}});
+        else{const a=P3(em.a,z0+0.35),b=P3(em.b,z0+0.35),a2=P3(em.a,z0+0.85),b2=P3(em.b,z0+0.85);items.push({mid:true,d:(a.d+b.d)/2-0.05,svg:`<polygon points="${[a,b,b2,a2].map(pt).join(' ')}" fill="var(--c-hp)" fill-opacity=".75" stroke="var(--c-hp)" stroke-width="1" pointer-events="none"/>`});}});
       if(top){const cc=P3(labelPt(r.pts),z0);labels.push(`<text x="${cc.X}" y="${cc.Y-4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y+13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${fmt(k.total/1000,2)} kW</text>`);}
-      // walls, per wall part, with the top following a sloped roof
+      items.push(...(stairItems[fi]||[]));
+    // walls, per wall part, with the top following a sloped roof
       const R=roofOf(r);
       r.pts.forEach((_,i)=>{const e=edge(r,i);if(e.L<1e-6)return;const b=bounds(r,i),w=r.walls[i];
         const nyr=e.nx*sn+e.ny*c,near=nyr>0.02,lit=(e.nx*L.x+e.ny*L.y)/Ll;const at=t=>({x:e.a.x+e.ux*t,y:e.a.y+e.uy*t});
@@ -913,8 +990,8 @@ function render3d(){const c=Math.cos(v3.th),sn=Math.sin(v3.th),ci=floorIdx(curFl
           items.push({d:d+(near?0.0001:0),near,svg:g});});});
       if(R)roofLines(R).forEach(cv=>{const sg=lineAcross(r,R,cv);if(!sg)return;const z=z0+R.z(cv),a=P3(sg[0],z),b=P3(sg[1],z);
         items.push({d:(a.d+b.d)/2,svg:`<line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--heat)" stroke-width="2" stroke-dasharray="7 5" pointer-events="none"/>`});});});
-    // far walls first; near walls (transparent) last so the rooms stay visible through them
-    items.sort((a,b)=>(a.near?1:0)-(b.near?1:0)||a.d-b.d).forEach(it=>out+=it.svg);});
+    // far walls first, then what stands in the rooms (stairs, radiators), near walls (transparent) last so the rooms stay visible through them
+    const grp=it=>it.near?2:it.mid?1:0;items.sort((a,b)=>grp(a)-grp(b)||a.d-b.d).forEach(it=>out+=it.svg);});
   return out+labels.join('');}
 function renderCanvas(){
   if(!P)return;const W=stage.clientWidth,H=stage.clientHeight;svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
@@ -961,6 +1038,13 @@ function renderCanvas(){
   if(sel&&sel.t==='seg'){const sr=getRoom(sel.r);if(sr&&sr.walls[sel.w]&&sr.walls[sel.w].segs[sel.s])partnersOf(sr,sel.w,sel.s).forEach(p=>{if(!presentOn(p.o,curFloor))return;const f=edge(p.o,p.k);
     const a=S({x:f.a.x+f.ux*p.u0,y:f.a.y+f.uy*p.u0}),b=S({x:f.a.x+f.ux*p.u1,y:f.a.y+f.uy*p.u1});
     out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--heat)" stroke-opacity=".35" stroke-width="12" stroke-dasharray="10 6" pointer-events="none"/>`;});}
+  // staircases: treads and an arrow pointing up
+  curRooms().forEach(r=>{if(r.kind!=='trap'||!spans(r))return;const el=floorElev(),l=levelsOf(r),sg=stairTreads(r,el[P.floors[l[0]+1].id]-el[r.floorId]);if(!sg)return;
+    sg.treads.forEach(q=>{out+=`<polygon points="${q.poly.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')}" fill="none" stroke="var(--muted)" stroke-width="1" stroke-opacity=".7" pointer-events="none"/>`;});
+    const mids=sg.treads.map(q=>S(centroid(q.poly)));out+=`<polyline points="${mids.map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')}" fill="none" stroke="var(--muted)" stroke-width="1.4" pointer-events="none"/>`;
+    const a=mids[mids.length-2]||mids[0],b=mids[mids.length-1],ang=Math.atan2(b.y-a.y,b.x-a.x),hd=8;
+    out+=`<path d="M${b.x} ${b.y}L${b.x-hd*Math.cos(ang-0.45)} ${b.y-hd*Math.sin(ang-0.45)}M${b.x} ${b.y}L${b.x-hd*Math.cos(ang+0.45)} ${b.y-hd*Math.sin(ang+0.45)}" stroke="var(--muted)" stroke-width="1.4" pointer-events="none"/>`;
+    out+=`<circle cx="${mids[0].x}" cy="${mids[0].y}" r="2.5" fill="var(--muted)" pointer-events="none"/>`;});
   // heat emitters: radiators etc. as thick blue bars, underfloor heating as a hatched area
   curRooms().forEach(r=>(r.emitters||[]).forEach(em=>{const isSel=sel&&sel.t==='em'&&sel.e===em.id;const o=emOutput(em,r),pc=pipeCheck(em,o);
     if(em.kind==='vv'){const pts=em.pts.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
@@ -1071,8 +1155,9 @@ function defaultCid(kind){const c=P.constructions.find(c=>c.kind===kind);return 
 function makeRoom(pts){
   const n=P.rooms.length+1;const wc=defaultCid('wand');
   const r={id:rid(),name:'Ruimte '+n,floorId:curFloor,temp:20,height:P.settings.height,sup:0,ext:0,pts:pts.map(p=>({x:r3(p.x),y:r3(p.y)})),
-    walls:pts.map(()=>({cuts:[],segs:[seg(wc,'auto')]})),floor:{cid:defaultCid('vloer'),adj:'grond',t:20},ceil:{cid:defaultCid('dak'),adj:'temp',t:20},
+    walls:pts.map(()=>({cuts:[],segs:[seg(wc,'auto')]})),floor:{cid:defaultCid('vloer'),adj:'auto',t:20},ceil:{cid:defaultCid('dak'),adj:'auto',t:20},
     roof:{type:'plat',pitch:45,knee:0.6,edge:0,low:'min',cid:defaultCid('dak'),adj:'buiten',t:20,flat:false}};
+  {const below=surfNeighbours(r,'floor',r.pts);if(below&&below.length){const big=below.slice().sort((a,b)=>b.A-a.A)[0].room;if(big.ceil&&big.ceil.cid)r.floor.cid=big.ceil.cid;}}
   const pieces=clipToVides(r);
   if(!pieces.length){toast('Deze ruimte valt helemaal in een vide van een verdieping lager.');renderCanvas();return;}
   pushUndo();pieces.forEach((x,k)=>{if(k>0){x.id=rid();x.name=r.name+' ('+(k+1)+')';}P.rooms.push(x);});sel={t:'room',r:pieces[0].id};tab='sel';markDirty();renderAll();
@@ -1349,9 +1434,9 @@ function conOptions(selected,prefer){const order=[prefer,...Object.keys(KINDS).f
   let h=`<option value="">— kies een constructie —</option>`;
   order.forEach(k=>{const cs=P.constructions.filter(c=>c.kind===k);if(!cs.length)return;h+=`<optgroup label="${KINDS[k]}">`+cs.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${esc(c.name)} · U ${nv(c.U,3)}</option>`).join('')+`</optgroup>`;});
   return h;}
-function adjOptions(selected,withAuto){let h='';if(withAuto)h+=`<option value="auto" ${selected==='auto'?'selected':''}>Automatisch (uit tekening)</option>`;
+function adjOptions(selected,withAuto,withOpen){if(withOpen===undefined)withOpen=withAuto;let h='';if(withAuto)h+=`<option value="auto" ${selected==='auto'?'selected':''}>Automatisch (uit tekening)</option>`;
   Object.entries(ADJ).forEach(([k,v])=>h+=`<option value="${k}" ${selected===k?'selected':''}>${v}</option>`);
-  if(withAuto)h+=`<option value="open" ${selected==='open'?'selected':''}>Open verbinding (geen wand)</option>`;return h;}
+  if(withOpen)h+=`<option value="open" ${selected==='open'?'selected':''}>Open verbinding (geen wand)</option>`;return h;}
 function numField(id,f,label,unit,val,d){return `<label class="f" for="${id}">${label} <span class="u">${unit}</span><input class="in num" id="${id}" data-f="${f}" inputmode="decimal" value="${nv(val,d==null?3:d)}"></label>`;}
 function wallBar(room,i,curS){const b=bounds(room,i);const L=b[b.length-1]||1;const w=room.walls[i];
   return `<div class="wallbar">`+w.segs.map((sg,j)=>{const len=b[j+1]-b[j];const c=conById(sg.cid);const pct=Math.max(0,len/L*100);
@@ -1419,6 +1504,13 @@ function viewRoom(room){
   <div class="fields"><label class="f" for="f-room-kind">Soort ruimte<select class="in" id="f-room-kind" data-f="room.kind">${[['normaal','Normale ruimte'],['trap','Trappenhuis'],['vide','Vide']].map(([k,l])=>`<option value="${k}" ${room.kind===k?'selected':''}>${l}</option>`).join('')}</select></label>
     <label class="f" for="f-room-span">Loopt door tot<select class="in" id="f-room-span" data-f="room.spanTo"><option value="">Alleen ${esc((P.floors[floorIdx(room.floorId)]||{}).name||'deze verdieping')}</option>${P.floors.slice(floorIdx(room.floorId)+1).map(fl=>`<option value="${fl.id}" ${room.spanTo===fl.id?'selected':''}>${esc(fl.name)}</option>`).join('')}</select></label></div>
   ${spans(room)?`<p class="note">Deze ruimte loopt door tot ${esc(P.floors[levelsOf(room)[1]].name)}. Vul bij Totale hoogte de hoogte over alle verdiepingen in. Wanden van ruimtes op de verdiepingen erboven grenzen nu aan deze ruimte, en op die verdiepingen staat hij gearceerd. Warme lucht stijgt hier vrij op: geef onder <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie</button> de overstroom van en naar deze ruimte op.</p>`:(room.kind!=='normaal'&&P.floors.length<=floorIdx(room.floorId)+1?'<p class="note">Er is geen verdieping boven deze. Voeg eerst een verdieping toe om de ruimte te laten doorlopen.</p>':'')}
+  ${room.kind==='trap'?(()=>{const st=stairOf(room),n=room.pts.length;const opt=(k,v,cur)=>`<option value="${k}" ${cur===k?'selected':''}>${v}</option>`;
+    return `<div class="card"><b>Trap</b>
+      <div class="fields"><label class="f" for="f-st-shape">Vorm<select class="in" id="f-st-shape" data-f="room.stair.shape">${Object.entries(STAIR_SHAPES).map(([k,v])=>opt(k,v,st.shape)).join('')}</select></label>
+      <label class="f" for="f-st-edge">Begint bij<select class="in" id="f-st-edge" data-f="room.stair.edge">${room.pts.map((_,i)=>opt(String(i),'Wand '+(i+1)+' ('+fmt(edge(room,i).L)+' m)',String(st.edge))).join('')}</select></label>
+      <label class="f" for="f-st-side">Langs de kant van<select class="in" id="f-st-side" data-f="room.stair.side">${opt('a','hoek '+(st.edge+1),st.side)}${opt('b','hoek '+((st.edge+1)%n+1),st.side)}</select></label>
+      ${numField('f-st-w','room.stair.w','Breedte','m',st.w,2)}</div>
+      <p class="note">Alleen voor de tekening en de 2,5D-weergave. De trap loopt van wand ${st.edge+1} de ruimte in${st.shape==='kwart'?' en draait aan het eind de hoek om':st.shape==='half'?', draait op een bordes en komt terug':''}. De app gaat uit van een rechthoekig trapgat.${spans(room)?'':' Laat de ruimte doorlopen tot de verdieping erboven om de trap te zien.'}</p></div>`;})():''}
   ${roomAirHtml(room)}
   <p class="note">Ventilatiesysteem ${esc(VENT_SYS[P.settings.ventSys])}${P.settings.ventSys==='D'?`, WTW-rendement ${nv(P.settings.eta*100,0)}%`:''}. <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie en WTW instellen</button></p>
   <div class="sec" id="calc-out">${roomCalcHtml(room)}</div>
@@ -1433,7 +1525,8 @@ function viewRoom(room){
       h+=`<button class="segrow" data-act="selseg" data-r="${room.id}" data-w="${i}" data-s="${j}"><span class="sw" style="${sg.adj==='open'?'background:none;border:1.5px dashed var(--muted)':'background:'+(c?esc(c.color):'var(--warn)')}"></span><span class="sr-t"><b>${sg.adj==='open'?'Open':'Wand'} ${i+1}${w.segs.length>1?(LET[j]||j):''}</b> · ${fmt(len)} m${nop&&sg.adj!=='open'?' · '+nop+(nop>1?' openingen':' opening'):''}<small>${sg.adj==='open'?'geen wand, geen warmteverlies':(c?esc(c.name):'⚠ geen constructie')} → ${to}</small></span><span aria-hidden="true">›</span></button>`;});});
   const surfCard=(k,lab,kind,extra)=>{const s=room[k];
     return `<div class="card"><b>${lab}</b>${extra||''}<label class="f" for="f-${k}-cid">Constructie<select class="in" id="f-${k}-cid" data-f="${k}.cid">${conOptions(s.cid,kind)}</select></label>
-    <div class="row"><label class="f grow" for="f-${k}-adj">Grenst aan<select class="in" id="f-${k}-adj" data-f="${k}.adj">${adjOptions(s.adj,false)}</select></label>${s.adj==='temp'?`<label class="f" style="width:110px" for="f-${k}-t">Temperatuur <span class="u">°C</span><input class="in num" id="f-${k}-t" data-f="${k}.t" inputmode="decimal" value="${nv(s.t,1)}"></label>`:''}</div></div>`;};
+    <div class="row"><label class="f grow" for="f-${k}-adj">Grenst aan<select class="in" id="f-${k}-adj" data-f="${k}.adj">${adjOptions(s.adj,k!=='roof',false)}</select></label>${s.adj==='temp'?`<label class="f" style="width:110px" for="f-${k}-t">Temperatuur <span class="u">°C</span><input class="in num" id="f-${k}-t" data-f="${k}.t" inputmode="decimal" value="${nv(s.t,1)}"></label>`:''}</div>
+    ${s.adj==='auto'&&k!=='roof'?(()=>{const ls=calcRoom(room).lines.filter(l=>l.group===k);return `<div class="det">${ls.map(l=>`${fmt(l.A,1)} m² → ${esc(l.sub.split(' → ').slice(1).join(' → '))} (${nv(l.t,1)} °C)`).join('<br>')||'–'}</div><p class="note">Herkend uit de tekening van de verdieping ${k==='floor'?'eronder':'erboven'}.</p>`;})():''}</div>`;};
   h+=`</div><div class="sec"><h3>Vloer</h3>${surfCard('floor','Vloer','vloer')}</div>`;
   h+=`<div class="sec"><h3>Dak en plafond</h3>${roofEditor(room,surfCard)}`;
   h+=`</div><div class="row"><button class="btn danger" data-act="delroom">Ruimte verwijderen</button></div>`;
@@ -1831,6 +1924,8 @@ function viewSet(){const S=P.settings;const list=Object.values(all).sort((a,b)=>
     ${numField('f-s-tu','set.tUnheated','Onverwarmde ruimte','°C',S.tUnheated,1)}${numField('f-s-tn','set.tNeighbour','Buurwoning','°C',S.tNeighbour,1)}
     ${numField('f-s-du','set.dU','Koudebrugtoeslag ΔU','W/m²K',S.dU,3)}${numField('f-s-h','set.height','Standaard hoogte','m',S.height,2)}</div>
     <p class="note">ΔU geldt voor delen die aan buiten, grond of een onverwarmde ruimte grenzen. Ventilatiesysteem, WTW en infiltratie stel je in onder <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie</button>.</p></div>
+  <div class="sec"><h3>Vloeren en plafonds</h3><p class="note">Met <i>Automatisch</i> leidt de app uit de tekening af welke ruimtes onder een vloer en boven een plafond liggen.</p>
+    <div class="row"><button class="btn small" data-act="autoall">Alle vloeren en plafonds op automatisch</button></div></div>
   <div class="sec"><h3>Tekenen</h3><div class="fields">${numField('f-s-snap','set.snap','Snapraster','m',S.snap,3)}${numField('f-s-mw','set.maxWall','Max. wanddikte aangrenzing','m',S.maxWall,2)}</div>
     <p class="note">Teken ruimtes hart-op-hart (wanden vallen samen) of op binnenmaat. Twee evenwijdige wanden binnen de maximale wanddikte gelden als gedeelde wand.</p></div>
   <div class="sec"><h3>Projecten</h3>${list.map(p=>`<button class="linkrow" data-act="openproj" data-p="${p.id}"><span>${esc(p.name)}${p.id===P.id?' <span class="note">· geopend</span>':''}</span><span class="note">${p.rooms.length} ruimte${p.rooms.length===1?'':'s'}</span></button>`).join('')}
@@ -1877,6 +1972,9 @@ function applyField(el,final){
         if(clipAbove(room)){toast('De vide is uitgeknipt uit de ruimtes op de verdieping(en) erboven.');renderAll();}changed=true;break;}
       if(k==='spanTo'){const was=spans(room);room.spanTo=v||null;if(!spans(room))room.spanTo=null;else if(!was){const l=levelsOf(room);room.height=r3(room.height*(l[1]-l[0]+1));}
         if(clipAbove(room)){toast('De vide is uitgeknipt uit de ruimtes op de verdieping(en) erboven.');renderAll();}changed=true;break;}
+      if(k==='stair'){const st=room.stair=stairOf(room),f2=parts[2];
+        if(f2==='shape'){if(!STAIR_SHAPES[v])return;st.shape=v;}else if(f2==='side')st.side=v==='b'?'b':'a';else if(f2==='edge')st.edge=Math.max(0,Math.min(room.pts.length-1,parseInt(v,10)||0));
+        else if(f2==='w'){const n=num(v);if(n==null||n<0.5||n>3)return;st.w=n;}changed=true;break;}
       if(k==='name'){room.name=v;changed=true;}else{const n=num(v);if(n==null)return;if(k==='height'&&n<=0)return;if((k==='sup'||k==='ext')&&n<0)return;room[k]=n;changed=true;}break;}
     case'seg':{const sg=selSeg();if(!sg)return;const wasOpen=sg.adj==='open';if(parts[1]==='adjT'){const n=num(v);if(n==null)return;sg.adjT=n;}else sg[parts[1]]=v;
       if(parts[1]==='adj'&&(v==='open'||wasOpen)){ // an open connection is the same on both sides
@@ -1954,6 +2052,7 @@ function act(a,b){
     case'selroom':case'selseg':{const r=getRoom(b.dataset.r);if(!r)return;if(r.floorId!==curFloor){curFloor=r.floorId;try{localStorage.setItem('wvt.floor.'+P.id,curFloor);}catch(_){}}
       sel=a==='selroom'?{t:'room',r:r.id}:{t:'seg',r:r.id,w:+b.dataset.w,s:+b.dataset.s};tab='sel';renderAll();break;}
     case'addfloor':addFloor();break;
+    case'autoall':{pushUndo();let n=0;P.rooms.forEach(r=>['floor','ceil'].forEach(k=>{if(r[k]&&r[k].adj!=='auto'){r[k].adj='auto';n++;}}));markDirty();renderAll();toast(n?`${n} vloeren en plafonds staan nu op automatisch.`:'Alle vloeren en plafonds stonden al op automatisch.',!!n);break;}
     case'floormove':{const i=floorIdx(b.dataset.f),j=i+(+b.dataset.dir);if(i<0||j<0||j>=P.floors.length)return;pushUndo();[P.floors[i],P.floors[j]]=[P.floors[j],P.floors[i]];markDirty();renderAll();break;}
     case'delfloor':{const i=floorIdx(b.dataset.f);if(i<0||P.floors.length<2||P.rooms.some(r=>r.floorId===b.dataset.f))return;pushUndo();P.floors.splice(i,1);if(curFloor===b.dataset.f)curFloor=P.floors[Math.max(0,i-1)].id;markDirty();renderAll();break;}
     case'delroom':deleteSelection();break;
@@ -2057,7 +2156,7 @@ function toHeatlossjs(){
         ops.forEach(({o,host})=>{const el={type:tname(o.cid,host?host.type:'buiten'),orientation:'',width:o.w,height:o.h};if(simple&&host)el.subtractfrom=host.idx;add(nm,el,host?host.bnd:'external');});
       });});
     transLines(r).lines.filter(l=>l.group==='floor'||l.group==='ceil'||l.group==='roof').forEach(l=>{const s=r[l.group];if(!s||l.A<1e-4)return;
-      add(nm,{type:tname(s.cid,s.adj),orientation:'',area:r3(l.A)},bnd(s.adj,s.t));});
+      add(nm,{type:tname(s.cid,l.type),orientation:'',area:r3(l.A)},l.nb?names[l.nb]:bnd(l.type,l.t));});
   });
   return{project_name:P.name,degreedays:2900,heating_MWT:(S.twSup+S.twRet)/2,heatpump_flow_rate:12,T,element_type,elements,rooms,
     house:{},JK:50,cop_calculation_method:'ecodan',heatpump_capacity:5,solver_running:false,

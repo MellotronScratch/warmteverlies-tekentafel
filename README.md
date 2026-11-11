@@ -60,6 +60,8 @@ Teken je op zo'n hogere verdieping een ruimte die over de vide heen valt, dan kn
 - Ligt de vide helemaal binnen de nieuwe ruimte, dan zou er een gat in de ruimte komen. Dat kan niet, dus de app maakt er twee delen van, met een open verbinding ertussen.
 - Valt de ruimte helemaal binnen de vide, dan wordt hij niet toegevoegd.
 
+**De trap tekenen**: staat een ruimte op *Trappenhuis*, dan kies je in het ruimtepaneel de vorm van de trap: **recht**, **kwartslag** (gaat de hoek om, met spillen in de hoek) of **halve draai** (met een bordes). Daarnaast kies je bij welke wand hij begint, langs welke kant hij loopt en hoe breed hij is. In de plattegrond zie je dan de treden met een pijl naar boven. In de 2,5D-weergave staat per verdieping een trap van vloer tot vloer. De app gaat uit van een rechthoekig trapgat. De trap is alleen voor het beeld en telt niet mee in de berekening.
+
 ### Schuine daken
 
 Kies bij een ruimte onder *Dak en plafond* een **Zadeldak** of **Lessenaarsdak**, en vul de dakhelling en de **hoogte van de muurplaat** in: de hoogte boven de vloer waar het schuine dak begint, meestal de bovenkant van de gevelmuur. Teken je de ruimte tot een laag wandje op zolder, vul dan de hoogte van dat wandje in. De nokhoogte rekent de app zelf uit met de breedte van de ruimte. Standaard loopt het dak door tot in de nok, met een punt.
@@ -85,6 +87,17 @@ Klik een ruimte aan. Onder **Wanden** staat dan elk wanddeel met zijn lengte, co
 ### Wat ligt er achter de wand?
 
 Klik een wand aan om hem te bewerken. Onder **Grenst aan** staat standaard *Automatisch (uit tekening)*: de app kijkt dan in de tekening of er een andere ruimte tegenaan ligt en rekent met de temperatuur van die ruimte. Ligt er niets tegenaan, dan rekent hij met de buitentemperatuur. Je kunt het ook zelf kiezen: buiten, grond / kruipruimte, onverwarmde ruimte, buurwoning of een ruimte met een vaste temperatuur.
+
+### Vloeren en plafonds
+
+Zet bij een ruimte de vloer en het plafond onder **Grenst aan** op *Automatisch (uit tekening)*. Nieuwe ruimtes staan daar standaard al op. De app zoekt dan zelf uit wat eronder en erboven ligt:
+
+- **Vloer**: de ruimtes op de verdieping eronder, met hoeveel m² elk overlapt. Op de laagste verdieping is dat de grond. Een stuk vloer waar niets onder getekend is (bijvoorbeeld een uitkraging) grenst aan buiten.
+- **Plafond**: de ruimtes op de verdieping erboven. Is daar niets getekend, dan is het een plat dak naar buiten. Bij een vlak plafond onder een schuin dak is het de onverwarmde ruimte onder de nok.
+
+Per stuk rekent de app met de temperatuur van die ruimte. Bij de vloer en het plafond zie je de verdeling, bijvoorbeeld *20,3 m² → Slaapkamer 1 (18 °C)*. Een nieuwe ruimte op een verdieping krijgt als vloerconstructie het plafond van de ruimte eronder.
+
+Bestaande projecten houden hun instellingen. Onder **Project → Vloeren en plafonds** zet je alles in één keer op automatisch (ongedaan maken kan).
 
 ### Gedeelde wanden
 
