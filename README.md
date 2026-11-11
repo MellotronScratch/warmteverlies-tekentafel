@@ -135,6 +135,27 @@ Trek je met **Wand** een nieuwe scheiding, dan kies je in het venster meteen of 
 
 Met de knop **2,5D** rechtsonder, of de toets `D`, zie je de woning schuin van boven. De verdiepingen tot en met de gekozen verdieping staan op elkaar. Wanden hebben de kleur van hun constructie, en ramen en deuren zijn oranje. Om te draaien en te kantelen sleep je met ingedrukt scrollwiel, of met Shift + slepen. De weergave draait dan om het punt waar je begon met slepen. Gewoon slepen schuift, en scrollen zoomt rond de muis. Klik een vloer of wand aan om hem in het paneel te bewerken. Tekenen doe je in de plattegrond: kies je een tekengereedschap, dan schakelt de app daar vanzelf naar terug.
 
+## Vloerverwarming
+
+Kies **Vloerverw.** (`H`) en klik de hoekpunten. Zo teken je ook een L-vorm. Sluit af door op het eerste punt te klikken, te dubbelklikken of op Enter te drukken. Slepen geeft nog steeds een rechthoek. Moet de hele ruimte vloerverwarming krijgen, klik dan bij de ruimte onder *Afgifte* op **Vloerverwarming in de hele ruimte**. De app tekent die dan op 10 cm van de wanden.
+
+De vorm pas je aan door de vloerverwarming te selecteren:
+
+- sleep een hoekpunt om het te verplaatsen;
+- klik op een **+** halverwege een zijde om een hoekpunt toe te voegen;
+- dubbelklik op een hoekpunt om het weg te halen.
+
+## Leidingen en systeeminhoud
+
+Met **Leiding** (`L`) teken je een eenvoudig leidingnetwerk, bijvoorbeeld van de warmtepomp naar de verdeler en de radiatoren. Eén lijn staat voor aanvoer en retour samen. Klik de punten en rond af met dubbelklik of Enter. Per leiding kies je het materiaal (koper, (alu)pex of staal) en de diameter, bijvoorbeeld alupex 32×3 mm. Bij **Extra lengte** vul je stukken in die je niet tekent, zoals een stijgleiding naar een andere verdieping. Je ziet de inhoud van de leiding en hoeveel vermogen hij bij 0,5 m/s kan transporteren.
+
+Onder **Resultaten → Systeeminhoud** telt de app de waterinhoud op: getekende leidingen, radiatoren, convectoren, vloerverwarmingslussen, de warmtepomp en eventueel een buffervat. Dat vergelijkt hij met wat de gekozen warmtepomp nodig heeft:
+
+- staat in de warmtepomplijst een `minInhoud` (liter), dan geldt die;
+- anders rekent de app met een vuistregel (standaard 15 liter per kW maximaal vermogen bij +7 °C, aan te passen).
+
+Is de inhoud te klein, dan adviseert de app een buffervat. Tel in gedachten alleen kringen mee die altijd open staan: thermostaatkranen en ruimteregeling verkleinen de werkelijke inhoud. Of je een schakelvat (hydraulische scheiding) nodig hebt, volgt niet uit de inhoud. Dat hangt af van het minimale debiet van de warmtepomp en van eventuele extra pompgroepen. De waterinhoud van radiatoren is een schatting per meter of per kW. Bij een convector loopt er meestal een lus koperbuis van 15 mm door de lamellen, over de lengte min ongeveer 15 cm. Een lus is twee buizen, en een dubbele convector heeft twee lussen (vier buizen). Kies het aantal lussen bij de convector. Bij elk afgifte-element zie je de geschatte inhoud.
+
 ## Radiatorvermogen
 
 Klik een radiator aan. De lengte verander je door een uiteinde in de tekening te slepen, of door hem in te vullen bij **Lengte** (mm). Dat werkt ook voor convectoren en fancoils. Onder **Vermogen bepalen** kies je:

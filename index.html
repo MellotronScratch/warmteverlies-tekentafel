@@ -183,7 +183,7 @@ svg .dim{fill:var(--heat);font-size:11px;font-weight:600}
 svg .pilltxt{fill:var(--heat);font-size:10.5px;font-weight:600;stroke:none}
 .hit{stroke:transparent;fill:none;cursor:pointer}
 .stage.t-select .room{cursor:move}
-.stage.t-poly,.stage.t-rect,.stage.t-split,.stage.t-wall{cursor:crosshair}
+.stage.t-poly,.stage.t-rect,.stage.t-split,.stage.t-wall,.stage.t-vv,.stage.t-pipe{cursor:crosshair}
 .ask{position:absolute;left:50%;top:96px;transform:translateX(-50%);width:min(380px,calc(100% - 32px));background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:13px;z-index:5}
 .ask[hidden]{display:none}
 .stage.is3d .scalebar,.stage.is3d .coords{visibility:hidden}
@@ -273,6 +273,7 @@ label.chk{display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--m
       <span class="sep"></span>
       <button class="tool" data-tool="emit" aria-pressed="false" title="Radiator, convector of fancoil tekenen (A)"><svg viewBox="0 0 24 24"><rect x="3.5" y="8.5" width="17" height="7" rx="1.5"/><path d="M8 8.5v7M12 8.5v7M16 8.5v7"/></svg>Radiator<kbd>A</kbd></button>
       <button class="tool" data-tool="vv" aria-pressed="false" title="Vloerverwarming tekenen (H)"><svg viewBox="0 0 24 24"><path d="M5 5h14v3.5H5V12h14v3.5H5V19h14"/></svg>Vloerverw.<kbd>H</kbd></button>
+      <button class="tool" data-tool="pipe" aria-pressed="false" title="Leiding tekenen (L)"><svg viewBox="0 0 24 24"><path d="M4 8h9a3 3 0 0 1 3 3v9" stroke="#DC2626"/><path d="M4 13h5a2 2 0 0 1 2 2v5" stroke="#2563EB"/></svg>Leiding<kbd>L</kbd></button>
       <span class="sep"></span>
       <button class="tool" id="tool-fit" title="Alles in beeld (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>Passend<kbd>F</kbd></button>
     </nav>
@@ -446,7 +447,7 @@ const MAT_ADDED={2:['m-staal']}; // presets added later: version -> ids, added o
 const presetMaterials=()=>MAT_PRESETS.map(([id,name,type,v,color])=>({id,name,type,lambda:type==='lambda'?v:0,R:type==='R'?v:0,color}));
 // Rλ of unventilated air layers, NEN-EN-ISO 6946 table (thickness mm → m²K/W)
 const AIR={h:[[0,0],[5,0.11],[7,0.13],[10,0.15],[15,0.17],[25,0.18],[300,0.18]],up:[[0,0],[5,0.11],[7,0.13],[10,0.15],[15,0.16],[300,0.16]],down:[[0,0],[5,0.11],[7,0.13],[10,0.15],[15,0.17],[25,0.19],[50,0.21],[100,0.22],[300,0.23]]};
-const DEFAULT_SETTINGS={te:-10,tGround:5,tUnheated:5,tNeighbour:15,dU:0.1,nInf:0.5,tSupply:-10,maxWall:0.35,snap:0.05,height:2.6,
+const DEFAULT_SETTINGS={te:-10,tGround:5,tUnheated:5,tNeighbour:15,dU:0.1,nInf:0.5,tSupply:-10,maxWall:0.35,snap:0.05,height:2.6,hpVol:3,bufVol:0,minVolL:15,
   ventSys:'D',eta:0.85,tRet:20,infMode:'qv10',qv10:1.0,fInf:1,twSup:35,twRet:30};
 // improvement advice: constructions of this kind facing outside/ground/unheated with U above 'on' get the measure, to U 'to'
 const ADVICE_DEFAULT={
@@ -562,15 +563,17 @@ function normalizeProject(p){
   const rids=new Set(p.rooms.map(r=>r.id));
   p.transfers=(Array.isArray(p.transfers)?p.transfers:[]).map(t=>({id:t.id||rid(),from:t.from,to:t.to,q:Math.max(0,+t.q||0)})).filter(t=>rids.has(t.from)&&rids.has(t.to));
   p.rooms.forEach(r=>{if(!p.floors.some(f=>f.id===r.floorId))r.floorId=p.floors[0].id;});
+  p.pipes=(Array.isArray(p.pipes)?p.pipes:[]).filter(x=>x&&Array.isArray(x.pts)&&x.pts.length>=2&&p.floors.some(f=>f.id===x.floorId)).map(x=>{const mat=PIPES[x.mat]?x.mat:'pex';let dn=String(x.dn||'');if(mat==='staal'&&OLD_STEEL[dn])dn=OLD_STEEL[dn];if(!PIPES[mat].d[dn])dn=Object.keys(PIPES[mat].d)[0];
+    return{id:x.id||rid(),floorId:x.floorId,pts:x.pts.map(q=>({x:+q.x||0,y:+q.y||0})),mat,dn,extra:Math.max(0,+x.extra||0),name:String(x.name||'Leiding')};});
   p.rooms.forEach(r=>{
     r.id=r.id||rid();r.name=String(r.name||'Ruimte');r.temp=Number.isFinite(+r.temp)?+r.temp:20;r.height=+r.height>0?+r.height:p.settings.height;
     if(r.sup==null&&r.ext==null){r.sup=r3((Number(r.qv)||0)*3.6);r.ext=0;}delete r.qv;r.sup=Math.max(0,+r.sup||0);r.ext=Math.max(0,+r.ext||0);
     r.floor=r.floor||{cid:'',adj:'grond',t:20};r.ceil=r.ceil||{cid:'',adj:'temp',t:20};
     const dakC=(p.constructions.find(c=>c.kind==='dak')||{}).id||'';
     r.emitters=(Array.isArray(r.emitters)?r.emitters:[]).filter(e=>e&&(e.kind==='vv'?Array.isArray(e.pts)&&e.pts.length>=3:e.a&&e.b)).map(e=>{const kind=EM_KINDS[e.kind]?e.kind:'rad';
-      const mat=PIPES[e.pipe&&e.pipe.mat]?e.pipe.mat:(kind==='vv'?'pex':'koper');let dn=String(e.pipe&&e.pipe.dn||(kind==='vv'?'16':'15'));if(!PIPES[mat].d[dn])dn=Object.keys(PIPES[mat].d)[1];
+      const mat=PIPES[e.pipe&&e.pipe.mat]?e.pipe.mat:(kind==='vv'?'pex':'koper');let dn=String(e.pipe&&e.pipe.dn||(kind==='vv'?'16':'15'));if(mat==='staal'&&OLD_STEEL[dn])dn=OLD_STEEL[dn];if(!PIPES[mat].d[dn])dn=Object.keys(PIPES[mat].d)[1];
       return{id:e.id||rid(),kind,name:String(e.name||EM_KINDS[kind]),a:e.a,b:e.b,pts:e.pts,p:Math.max(0,+e.p||0),n:+e.n||EM_N[kind]||1.3,spacing:[10,15,20].includes(+e.spacing)?+e.spacing:15,cover:VV_COVER[e.cover]?e.cover:'tegels',boost:!!e.boost&&(kind==='rad'||kind==='conv'),boostPct:Number.isFinite(+e.boostPct)&&+e.boostPct>=0?+e.boostPct:40,pipe:{mat,dn},
-        rt:RAD_TYPES[e.rt]?e.rt:'',rh:+e.rh>0?+e.rh:600,rl:+e.rl>0?+e.rl:0};});
+        rt:RAD_TYPES[e.rt]?e.rt:'',rh:+e.rh>0?+e.rh:600,rl:+e.rl>0?+e.rl:0,loops:[1,2,3,4].includes(+e.loops)?+e.loops:1};});
     r.emitters.forEach(syncRad);
     r.kind=['normaal','trap','vide'].includes(r.kind)?r.kind:'normaal';
     if(r.stair&&typeof r.stair==='object')r.stair={shape:STAIR_SHAPES[r.stair.shape]?r.stair.shape:'recht',edge:r.stair.edge|0,side:r.stair.side==='b'?'b':'a',w:+r.stair.w>0?+r.stair.w:0.85};else delete r.stair;
@@ -966,6 +969,8 @@ function render3d(){const c=Math.cos(v3.th),sn=Math.sin(v3.th),ci=floorIdx(curFl
         else{const a=P3(em.a,z0+0.35),b=P3(em.b,z0+0.35),a2=P3(em.a,z0+0.85),b2=P3(em.b,z0+0.85);items.push({mid:true,d:(a.d+b.d)/2-0.05,svg:`<polygon points="${[a,b,b2,a2].map(pt).join(' ')}" fill="var(--c-hp)" fill-opacity=".75" stroke="var(--c-hp)" stroke-width="1" pointer-events="none"/>`});}});
       if(top){const cc=P3(labelPt(r.pts),z0);labels.push(`<text x="${cc.X}" y="${cc.Y-4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y+13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${fmt(k.total/1000,2)} kW</text>`);}
       items.push(...(stairItems[fi]||[]));
+    if(P.floors[fi])(P.pipes||[]).filter(pp=>pp.floorId===P.floors[fi].id).forEach(pp=>{const z=el[pp.floorId]+0.12,ps=pp.pts.map(p=>P3(p,z)),d=ps.reduce((a,p)=>a+p.d,0)/ps.length,pl=ps.map(pt).join(' ');
+      items.push({mid:true,d,svg:`<polyline points="${pl}" fill="none" stroke="#2563EB" stroke-width="5" stroke-linejoin="round" pointer-events="none"/><polyline points="${pl}" fill="none" stroke="#DC2626" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`});});
     // walls, per wall part, with the top following a sloped roof
       const R=roofOf(r);
       r.pts.forEach((_,i)=>{const e=edge(r,i);if(e.L<1e-6)return;const b=bounds(r,i),w=r.walls[i];
@@ -1038,6 +1043,15 @@ function renderCanvas(){
   if(sel&&sel.t==='seg'){const sr=getRoom(sel.r);if(sr&&sr.walls[sel.w]&&sr.walls[sel.w].segs[sel.s])partnersOf(sr,sel.w,sel.s).forEach(p=>{if(!presentOn(p.o,curFloor))return;const f=edge(p.o,p.k);
     const a=S({x:f.a.x+f.ux*p.u0,y:f.a.y+f.uy*p.u0}),b=S({x:f.a.x+f.ux*p.u1,y:f.a.y+f.uy*p.u1});
     out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--heat)" stroke-opacity=".35" stroke-width="12" stroke-dasharray="10 6" pointer-events="none"/>`;});}
+  // pipe network: one line = supply (red) and return (blue)
+  (P.pipes||[]).filter(pp=>pp.floorId===curFloor).forEach(pp=>{const pts=pp.pts.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' '),isSel=sel&&sel.t==='pipe'&&sel.p===pp.id;
+    if(isSel)out+=`<polyline points="${pts}" fill="none" stroke="var(--heat)" stroke-opacity=".35" stroke-width="16" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>`;
+    out+=`<polyline points="${pts}" fill="none" stroke="#2563EB" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/><polyline points="${pts}" fill="none" stroke="#DC2626" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>`;
+    if(tool==='select')out+=`<polyline class="hit" data-k="pipe" data-p="${pp.id}" points="${pts}" fill="none" stroke-width="14"/>`;
+    let bi=1,bl=0;pp.pts.forEach((p,i)=>{if(i&&dist(pp.pts[i-1],p)>bl){bl=dist(pp.pts[i-1],p);bi=i;}});const a=pp.pts[bi-1],b=pp.pts[bi],m=S({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
+    out+=`<text x="${m.x}" y="${m.y-9}" text-anchor="middle" class="dim" font-size="10" pointer-events="none">${esc((PIPES[pp.mat]||{}).label||'')} ${esc(dnLabel(pp.mat,pp.dn))} · ${fmt(pipeLen(pp)+pp.extra,1)} m</text>`;
+    if(isSel&&tool==='select'){pp.pts.forEach((p,i)=>{const q=S(p);if(i<pp.pts.length-1){const r2=S(pp.pts[i+1]);out+=`<circle data-k="pipemid" data-p="${pp.id}" data-i="${i}" cx="${(q.x+r2.x)/2}" cy="${(q.y+r2.y)/2}" r="5" fill="var(--surface)" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="2 2" style="cursor:copy"/>`;}
+      out+=`<circle data-k="pipept" data-p="${pp.id}" data-i="${i}" cx="${q.x}" cy="${q.y}" r="6" fill="var(--surface)" stroke="#DC2626" stroke-width="2" style="cursor:grab"/>`;});}});
   // staircases: treads and an arrow pointing up
   curRooms().forEach(r=>{if(r.kind!=='trap'||!spans(r))return;const el=floorElev(),l=levelsOf(r),sg=stairTreads(r,el[P.floors[l[0]+1].id]-el[r.floorId]);if(!sg)return;
     sg.treads.forEach(q=>{out+=`<polygon points="${q.poly.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ')}" fill="none" stroke="var(--muted)" stroke-width="1" stroke-opacity=".7" pointer-events="none"/>`;});
@@ -1050,6 +1064,9 @@ function renderCanvas(){
     if(em.kind==='vv'){const pts=em.pts.map(S).map(p=>p.x.toFixed(1)+','+p.y.toFixed(1)).join(' ');
       out+=`<polygon points="${pts}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="${isSel?2.5:1.5}" stroke-dasharray="6 4" pointer-events="none"/>`;
       out+=`<polygon data-k="em" data-r="${r.id}" data-e="${em.id}" points="${pts}" fill="none" stroke="transparent" stroke-width="14" pointer-events="stroke" style="cursor:pointer"/>`;
+      if(isSel&&tool==='select'){em.pts.forEach((p,i)=>{const a=S(p),b=S(em.pts[(i+1)%em.pts.length]);
+        out+=`<circle data-k="vvmid" data-r="${r.id}" data-e="${em.id}" data-i="${i}" cx="${(a.x+b.x)/2}" cy="${(a.y+b.y)/2}" r="5" fill="var(--surface)" stroke="var(--c-hp)" stroke-width="1.5" stroke-dasharray="2 2" style="cursor:copy"><title>Klik om een hoekpunt toe te voegen</title></circle>`;
+        out+=`<circle data-k="vvpt" data-r="${r.id}" data-e="${em.id}" data-i="${i}" cx="${a.x}" cy="${a.y}" r="6" fill="var(--surface)" stroke="var(--c-hp)" stroke-width="2" style="cursor:grab"><title>Sleep om te verplaatsen, dubbelklik om weg te halen</title></circle>`;});}
       const q=S(em.pts[0]);out+=`<text x="${q.x+6}" y="${q.y+14}" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${pc.state!=='ok'?'⚠ ':''}VV ${fmt(o/1000,2)} kW</text>`;}
     else{const a=S(em.a),b=S(em.b);
       if(isSel)out+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--c-hp)" stroke-opacity=".3" stroke-width="18" stroke-linecap="round"/>`;
@@ -1109,12 +1126,12 @@ function renderCanvas(){
     pts.forEach(p=>out+=`<circle cx="${p.x}" cy="${p.y}" r="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>`);
     if(hover){const h=S(hover),edgeHit=hover.kind==='vtx'||hover.kind==='edge';out+=`<circle cx="${h.x}" cy="${h.y}" r="${edgeHit?7:3.5}" fill="${edgeHit?'var(--accent-soft-2)':'none'}" stroke="var(--accent)" stroke-width="1.8"/>`;}}
   // drawing previews
-  if(tool==='poly'&&drawPts.length){const pts=drawPts.map(S);let d='M'+pts.map(p=>p.x+' '+p.y).join('L');
-    out+=`<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2.5"/>`;
-    if(hover){const h=S(hover),l=pts[pts.length-1];out+=`<line x1="${l.x}" y1="${l.y}" x2="${h.x}" y2="${h.y}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 4"/>`;
-      if(drawPts.length>=2)out+=`<line x1="${h.x}" y1="${h.y}" x2="${pts[0].x}" y2="${pts[0].y}" stroke="var(--accent)" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="3 4"/>`;
+  if((tool==='poly'||tool==='vv'||tool==='pipe')&&drawPts.length){const col=tool==='poly'?'var(--accent)':tool==='vv'?'var(--c-hp)':'#DC2626',closed=tool!=='pipe';const pts=drawPts.map(S);let d='M'+pts.map(p=>p.x+' '+p.y).join('L');
+    out+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="2.5"/>`;
+    if(hover){const h=S(hover),l=pts[pts.length-1];out+=`<line x1="${l.x}" y1="${l.y}" x2="${h.x}" y2="${h.y}" stroke="${col}" stroke-width="2" stroke-dasharray="5 4"/>`;
+      if(closed&&drawPts.length>=2)out+=`<line x1="${h.x}" y1="${h.y}" x2="${pts[0].x}" y2="${pts[0].y}" stroke="${col}" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="3 4"/>`;
       const L=dist(hover,drawPts[drawPts.length-1]);out+=`<text x="${(l.x+h.x)/2}" y="${(l.y+h.y)/2-8}" text-anchor="middle" class="dim">${fmt(L)} m</text>`;}
-    pts.forEach((p,i)=>out+=`<circle cx="${p.x}" cy="${p.y}" r="${i===0&&drawPts.length>=3?7:4}" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/>`);}
+    pts.forEach((p,i)=>out+=`<circle cx="${p.x}" cy="${p.y}" r="${closed&&i===0&&drawPts.length>=3?7:4}" fill="var(--surface)" stroke="${col}" stroke-width="2"/>`);}
   if(tool==='rect'&&drag&&drag.type==='rect'){const a=S(drag.p0),b=S(drag.p1);const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(a.x-b.x),h=Math.abs(a.y-b.y);
     out+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="var(--accent-soft-2)" stroke="var(--accent)" stroke-width="2"/>`;
     out+=`<text x="${x+w/2}" y="${y+h/2+4}" text-anchor="middle" class="dim">${fmt(Math.abs(drag.p1.x-drag.p0.x))} × ${fmt(Math.abs(drag.p1.y-drag.p0.y))} m</text>`;}
@@ -1137,7 +1154,8 @@ const HINTS={
   wall:'Klik op de rand van een ruimte, zet eventueel knikpunten binnen de ruimte en eindig op een andere rand. Daarna kun je de ruimte langs die lijn in tweeën splitsen. Backspace haalt het laatste punt weg, Esc annuleert.',
   split:'Klik op een wand om hem op die plek in twee delen te splitsen. Elk deel krijgt een eigen constructie en isolatiewaarde.',
   emit:'Sleep een lijn binnen een ruimte voor een radiator, convector of fancoil. Daarna kies je de soort en vul je het vermogen en de aansluitleiding in.',
-  vv:'Sleep een rechthoek binnen een ruimte voor vloerverwarming. Daarna kies je de hart-op-hartafstand, de vloerafwerking en de aansluitleiding.'};
+  vv:'Klik de hoekpunten van de vloerverwarming (bijvoorbeeld een L-vorm) en sluit op het eerste punt, met dubbelklik of Enter. Slepen geeft een rechthoek. Een hele ruimte vullen kan ook met de knop bij de ruimte.',
+  pipe:'Klik de punten van een leiding, bijvoorbeeld van de warmtepomp naar de verdeler of de radiatoren. Eén lijn is aanvoer en retour samen. Rond af met dubbelklik of Enter.'};
 function setTool(t){if(pendSplit)closeAsk();if(view3d&&t!=='select'){view3d=false;stage.classList.remove('is3d');const b=$('z-3d');b.setAttribute('aria-pressed','false');b.textContent='2,5D';}tool=t;drawPts=[];drag=null;hover=null;hoverSplit=null;
   document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t)));
   stage.className='stage t-'+t;$('hint').textContent=HINTS[t];renderCanvas();}
@@ -1147,7 +1165,7 @@ function pushUndo(){undoStack.push(JSON.stringify(P));if(undoStack.length>120)un
 function undo(){if(!undoStack.length)return;redoStack.push(JSON.stringify(P));P=normalizeProject(JSON.parse(undoStack.pop()));all[P.id]=P;validateSel();markDirty(true);renderAll();}
 function redo(){if(!redoStack.length)return;undoStack.push(JSON.stringify(P));P=normalizeProject(JSON.parse(redoStack.pop()));all[P.id]=P;validateSel();markDirty(true);renderAll();}
 function updateUndoBtns(){$('btn-undo').disabled=!undoStack.length;$('btn-redo').disabled=!redoStack.length;}
-function validateSel(){if(!sel)return;const r=getRoom(sel.r);if(!r||r.floorId!==curFloor){sel=null;return;}
+function validateSel(){if(!sel)return;if(sel.t==='pipe'){if(!(P.pipes||[]).some(x=>x.id===sel.p&&x.floorId===curFloor))sel=null;return;}const r=getRoom(sel.r);if(!r||r.floorId!==curFloor){sel=null;return;}
   if(sel.t==='seg'){if(!r.walls[sel.w]||!r.walls[sel.w].segs[sel.s])sel={t:'room',r:r.id};}
   if(sel.t==='vtx'&&!r.pts[sel.i])sel={t:'room',r:r.id};
   if(sel.t==='em'&&!(r.emitters||[]).some(x=>x.id===sel.e))sel={t:'room',r:r.id};}
@@ -1165,6 +1183,19 @@ function makeRoom(pts){
     :pieces.length===1?`${r.name} toegevoegd. Het stuk dat in de vide valt, is eruit geknipt.`
     :`${r.name} toegevoegd in ${pieces.length} delen: de vide is eruit geknipt. De delen hebben een open verbinding.`);
 }
+function finishVV(){const pts=drawPts.filter((p,i)=>i===0||dist(p,drawPts[i-1])>1e-6);drawPts=[];hover=null;
+  if(pts.length>=3&&Math.abs(polyArea(pts))>0.1)addEmitter('vv',{pts});else renderCanvas();}
+let lastPipeSpec={mat:'pex',dn:'26'};
+function finishPipe(){const pts=drawPts.filter((p,i)=>i===0||dist(p,drawPts[i-1])>1e-6);drawPts=[];hover=null;
+  if(pts.length<2||pipeLen({pts})<0.2){renderCanvas();return;}
+  pushUndo();const pp={id:rid(),floorId:curFloor,pts,mat:lastPipeSpec.mat,dn:lastPipeSpec.dn,extra:0,name:'Leiding '+(P.pipes.length+1)};P.pipes.push(pp);
+  sel={t:'pipe',p:pp.id};tab='sel';markDirty();renderAll();toast(`${pp.name} getekend (${fmt(pipeLen(pp))} m). Kies het leidingtype en de diameter.`);}
+// floor heating that fills a whole room, 10 cm from the walls
+function insetPoly(pts,d){const n=pts.length,sg=polyArea(pts)>=0?1:-1,L=[];
+  for(let i=0;i<n;i++){const a=pts[i],b=pts[(i+1)%n],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);if(len<1e-9)continue;const ux=dx/len,uy=dy/len;L.push({p:{x:a.x-sg*uy*d,y:a.y+sg*ux*d},u:{x:ux,y:uy}});}
+  const m=L.length,out=[];for(let i=0;i<m;i++){const A=L[(i-1+m)%m],B=L[i],den=A.u.x*B.u.y-A.u.y*B.u.x;
+    if(Math.abs(den)<1e-9){out.push({x:r3(B.p.x),y:r3(B.p.y)});continue;}const t=((B.p.x-A.p.x)*B.u.y-(B.p.y-A.p.y)*B.u.x)/den;out.push({x:r3(A.p.x+A.u.x*t),y:r3(A.p.y+A.u.y*t)});}
+  const a0=polyArea(pts),a1=polyArea(out);return Math.sign(a0)===Math.sign(a1)&&Math.abs(a1)>0.05&&Math.abs(a1)<Math.abs(a0)?out:null;}
 function finishPoly(){const pts=drawPts.filter((p,i)=>i===0||dist(p,drawPts[i-1])>1e-6);drawPts=[];hover=null;
   if(pts.length>=3&&Math.abs(polyArea(pts))>0.01)makeRoom(pts);else renderCanvas();}
 function addCut(room,i,t){const w=room.walls[i];const L=edge(room,i).L;if(t<=0.02||t>=L-0.02)return;if(w.cuts.some(c=>Math.abs(c-t)<0.02))return;
@@ -1176,7 +1207,7 @@ function insertVertex(room,i,t){const e=edge(room,i);if(t<0.05||t>e.L-0.05)retur
   const j=w.cuts.filter(c=>c<t).length;const w1={cuts:w.cuts.slice(0,j),segs:w.segs.slice(0,j+1).map(clone)};
   const tail=w.segs.slice(j).map(clone);tail[0].openings=[];tail.forEach((s,k)=>{if(k>0)s.openings.forEach(o=>{if(Number.isFinite(o.at))o.at=r3(o.at-t);});});
   const w2={cuts:w.cuts.slice(j).map(c=>r3(c-t)),segs:tail};room.pts.splice(i+1,0,p);room.walls.splice(i,1,w1,w2);sel={t:'vtx',r:room.id,i:i+1};markDirty();renderAll();}
-function deleteSelection(){if(!sel)return;const room=getRoom(sel.r);if(!room)return;
+function deleteSelection(){if(!sel)return;if(sel.t==='pipe'){pushUndo();P.pipes=P.pipes.filter(x=>x.id!==sel.p);sel=null;markDirty();renderAll();toast('Leiding verwijderd.',true);return;}const room=getRoom(sel.r);if(!room)return;
   if(sel.t==='em'){pushUndo();room.emitters=(room.emitters||[]).filter(x=>x.id!==sel.e);sel={t:'room',r:room.id};markDirty();renderAll();toast('Afgifte-element verwijderd.',true);return;}
   if(sel.t==='vtx'){if(room.pts.length<=3){toast('Een ruimte heeft minstens drie hoekpunten.');return;}pushUndo();room.pts.splice(sel.i,1);room.walls.splice(sel.i,1);normalizeWalls(room);sel={t:'room',r:room.id};markDirty();renderAll();return;}
   if(sel.t==='seg'){if(room.walls[sel.w].segs.length>1){const c=sel.s>0?sel.s-1:0;removeCut(room,sel.w,c);toast('Splitsing verwijderd.',true);}else toast('Selecteer de ruimte zelf om hem te verwijderen.');return;}
@@ -1327,6 +1358,15 @@ svg.addEventListener('pointerdown',e=>{
   if(tool==='select'){
     if(k==='vtx'){sel={t:'vtx',r:tgt.dataset.r,i:+tgt.dataset.i};drag={type:'vtx',r:sel.r,i:sel.i,moved:false};capture(e);tab='sel';renderAll();return;}
     if(k==='vide'){const r=getRoom(tgt.dataset.r);if(r){setFloor(r.floorId,true);sel={t:'room',r:r.id};tab='sel';renderAll();}return;}
+    if(k==='vvpt'||k==='vvmid'){const r=getRoom(tgt.dataset.r),em=r&&(r.emitters||[]).find(x=>x.id===tgt.dataset.e);if(!em)return;let i=+tgt.dataset.i;
+      if(k==='vvmid'){pushUndo();const a=em.pts[i],b=em.pts[(i+1)%em.pts.length];em.pts.splice(i+1,0,{x:r3((a.x+b.x)/2),y:r3((a.y+b.y)/2)});drag={type:'vvpt',r:r.id,e:em.id,i:i+1,moved:true};capture(e);renderCanvas();return;}
+      const now=Date.now();if(lastPtDown&&lastPtDown.id===em.id&&lastPtDown.i===i&&now-lastPtDown.t<400){lastPtDown=null;if(em.pts.length>3){pushUndo();em.pts.splice(i,1);markDirty();renderAll();}else toast('Vloerverwarming heeft minstens drie hoekpunten.');return;}
+      lastPtDown={id:em.id,i,t:now};drag={type:'vvpt',r:r.id,e:em.id,i,moved:false};capture(e);return;}
+    if(k==='pipe'){sel={t:'pipe',p:tgt.dataset.p};tab='sel';renderAll();return;}
+    if(k==='pipept'||k==='pipemid'){const pp=P.pipes.find(x=>x.id===tgt.dataset.p);if(!pp)return;let i=+tgt.dataset.i;
+      if(k==='pipemid'){pushUndo();const a=pp.pts[i],b=pp.pts[i+1];pp.pts.splice(i+1,0,{x:r3((a.x+b.x)/2),y:r3((a.y+b.y)/2)});drag={type:'pipept',p:pp.id,i:i+1,moved:true};capture(e);renderCanvas();return;}
+      const now=Date.now();if(lastPtDown&&lastPtDown.id===pp.id&&lastPtDown.i===i&&now-lastPtDown.t<400){lastPtDown=null;if(pp.pts.length>2){pushUndo();pp.pts.splice(i,1);markDirty();renderAll();}return;}
+      lastPtDown={id:pp.id,i,t:now};drag={type:'pipept',p:pp.id,i,moved:false};capture(e);return;}
     if(k==='emend'){drag={type:'emend',r:tgt.dataset.r,e:tgt.dataset.e,end:tgt.dataset.end,moved:false};capture(e);return;}
     if(k==='em'){const r=getRoom(tgt.dataset.r);const em=(r.emitters||[]).find(x=>x.id===tgt.dataset.e);if(!em)return;sel={t:'em',r:r.id,e:em.id};tab='sel';
       drag={type:'em',r:r.id,e:em.id,start:wp,orig:clone(em),moved:false};capture(e);renderAll();return;}
@@ -1346,7 +1386,11 @@ svg.addEventListener('pointerdown',e=>{
     const last=drawPts[drawPts.length-1];if(last&&dist(p,last)<1e-6){if(drawPts.length>=3)finishPoly();return;}
     drawPts.push({x:p.x,y:p.y});renderCanvas();return;}
   if(tool==='rect'){const p=snapPoint(wp,{alt:e.altKey});drag={type:'rect',p0:p,p1:p};capture(e);renderCanvas();return;}
-  if(tool==='emit'||tool==='vv'){const p=snapPoint(wp,{alt:e.altKey});drag={type:tool==='emit'?'emline':'emrect',p0:p,p1:p};capture(e);renderCanvas();return;}
+  if(tool==='emit'){const p=snapPoint(wp,{alt:e.altKey});drag={type:'emline',p0:p,p1:p};capture(e);renderCanvas();return;}
+  if(tool==='vv'||tool==='pipe'){const p=snapPoint(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey}),fin=tool==='vv'?finishVV:finishPipe;
+    if(drawPts.length){if(tool==='vv'&&drawPts.length>=3&&dist(p,drawPts[0])*view.s<10){fin();return;}const last=drawPts[drawPts.length-1];if(dist(p,last)<1e-6){fin();return;}drawPts.push({x:p.x,y:p.y});renderCanvas();return;}
+    if(tool==='vv'){drag={type:'emrect',p0:p,p1:p};capture(e);renderCanvas();return;} // drag = rectangle, click = start a polygon
+    drawPts.push({x:p.x,y:p.y});renderCanvas();return;}
   if(tool==='split'){if(k==='seg'){const r=getRoom(tgt.dataset.r);const i=+tgt.dataset.w;addCut(r,i,splitT(r,i,wp,e.altKey));}return;}
   if(tool==='wall'){if(!pendSplit)wallClick(wallSnap(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey}));return;}
 });
@@ -1373,6 +1417,9 @@ svg.addEventListener('pointermove',e=>{
       let t=r3(Math.round(((wp.x-ed.a.x)*ed.ux+(wp.y-ed.a.y)*ed.uy-drag.grab)/st)*st);t=r3(Math.max(b[drag.s],Math.min(b[drag.s+1]-w,t)));
       if(!drag.moved){if(Number.isFinite(o.at)&&o.at===t)return;pushUndo();drag.moved=true;freezeOpenings(r,drag.w,drag.s);}
       o.at=t;syncLinkedAt(o,r,drag.w);renderCanvas();return;}
+    if(drag.type==='vvpt'||drag.type==='pipept'){const pts=drag.type==='vvpt'?((getRoom(drag.r).emitters||[]).find(x=>x.id===drag.e)||{}).pts:(P.pipes.find(x=>x.id===drag.p)||{}).pts;if(!pts)return;
+      const n=pts.length,closed=drag.type==='vvpt',prev=closed?pts[(drag.i-1+n)%n]:pts[drag.i-1],next=closed?pts[(drag.i+1)%n]:pts[drag.i+1];
+      const p=snapPoint(wp,{prev,next,alt:e.altKey});const cur=pts[drag.i];if(cur.x===p.x&&cur.y===p.y)return;if(!drag.moved){pushUndo();drag.moved=true;}pts[drag.i]={x:p.x,y:p.y};renderCanvas();return;}
     if(drag.type==='emend'){const r=getRoom(drag.r),em=(r.emitters||[]).find(x=>x.id===drag.e);if(!em)return;const other=drag.end==='a'?em.b:em.a;
       const p=snapPoint(wp,{prev:other,alt:e.altKey});if(dist(p,other)<0.2)return;const cur=em[drag.end];if(cur.x===p.x&&cur.y===p.y)return;
       if(!drag.moved){pushUndo();drag.moved=true;}em[drag.end]={x:p.x,y:p.y};if(RAD_TYPES[em.rt]){em.rl=Math.round(emLen(em)*1000);syncRad(em);}renderCanvas();return;}
@@ -1383,7 +1430,7 @@ svg.addEventListener('pointermove',e=>{
     if(drag.type==='rect'){drag.p1=snapPoint(wp,{alt:e.altKey});renderCanvas();return;}
   }
   if(tool==='wall'){hover=pendSplit?null:wallSnap(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey});renderCanvas();return;}
-  if(tool==='poly'||tool==='rect'||tool==='emit'||tool==='vv'){hover=snapPoint(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey});renderCanvas();return;}
+  if(tool==='poly'||tool==='rect'||tool==='emit'||tool==='vv'||tool==='pipe'){hover=snapPoint(wp,{prev:drawPts[drawPts.length-1],alt:e.altKey});renderCanvas();return;}
   if(tool==='split'){const tgt=e.target.closest?e.target.closest('[data-k="seg"]'):null;
     if(tgt){const r=getRoom(tgt.dataset.r);const i=+tgt.dataset.w;hoverSplit={r:r.id,w:i,t:splitT(r,i,wp,e.altKey)};}else hoverSplit=null;renderCanvas();}
 });
@@ -1393,13 +1440,14 @@ function endPointer(){
   if(pan){pan=null;stage.classList.remove('panning');}
   if(drag){const d=drag;drag=null;
     if(d.type==='emline'){if(dist(d.p0,d.p1)>=0.2)addEmitter('line',{a:{x:d.p0.x,y:d.p0.y},b:{x:d.p1.x,y:d.p1.y}});else renderCanvas();return;}
-    if(d.type==='emrect'){const w=Math.abs(d.p1.x-d.p0.x),hh=Math.abs(d.p1.y-d.p0.y);if(w>=0.3&&hh>=0.3){const x0=Math.min(d.p0.x,d.p1.x),y0=Math.min(d.p0.y,d.p1.y);addEmitter('vv',{pts:rectPts(x0,y0,x0+w,y0+hh)});}else renderCanvas();return;}
+    if(d.type==='emrect'){const w=Math.abs(d.p1.x-d.p0.x),hh=Math.abs(d.p1.y-d.p0.y);if(w>=0.3&&hh>=0.3){const x0=Math.min(d.p0.x,d.p1.x),y0=Math.min(d.p0.y,d.p1.y);addEmitter('vv',{pts:rectPts(x0,y0,x0+w,y0+hh)});}
+      else if(dist(d.p0,d.p1)<0.05){drawPts=[{x:d.p0.x,y:d.p0.y}];renderCanvas();}else renderCanvas();return;}
     if(d.type==='rect'){const w=Math.abs(d.p1.x-d.p0.x),h=Math.abs(d.p1.y-d.p0.y);if(w>=0.1&&h>=0.1){const x0=Math.min(d.p0.x,d.p1.x),y0=Math.min(d.p0.y,d.p1.y);makeRoom(rectPts(x0,y0,x0+w,y0+h));}else renderCanvas();return;}
     if(d.moved){const r=getRoom(d.r);if(r)normalizeWalls(r);markDirty();renderAll();}else if(d.type==='op')renderCanvas();}
 }
 svg.addEventListener('pointerup',endPointer);svg.addEventListener('pointercancel',endPointer);
 svg.addEventListener('pointerleave',()=>{if(!drag&&!pan){hover=null;hoverSplit=null;cursorW=null;updateCoords();if(tool!=='select')renderCanvas();}});
-let lastSegDown=null;
+let lastSegDown=null,lastPtDown=null;
 svg.addEventListener('wheel',e=>{e.preventDefault();const r=svg.getBoundingClientRect();
   if(view3d){const f=Math.exp(-e.deltaY*0.0015),ns=Math.max(4,Math.min(400,v3.s*f)),k=ns/v3.s,cx=e.clientX-r.left,cy=e.clientY-r.top;v3.tx=cx-(cx-v3.tx)*k;v3.ty=cy-(cy-v3.ty)*k;v3.s=ns;renderCanvas();return;}zoomAt(Math.exp(-e.deltaY*0.0015),e.clientX-r.left,e.clientY-r.top);},{passive:false});
 const zoom3=f=>{const cx=stage.clientWidth/2,cy=stage.clientHeight/2,ns=Math.max(4,Math.min(400,v3.s*f)),k=ns/v3.s;v3.tx=cx-(cx-v3.tx)*k;v3.ty=cy-(cy-v3.ty)*k;v3.s=ns;renderCanvas();};
@@ -1420,10 +1468,12 @@ document.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();
   if(e.key==='PageUp'||e.key==='PageDown'){e.preventDefault();const i=floorIdx(curFloor)+(e.key==='PageUp'?1:-1);if(i>=0&&i<P.floors.length)setFloor(P.floors[i].id);return;}
   if(k==='o'){const b=$('btn-under');if(b&&!b.disabled)b.click();return;}
-  if(k==='v')setTool('select');else if(k==='r')setTool('rect');else if(k==='p')setTool('poly');else if(k==='d')set3d(!view3d);else if(k==='s')setTool('split');else if(k==='w')setTool('wall');else if(k==='a')setTool('emit');else if(k==='h')setTool('vv');else if(k==='f')$('tool-fit').click();
+  if(k==='v')setTool('select');else if(k==='r')setTool('rect');else if(k==='p')setTool('poly');else if(k==='d')set3d(!view3d);else if(k==='s')setTool('split');else if(k==='w')setTool('wall');else if(k==='a')setTool('emit');else if(k==='h')setTool('vv');else if(k==='l')setTool('pipe');else if(k==='f')$('tool-fit').click();
   else if(e.key==='Escape'){if(pendSplit)closeAsk();else if(drawPts.length){drawPts=[];renderCanvas();}else if(tool!=='select')setTool('select');else{sel=null;renderAll();}}
   else if(e.key==='Enter'&&tool==='poly'){finishPoly();}
-  else if(e.key==='Backspace'&&(tool==='poly'||tool==='wall')&&drawPts.length){e.preventDefault();drawPts.pop();renderCanvas();}
+  else if(e.key==='Enter'&&tool==='vv'&&drawPts.length){finishVV();}
+  else if(e.key==='Enter'&&tool==='pipe'&&drawPts.length){finishPipe();}
+  else if(e.key==='Backspace'&&(tool==='poly'||tool==='wall'||tool==='vv'||tool==='pipe')&&drawPts.length){e.preventDefault();drawPts.pop();renderCanvas();}
   else if((e.key==='Delete'||e.key==='Backspace')&&tool==='select'&&sel){e.preventDefault();deleteSelection();}
 });
 document.addEventListener('keyup',e=>{if(e.key===' ')spaceDown=false;});
@@ -1654,7 +1704,42 @@ const radP=(t,h,l)=>RAD_TYPES[t]?Math.round(RAD_TYPES[t][0]*Math.pow(Math.max(10
 // change the length of a radiator/convector line: the start stays, the end moves along the same direction
 function setEmLen(em,mm){const L=emLen(em),ux=L>1e-6?(em.b.x-em.a.x)/L:1,uy=L>1e-6?(em.b.y-em.a.y)/L:0;em.b={x:r3(em.a.x+ux*mm/1000),y:r3(em.a.y+uy*mm/1000)};}
 function syncRad(em){if(em.kind==='rad'&&RAD_TYPES[em.rt])em.p=radP(em.rt,em.rh,em.rl);}
-const PIPES={koper:{label:'Koper',d:{'10':8,'12':10,'15':13,'18':16,'22':20,'28':26}},pex:{label:'PEX / alupex',d:{'14':10,'16':12,'17':13,'20':16,'26':20}},staal:{label:'Staal (gasbuis)',d:{'3/8"':12.5,'1/2"':16.1,'3/4"':21.6,'1"':27.3}}};
+const PIPES={koper:{label:'Koper',d:{'10':8,'12':10,'15':13,'18':16,'22':20,'28':26,'35':32,'42':39}},pex:{label:'PEX / alupex',d:{'14':10,'16':12,'17':13,'20':16,'26':20,'32':26,'40':33}},staal:{label:'Staal (cv-buis)',d:{'12':9.6,'15':12.6,'18':15.6,'22':19.6,'28':25.6,'35':32,'42':39}}};
+// older projects used threaded gas pipe sizes for steel: map them to the steel tube with the nearest bore
+const OLD_STEEL={'3/8"':'15','1/2"':'18','3/4"':'22','1"':'28','1 1/4"':'35'};
+// "32×3 mm" for (alu)pex, "22×1 mm" for copper, "22×1,2 mm" for steel
+function dnLabel(mat,dn){const m=PIPES[mat]||PIPES.koper,d=m.d[dn];return dn+'×'+nv((+dn-d)/2,1)+' mm';} // outside diameter × wall
+const pipeLpm=(mat,dn)=>{const d=((PIPES[mat]||PIPES.koper).d[dn])||13;return Math.PI*d*d/4000;}; // litres of water per metre of pipe
+const pipeLen=pp=>pp.pts.reduce((a,p,i)=>i?a+dist(pp.pts[i-1],p):a,0);
+// water content (litres), indicative: panel radiators per metre at 600 mm high; otherwise per kW of rated output
+const RAD_L={T10:3,T11:3,T20:5.5,T21:5.5,T22:5.8,T33:8.5};
+function emVolume(em){if(em.kind==='vv')return vvLoop(em)*pipeLpm('pex','16');if(em.kind==='rad'&&RAD_TYPES[em.rt])return RAD_L[em.rt]*(em.rh/600)*(em.rl/1000);
+  if(em.kind==='conv')return Math.max(0,emLen(em)-0.15)*2*(em.loops||1)*pipeLpm('koper','15'); // loop(s) of 15 mm copper through the fins
+  return Math.max(0,em.p)/1000*(em.kind==='rad'?3.4:0.5);}
+function systemVolume(){const S=P.settings;let rad=0,vv=0;P.rooms.forEach(r=>(r.emitters||[]).forEach(em=>{const v=emVolume(em);if(em.kind==='vv')vv+=v;else rad+=v;}));
+  const pipes=(P.pipes||[]).reduce((a,x)=>a+(pipeLen(x)+x.extra)*2*pipeLpm(x.mat,x.dn),0);return{pipes,rad,vv,hp:S.hpVol,buf:S.bufVol,total:pipes+rad+vv+S.hpVol+S.bufVol};}
+function pipeCapacity(mat,dn){const d=((PIPES[mat]||PIPES.koper).d[dn]||13)/1000,dT=Math.max(0.5,P.settings.twSup-P.settings.twRet);return V_OK*Math.PI*d*d/4*1000*4.19*dT;} // kW at 0,5 m/s
+function viewPipe(pp){const len=pipeLen(pp),tot=len+pp.extra,vol=tot*2*pipeLpm(pp.mat,pp.dn),cap=pipeCapacity(pp.mat,pp.dn),need=calcAll().total/1000,S=P.settings;
+  return `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-pipe-name" data-f="pipe.name" value="${esc(pp.name)}" aria-label="Naam leiding"></div>
+  <div class="fields"><label class="f" for="f-pipe-mat">Materiaal<select class="in" id="f-pipe-mat" data-f="pipe.mat">${Object.entries(PIPES).map(([k,v])=>`<option value="${k}" ${pp.mat===k?'selected':''}>${v.label}</option>`).join('')}</select></label>
+    <label class="f" for="f-pipe-dn">Diameter<select class="in" id="f-pipe-dn" data-f="pipe.dn">${Object.keys(PIPES[pp.mat].d).map(d=>`<option value="${esc(d)}" ${pp.dn===d?'selected':''}>${esc(dnLabel(pp.mat,d))} (inwendig ${nv(PIPES[pp.mat].d[d],1)} mm)</option>`).join('')}</select></label>
+    ${numField('f-pipe-x','pipe.extra','Extra lengte','m',pp.extra,1)}</div>
+  <div class="det">Getekend ${fmt(len)} m + extra ${fmt(pp.extra)} m = ${fmt(tot)} m<br>Inhoud aanvoer + retour: <b>${fmt(vol,1)} liter</b><br>Draagt bij ${nv(V_OK,1)} m/s ongeveer ${fmt(cap,1)} kW (ΔT ${nv(S.twSup-S.twRet,1)} K)</div>
+  ${cap<need?`<p class="note" style="color:var(--warn)">⚠ Is dit de hoofdleiding, dan is hij te klein voor het hele huis (${fmt(need,2)} kW): het water stroomt dan sneller dan ${nv(V_OK,1)} m/s.</p>`:''}
+  <p class="note">Eén lijn staat voor aanvoer én retour. Vul bij <i>Extra lengte</i> stijgleidingen naar een andere verdieping in, en stukken die je niet tekent. Koppelingen en bochten tellen niet mee. De inhoud gaat mee in de systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="res">Resultaten</button>.</p>
+  <p class="note">Hoekpunt verslepen: sleep het. Klik op een + om een punt toe te voegen, en dubbelklik op een punt om het weg te halen.</p>
+  <div class="row"><button class="btn danger" data-act="delpipe">Leiding verwijderen</button></div>`;}
+function volumeHtml(){if(!hpList)return'';const S=P.settings,v=systemVolume(),hp=hpList.find(h=>h.id===hpSel);
+  const max7=hp?hpAt(hp,7,'max'):0,req=hp?(+hp.minInhoud>0?+hp.minInhoud:S.minVolL*max7):0,ok=v.total>=req;
+  const row=(l,x)=>`<tr><td>${l}</td><td>${fmt(x,1)} l</td></tr>`;
+  return `<div class="sec"><h3>Systeeminhoud</h3>
+    <div class="tablewrap"><table class="calc"><tbody>${row('Leidingen (getekend, aanvoer + retour)',v.pipes)}${row('Radiatoren, convectoren en fancoils',v.rad)}${row('Vloerverwarming (lussen 16×2)',v.vv)}${row('Warmtepomp',v.hp)}${v.buf>0?row('Buffervat',v.buf):''}<tr class="sum"><td>Totaal</td><td>${fmt(v.total,0)} l</td></tr></tbody></table></div>
+    <div class="fields">${numField('f-s-hpvol','set.hpVol','Inhoud warmtepomp','l',S.hpVol,1)}${numField('f-s-buf','set.bufVol','Buffervat','l',S.bufVol,0)}${numField('f-s-minv','set.minVolL','Vuistregel minimaal','l per kW',S.minVolL,1)}</div>
+    ${hp?`<div class="kcard"><div class="kh"><span>Nodig voor ${esc(hp.merk)} ${esc(hp.model)}</span><b>${fmt(req,0)} l</b></div>
+      <div class="row">${ok?`<span class="chip ok">✓ voldoende inhoud (${fmt(v.total,0)} l)</span>`:`<span class="chip bad">⚠ ${fmt(req-v.total,0)} l te weinig: overweeg een buffervat</span>`}</div>
+      <span class="note">${+hp.minInhoud>0?'Minimale inhoud volgens de opgave in de warmtepomplijst.':`Vuistregel: ${nv(S.minVolL,1)} l per kW maximaal vermogen bij +7 °C (${fmt(max7,1)} kW). Kijk in de installatiehandleiding voor de echte eis.`}</span></div>`:'<p class="note">Kies hierboven een warmtepomp om de inhoud te beoordelen.</p>'}
+    <p class="note">Een warmtepomp heeft genoeg water in het systeem nodig om te kunnen ontdooien en niet te vaak aan en uit te gaan. Tel alleen kringen mee die altijd open staan. Hebben radiatoren thermostaatkranen of heeft de vloerverwarming ruimteregeling, dan is de werkelijke inhoud lager. Een <b>schakelvat</b> (hydraulische scheiding) volgt niet uit de inhoud. Dat heb je nodig als de warmtepomp meer water moet rondpompen dan het afgiftesysteem doorlaat, of bij meerdere pompgroepen, zoals vloerverwarming met een eigen mengpomp. Overleg dat met de installateur.</p>
+    <p class="note">Indicatieve inhoud: paneelradiatoren per meter (bij 600 mm hoog: T11 3 l, T22 5,8 l, T33 8,5 l), andere radiatoren 3,4 l per kW, convectoren een of meer lussen koperbuis 15 mm over de lengte min 15 cm (een lus is twee buizen), fancoils 0,5 l per kW. Aansluitleidingen naar de radiatoren tellen alleen mee als je ze tekent.</p></div>`;}
 const VV_COVER={tegels:['Tegels / natuursteen',0.01],pvc:['PVC / vinyl',0.03],laminaat:['Laminaat met ondervloer',0.07],parket:['Parket',0.10],tapijt:['Tapijt',0.15]};
 // indicative heat output coefficient of underfloor heating (W/m²K over the log-mean water–room temperature difference),
 // screed ~45 mm above a 16 mm pipe, by pipe spacing (cm) and covering resistance 0 / 0,05 / 0,10 / 0,15 m²K/W
@@ -1692,19 +1777,20 @@ function twFieldsHtml(){const S=P.settings;return `<div class="card"><b>Afgiftes
   <p class="note">Alle afgiftevermogens worden bij deze temperaturen berekend. Geldt voor het hele project.</p></div>`;}
 function pipeChip(pc){return pc.state==='ok'?`<span class="chip ok">✓ ${fmt(pc.v,2)} m/s: leiding is ruim genoeg</span>`:pc.state==='krap'?`<span class="chip bad">⚠ ${fmt(pc.v,2)} m/s: krap, kans op geluid en drukval</span>`:`<span class="chip bad">⚠ ${fmt(pc.v,2)} m/s: leiding te klein</span>`;}
 function roomEmitHtml(room,c){c=c||calcRoom(room);const S=P.settings,ems=room.emitters||[];
-  if(!ems.length)return `<h3>Afgifte</h3><p class="note">Nog geen afgifte in deze ruimte. Teken een radiator met <b>Radiator</b> (A) of vloerverwarming met <b>Vloerverw.</b> (H).</p>`;
+  const fillBtn=`<div class="row"><button class="btn small" data-act="vvfill" data-r="${room.id}">Vloerverwarming in de hele ruimte</button></div>`;
+  if(!ems.length)return `<h3>Afgifte</h3><p class="note">Nog geen afgifte in deze ruimte. Teken een radiator met <b>Radiator</b> (A) of vloerverwarming met <b>Vloerverw.</b> (H).</p>${fillBtn}`;
   const emit=roomEmit(room),need=c.total,ns=neededSupply(room,need),ok=emit>=need-1;
   return `<h3>Afgifte</h3><div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup,1)}/${nv(S.twRet,1)} °C</span><b>${fmt(emit/1000,2)} kW</b></div>
     <div class="seglegend"><span style="--c:transparent">warmteverlies ${fmt(need/1000,2)} kW</span></div>
     <div class="row">${ok?`<span class="chip ok">✓ voldoende${need>0?` (${fmtW(emit/need*100)}%)`:''}</span>`:`<span class="chip bad">⚠ tekort ${fmt((need-emit)/1000,2)} kW</span>`}</div>
     <span class="note">${ns==null?'':ns===Infinity?'Ook bij 90 °C aanvoer niet voldoende: meer of grotere afgifte nodig.':`Minimaal nodige aanvoertemperatuur in deze ruimte: ${fmt(ns,1)} °C (bij ΔT ${nv(S.twSup-S.twRet,1)} K).`}</span></div>
     ${ems.map(em=>{const o=emOutput(em,room),pc=pipeCheck(em,o);return `<button class="linkrow" data-act="selem" data-r="${room.id}" data-e="${em.id}"><span>${esc(em.name)} <span class="note">· ${EM_KINDS[em.kind]}${em.boost?' met boosters':''}${pc.state!=='ok'?' · ⚠ leiding '+pc.state:''}</span></span><span>${fmt(o/1000,2)} kW</span></button>`;}).join('')}
-    ${twFieldsHtml()}`;}
+    ${fillBtn}${twFieldsHtml()}`;}
 function viewEm(room,em){const S=P.settings,out=emOutput(em,room),pc=pipeCheck(em,out),isV=em.kind==='vv';
   const kinds=(isV?['vv']:['rad','conv','fan']).map(k=>`<option value="${k}" ${em.kind===k?'selected':''}>${EM_KINDS[k]}</option>`).join('');
   let h=`<div class="sec"><button class="crumb" data-act="selroom" data-r="${room.id}">← ${esc(room.name)}</button><input class="title" id="f-em-name" data-f="em.name" value="${esc(em.name)}" aria-label="Naam"></div>
   <div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup,1)}/${nv(S.twRet,1)} °C</span><b>${fmt(out/1000,2)} kW</b></div>
-    <div class="seglegend"><span style="--c:transparent">${fmtW(pc.lh)} l/h water</span><span style="--c:transparent">ruimte ${nv(room.temp,1)} °C</span></div></div>
+    <div class="seglegend"><span style="--c:transparent">${fmtW(pc.lh)} l/h water</span><span style="--c:transparent">inhoud ca. ${fmt(emVolume(em),1)} l</span><span style="--c:transparent">ruimte ${nv(room.temp,1)} °C</span></div></div>
   <div class="fields"><label class="f" for="f-em-kind">Soort<select class="in" id="f-em-kind" data-f="em.kind" ${isV?'disabled':''}>${kinds}</select></label>`;
   if(!isV){const nom=EM_NOM[em.kind],byType=em.kind==='rad'&&RAD_TYPES[em.rt];
     h+=`</div>`;
@@ -1714,17 +1800,18 @@ function viewEm(room,em){const S=P.settings,out=emOutput(em,room),pc=pipeCheck(e
       <div class="fields">${numField('f-em-n','em.n','Exponent n','–',em.n,2)}</div>
       <p class="note">Indicatief voor stalen paneelradiatoren, ongeveer ±10 %. Weet je merk en model, kies dan <i>Zelf invullen</i> en neem de waarde uit de tabel van de fabrikant. Een andere lengte, ingevuld of door een uiteinde in de tekening te slepen, past het vermogen meteen aan.</p>`;
     else h+=`<div class="fields">${numField('f-em-p','em.p',`Vermogen bij ${nom[0]}/${nom[1]}/${nom[2]} °C`,'W',em.p,0)+numField('f-em-n','em.n','Exponent n','–',em.n,2)}</div>
-    <div class="fields">${numField('f-em-len','em.len','Lengte','mm',Math.round(emLen(em)*1000),0)}</div>
+    <div class="fields">${numField('f-em-len','em.len','Lengte','mm',Math.round(emLen(em)*1000),0)}${em.kind==='conv'?`<label class="f" for="f-em-loops">Aantal lussen<select class="in" id="f-em-loops" data-f="em.loops">${[[1,'1 (enkel)'],[2,'2 (dubbel)'],[3,'3'],[4,'4']].map(([v,l])=>`<option value="${v}" ${(em.loops||1)===v?'selected':''}>${l}</option>`).join('')}</select></label>`:''}${''}</div>
     <p class="note">${em.kind==='conv'?'Bij convectoren hangt het vermogen sterk af van de bouwhoogte, de lamellen en de inbouw (vloerput, omkasting). Neem de waarde uit de catalogus van de fabrikant bij 75/65/20 °C. ':em.kind==='rad'?'Vul het vermogen van de typeplaat of uit de documentatie in (EN 442, 75/65/20 °C), of laat het afleiden uit type, hoogte en lengte. ':'Vul het vermogen uit de documentatie in (fancoils worden meestal bij 35 °C opgegeven). '}De app rekent het om naar ${nv(S.twSup,1)}/${nv(S.twRet,1)} °C met exponent n (radiator 1,3, convector 1,4, fancoil 1,0). De lengte verander je hier of door een uiteinde in de tekening te slepen; het vermogen blijft dan wat je hebt ingevuld.</p>`;
     h+=`${em.kind==='rad'||em.kind==='conv'?`<div class="card"><label class="chk"><input type="checkbox" id="f-em-boost" data-f="em.boost" ${em.boost?'checked':''}> Voorzien van boosters (ventilatoren)</label>
       ${em.boost?`<div class="fields">${numField('f-em-bp','em.boostPct','Meerafgifte door boosters','%',em.boostPct,0)}</div>
       <p class="note">Zonder boosters ${fmt(emOutput({...em,boost:false},room)/1000,2)} kW, met boosters ${fmt(out/1000,2)} kW. Fabrikanten noemen bij lage watertemperatuur 30 tot 100% meer afgifte, afhankelijk van radiatortype en aantal ventilatoren. 40% is een voorzichtige waarde; gebruik bij voorkeur de opgave van de fabrikant.</p>`:''}</div>`:''}`;}
   else h+=`<label class="f" for="f-em-sp">Hart-op-hart<select class="in" id="f-em-sp" data-f="em.spacing">${[10,15,20].map(v=>`<option value="${v}" ${+em.spacing===v?'selected':''}>${v} cm</option>`).join('')}</select></label>
     <label class="f" for="f-em-cov">Vloerafwerking<select class="in" id="f-em-cov" data-f="em.cover">${Object.entries(VV_COVER).map(([k,[l,R]])=>`<option value="${k}" ${em.cover===k?'selected':''}>${l} (R ${nv(R,2)})</option>`).join('')}</select></label></div>
-    <p class="note">Oppervlak ${fmt(emArea(em),1)} m² · ${fmtW(emArea(em)>0?out/emArea(em):0)} W/m² · leiding ca. ${fmtW(vvLoop(em))} m${vvLoop(em)>100?' <b style="color:var(--warn)">⚠ meer dan 100 m: verdeel over twee groepen</b>':''}. Indicatieve afgifte volgens EN 1264 (dekvloer ca. 45 mm), begrensd op een vloertemperatuur van 29 °C.</p>`;
+    <p class="note">Oppervlak ${fmt(emArea(em),1)} m² · ${fmtW(emArea(em)>0?out/emArea(em):0)} W/m² · leiding ca. ${fmtW(vvLoop(em))} m${vvLoop(em)>100?' <b style="color:var(--warn)">⚠ meer dan 100 m: verdeel over twee groepen</b>':''}. Indicatieve afgifte volgens EN 1264 (dekvloer ca. 45 mm), begrensd op een vloertemperatuur van 29 °C.</p>
+    <p class="note">Vorm aanpassen: sleep een hoekpunt, klik op een + halverwege een zijde om een hoekpunt toe te voegen, en dubbelklik op een hoekpunt om het weg te halen.</p>`;
   const mat=em.pipe.mat;
   h+=`<div class="sec"><h3>Aansluitleiding</h3><div class="fields"><label class="f" for="f-em-pm">Materiaal<select class="in" id="f-em-pm" data-f="em.pipe.mat">${Object.entries(PIPES).map(([k,v])=>`<option value="${k}" ${mat===k?'selected':''}>${v.label}</option>`).join('')}</select></label>
-    <label class="f" for="f-em-pd">Diameter<select class="in" id="f-em-pd" data-f="em.pipe.dn">${Object.keys(PIPES[mat].d).map(d=>`<option value="${esc(d)}" ${em.pipe.dn===d?'selected':''}>${esc(d)}${mat==='staal'?'':' mm'} (inwendig ${nv(PIPES[mat].d[d],1)} mm)</option>`).join('')}</select></label></div>
+    <label class="f" for="f-em-pd">Diameter<select class="in" id="f-em-pd" data-f="em.pipe.dn">${Object.keys(PIPES[mat].d).map(d=>`<option value="${esc(d)}" ${em.pipe.dn===d?'selected':''}>${esc(dnLabel(mat,d))} (inwendig ${nv(PIPES[mat].d[d],1)} mm)</option>`).join('')}</select></label></div>
     <div class="row">${pipeChip(pc)}</div>
     <p class="note">Waterdebiet ${fmtW(pc.lh)} l/h bij ΔT ${nv(S.twSup-S.twRet,1)} K. Deze leiding transporteert bij ${nv(V_OK,1)} m/s ongeveer ${fmt(pc.pmax/1000,2)} kW. Boven ${nv(V_OK,1)} m/s nemen geluid en drukval toe; boven ${nv(V_MAX,1)} m/s is de leiding te klein.</p></div>
   ${twFieldsHtml()}
@@ -1857,6 +1944,7 @@ function viewRes(){const c=calcAll();
   ${emitOverviewHtml(c)}
   ${adviceHtml(c)}
   ${hpSectionHtml(c)}
+  ${volumeHtml()}
   <div class="sec"><h3>Tabel</h3></div>
   <div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>θi</th><th>A m²</th><th>Transm.</th><th>Vent.+inf.</th><th>Totaal W</th><th>W/m²</th></tr></thead><tbody>`;
   P.floors.forEach(f=>{const per=c.per.filter(x=>x.room.floorId===f.id);if(!per.length)return;
@@ -1940,7 +2028,8 @@ function renderPanel(){
   document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));
   // keep the scroll position while editing the same thing; start at the top when something else is shown
   const key=tab+'|'+(tab==='sel'&&sel?[sel.t,sel.r,sel.w,sel.s,sel.e,sel.i].join(':'):'');const st=key===panelKey?pbody.scrollTop:0;panelKey=key;let h='';
-  if(tab==='sel'){validateSel();const room=sel&&getRoom(sel.r);
+  if(tab==='sel'&&sel&&sel.t==='pipe'&&(validateSel(),sel)){h=viewPipe(P.pipes.find(x=>x.id===sel.p));}
+  else if(tab==='sel'){validateSel();const room=sel&&getRoom(sel.r);
     if(!room)h=viewNone();else if(sel.t==='seg')h=viewSeg(room,sel.w,sel.s);else if(sel.t==='em'&&selEm())h=viewEm(room,selEm());else h=viewRoom(room);}
   else if(tab==='con')h=viewCon(conFocus);else if(tab==='vent')h=viewVent();else if(tab==='res')h=viewRes();else h=viewSet();
   pbody.innerHTML=h;pbody.scrollTop=st;bindHpChart();
@@ -1976,6 +2065,10 @@ function applyField(el,final){
         if(f2==='shape'){if(!STAIR_SHAPES[v])return;st.shape=v;}else if(f2==='side')st.side=v==='b'?'b':'a';else if(f2==='edge')st.edge=Math.max(0,Math.min(room.pts.length-1,parseInt(v,10)||0));
         else if(f2==='w'){const n=num(v);if(n==null||n<0.5||n>3)return;st.w=n;}changed=true;break;}
       if(k==='name'){room.name=v;changed=true;}else{const n=num(v);if(n==null)return;if(k==='height'&&n<=0)return;if((k==='sup'||k==='ext')&&n<0)return;room[k]=n;changed=true;}break;}
+    case'pipe':{const pp=sel&&sel.t==='pipe'&&P.pipes.find(x=>x.id===sel.p);if(!pp)return;const k=parts[1];
+      if(k==='name')pp.name=v;else if(k==='mat'){if(!PIPES[v])return;pp.mat=v;if(!PIPES[v].d[pp.dn])pp.dn=v==='pex'?'26':'22';}
+      else if(k==='dn'){if(!PIPES[pp.mat].d[v])return;pp.dn=v;}else if(k==='extra'){const n=num(v);if(n==null||n<0)return;pp.extra=n;}
+      lastPipeSpec={mat:pp.mat,dn:pp.dn};changed=true;break;}
     case'seg':{const sg=selSeg();if(!sg)return;const wasOpen=sg.adj==='open';if(parts[1]==='adjT'){const n=num(v);if(n==null)return;sg.adjT=n;}else sg[parts[1]]=v;
       if(parts[1]==='adj'&&(v==='open'||wasOpen)){ // an open connection is the same on both sides
         sg.adj='open';const ps=isolatePartners(room,sel.w,sel.s);sg.adj=v;
@@ -2016,10 +2109,11 @@ function applyField(el,final){
     case'em':{const em=selEm();if(!em)return;const k=parts[1];
       if(k==='name')em.name=v;else if(k==='boost')em.boost=el.checked;else if(k==='kind'){if(!EM_KINDS[v]||v==='vv')return;em.kind=v;em.n=EM_N[v];syncRad(em);}
       else if(k==='rt'){if(v&&!RAD_TYPES[v])return;em.rt=v;if(v)em.rl=Math.max(100,Math.round(emLen(em)*1000));syncRad(em);}
+      else if(k==='loops'){const n=parseInt(v,10);if(![1,2,3,4].includes(n))return;em.loops=n;}
       else if(k==='len'){if(!final)return;const n=num(v);if(n==null||n<200||n>6000)return;setEmLen(em,n);if(RAD_TYPES[em.rt])em.rl=n;syncRad(em);}
       else if(k==='rh'||k==='rl'){const n=num(v);if(n==null||n<100||n>(k==='rh'?1500:6000))return;em[k]=n;if(k==='rl'&&final&&n>=200)setEmLen(em,n);syncRad(em);}
       else if(k==='cover'){if(!VV_COVER[v])return;em.cover=v;}else if(k==='spacing')em.spacing=[10,15,20].includes(+v)?+v:15;
-      else if(k==='pipe'){if(parts[2]==='mat'){if(!PIPES[v])return;em.pipe.mat=v;if(!PIPES[v].d[em.pipe.dn])em.pipe.dn=v==='koper'?'15':v==='pex'?'16':'1/2"';}else{if(!PIPES[em.pipe.mat].d[v])return;em.pipe.dn=v;}}
+      else if(k==='pipe'){if(parts[2]==='mat'){if(!PIPES[v])return;em.pipe.mat=v;if(!PIPES[v].d[em.pipe.dn])em.pipe.dn=v==='pex'?'16':'15';}else{if(!PIPES[em.pipe.mat].d[v])return;em.pipe.dn=v;}}
       else{const n=num(v);if(n==null||n<0)return;if(k==='n'&&(n<0.8||n>2))return;if(k==='boostPct'&&n>300)return;em[k]=n;}changed=true;break;}
     case'vr':{const r=getRoom(parts[1]);if(!r)return;const n=num(v);if(n==null||n<0)return;r[parts[2]]=n;changed=true;break;}
     case'fl':{const f=P.floors.find(x=>x.id===parts[1]);if(!f)return;f.name=v;renderFloorbar();changed=true;break;}
@@ -2052,6 +2146,10 @@ function act(a,b){
     case'selroom':case'selseg':{const r=getRoom(b.dataset.r);if(!r)return;if(r.floorId!==curFloor){curFloor=r.floorId;try{localStorage.setItem('wvt.floor.'+P.id,curFloor);}catch(_){}}
       sel=a==='selroom'?{t:'room',r:r.id}:{t:'seg',r:r.id,w:+b.dataset.w,s:+b.dataset.s};tab='sel';renderAll();break;}
     case'addfloor':addFloor();break;
+    case'vvfill':{const r=getRoom(b.dataset.r);if(!r)return;const pts=insetPoly(r.pts,0.1)||r.pts.map(p=>({x:p.x,y:p.y}));pushUndo();r.emitters=r.emitters||[];const n=r.emitters.filter(x=>x.kind==='vv').length+1;
+      const em={id:rid(),kind:'vv',name:'Vloerverwarming'+(n>1?' '+n:''),pts,spacing:15,cover:'tegels',p:0,n:1,pipe:{mat:'pex',dn:'16'}};r.emitters.push(em);sel={t:'em',r:r.id,e:em.id};tab='sel';markDirty();renderAll();
+      toast(`Vloerverwarming over de hele ${r.name} (10 cm van de wanden). Sleep de hoekpunten om de vorm aan te passen.`);break;}
+    case'delpipe':{pushUndo();P.pipes=P.pipes.filter(x=>x.id!==sel.p);sel=null;markDirty();renderAll();toast('Leiding verwijderd.',true);break;}
     case'autoall':{pushUndo();let n=0;P.rooms.forEach(r=>['floor','ceil'].forEach(k=>{if(r[k]&&r[k].adj!=='auto'){r[k].adj='auto';n++;}}));markDirty();renderAll();toast(n?`${n} vloeren en plafonds staan nu op automatisch.`:'Alle vloeren en plafonds stonden al op automatisch.',!!n);break;}
     case'floormove':{const i=floorIdx(b.dataset.f),j=i+(+b.dataset.dir);if(i<0||j<0||j>=P.floors.length)return;pushUndo();[P.floors[i],P.floors[j]]=[P.floors[j],P.floors[i]];markDirty();renderAll();break;}
     case'delfloor':{const i=floorIdx(b.dataset.f);if(i<0||P.floors.length<2||P.rooms.some(r=>r.floorId===b.dataset.f))return;pushUndo();P.floors.splice(i,1);if(curFloor===b.dataset.f)curFloor=P.floors[Math.max(0,i-1)].id;markDirty();renderAll();break;}
