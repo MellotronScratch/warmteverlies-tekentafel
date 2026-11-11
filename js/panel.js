@@ -287,7 +287,13 @@ function viewRoom(room) {
       s.adj === 'auto' && k !== 'roof'
         ? (() => {
             const ls = calcRoom(room).lines.filter(l => l.group === k);
-            return `<div class="det">${ls.map(l => `${fmt(l.A, 1)} m² → ${esc(l.sub.split(' → ').slice(1).join(' → '))} (${nv(l.t, 1)} °C)`).join('<br>') || '–'}</div><p class="note">Herkend uit de tekening van de verdieping ${k === 'floor' ? 'eronder' : 'erboven'}.</p>`;
+            const out = k === 'ceil' || levelsOf(room)[0] > 0;
+            return `<div class="det">${ls.map(l => `${fmt(l.A, 1)} m² → ${esc(l.sub.split(' → ').slice(1).join(' → '))} (${nv(l.t, 1)} °C)`).join('<br>') || '–'}</div><p class="note">Herkend uit de tekening van de verdieping ${k === 'floor' ? 'eronder' : 'erboven'}.</p>
+            ${
+              out
+                ? `<label class="f" for="f-${k}-cidout">${k === 'ceil' ? 'Constructie waar niets boven ligt (dak)' : 'Constructie waar niets onder ligt (overstek)'}<select class="in" id="f-${k}-cidout" data-f="${k}.cidOut">${conOptions(s.cidOut, kind).replace('— kies een constructie —', 'Zelfde als hierboven')}</select></label>`
+                : ''
+            }`;
           })()
         : ''
     }</div>`;
@@ -547,6 +553,9 @@ function viewCon(focusId) {
     );
     uses[r.floor.cid] = (uses[r.floor.cid] || 0) + 1;
     uses[r.ceil.cid] = (uses[r.ceil.cid] || 0) + 1;
+    ['floor', 'ceil'].forEach(k => {
+      if (r[k].cidOut) uses[r[k].cidOut] = (uses[r[k].cidOut] || 0) + 1;
+    });
   });
   let h = `<div class="sec"><h2>Constructies</h2><p class="note">Stel de opbouw samen uit lagen van binnen naar buiten, zoals op <a href="https://www.ubakus.de/u-wert-rechner/" target="_blank" rel="noopener">ubakus.de</a>. Per laag rekent de app R = d / λ uit, en daarmee de Rc en de U-waarde van de hele constructie. Voor ramen en deuren vul je meestal direct de U-waarde van de leverancier in.</p></div>`;
   Object.keys(KINDS).forEach(k => {

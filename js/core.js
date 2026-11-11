@@ -496,6 +496,8 @@ function normalizeProject(p) {
     r.ext = Math.max(0, +r.ext || 0);
     r.floor = r.floor || { cid: '', adj: 'grond', t: 20 };
     r.ceil = r.ceil || { cid: '', adj: 'temp', t: 20 };
+    // optional second construction for the part of a floor/ceiling with nothing below/above (overhang, flat roof)
+    ['floor', 'ceil'].forEach(k => (r[k].cidOut = typeof r[k].cidOut === 'string' ? r[k].cidOut : ''));
     const dakC = (p.constructions.find(c => c.kind === 'dak') || {}).id || '';
     r.emitters = (Array.isArray(r.emitters) ? r.emitters : [])
       .filter(e => e && (e.kind === 'vv' ? Array.isArray(e.pts) && e.pts.length >= 3 : e.a && e.b))

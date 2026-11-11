@@ -237,7 +237,11 @@ function toHeatlossjs() {
       .forEach(l => {
         const s = r[l.group];
         if (!s || l.A < 1e-4) return;
-        add(nm, { type: tname(s.cid, l.type), orientation: '', area: r3(l.A) }, l.nb ? names[l.nb] : bnd(l.type, l.t));
+        add(
+          nm,
+          { type: tname(l.cid || s.cid, l.type), orientation: '', area: r3(l.A) },
+          l.nb ? names[l.nb] : bnd(l.type, l.t)
+        );
       });
   });
   return {

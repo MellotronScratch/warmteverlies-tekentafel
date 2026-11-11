@@ -442,12 +442,15 @@ function transLines(room) {
           nb: n.room.id
         })
       );
+      // the part with nothing above / below (a flat roof, an overhang) may have its own construction
+      const conOut = rest !== 'grond' && s.cidOut ? conById(s.cidOut) || con : con,
+        cnOut = (conOut || {}).name || 'geen constructie';
       if (A - sum * f > 0.01)
         push({
           label: lab,
-          sub: cn + ' → ' + restLab + (extra || ''),
+          sub: cnOut + ' → ' + restLab + (extra || ''),
           A: A - sum * f,
-          con,
+          con: conOut,
           t: adjTemp(rest),
           type: rest,
           group: k
