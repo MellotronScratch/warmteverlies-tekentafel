@@ -561,6 +561,9 @@ function normalizeProject(p) {
       { type: 'plat', pitch: 45, knee: 0.6, edge: 0, low: 'min', cid: dakC, adj: 'buiten', t: 20 },
       r.roof || {}
     );
+    // knee walls (knieschotten) under a sloped roof: on/off and height (drawing only)
+    r.roof.kneeOn = !!r.roof.kneeOn;
+    r.roof.kneeH = +r.roof.kneeH > 0 ? +r.roof.kneeH : 1;
     if (!ROOF_TYPES[r.roof.type]) r.roof.type = 'plat';
     if (typeof r.roof.flat !== 'boolean') r.roof.flat = true; // older projects: the room height always acted as a flat ceiling under a sloped roofr.roof.edge=Math.max(0,Math.min(r.pts.length-1,r.roof.edge|0));
     r.walls = Array.isArray(r.walls) ? r.walls : [];

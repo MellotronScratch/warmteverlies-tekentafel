@@ -239,6 +239,29 @@ function roofParts(room) {
   }
   return { R, parts: out.filter(Boolean) };
 }
+/* ---------- knee walls (knieschotten) under a sloped roof ----------
+   room.roof.kneeOn / kneeH: a low partition under the slope at height kneeH (often with a hatch, storage behind it).
+   Only for the drawing: a dashed line in the plan, a panel in 2.5D, and a place to start and end walls. The space behind
+   lies inside the insulated envelope, so the calculation does not change. */
+function kneeLines(room) {
+  const r = room.roof,
+    R = roofOf(room);
+  if (!R || !r.kneeOn || !(r.kneeH > R.knee + 0.01) || r.kneeH >= Math.min(R.cap, R.nok) - 0.05) return { R, cs: [] };
+  const d = (r.kneeH - R.knee) / R.k; // horizontal distance from the outer wall
+  const cs =
+    R.type === 'zadel'
+      ? [
+          { c: R.smin + d, keepBelow: false },
+          { c: R.smax - d, keepBelow: true }
+        ]
+      : [R.lowMin ? { c: R.smin + d, keepBelow: false } : { c: R.smax - d, keepBelow: true }];
+  return { R, d, cs: cs.filter(x => x.c > R.smin + 1e-3 && x.c < R.smax - 1e-3) };
+}
+// the plan segments of the knee walls (for drawing and snapping)
+const kneeSegs = room => {
+  const K = kneeLines(room);
+  return K.cs.map(k => lineAcross(room, K.R, k.c)).filter(Boolean);
+};
 function roomVolume(room) {
   const rp = roofParts(room);
   const Af = Math.abs(polyArea(room.pts));

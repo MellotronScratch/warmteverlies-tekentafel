@@ -164,6 +164,21 @@ function roofEditor(room, surfCard) {
     ${R.type === 'lessenaar' ? `<label class="f" for="f-roof-l">Lage kant<select class="in" id="f-roof-l" data-f="roof.low"><option value="min" ${r.low !== 'max' ? 'selected' : ''}>Aan de ene kant</option><option value="max" ${r.low === 'max' ? 'selected' : ''}>Aan de andere kant</option></select></label>` : ''}</div>
     <label class="chk"><input type="checkbox" id="f-roof-flat" data-f="roof.flat" ${r.flat ? 'checked' : ''}> Vlak plafond (zoldervloer of hanenbalk)</label>
     ${r.flat ? `<div class="fields">${numField('f-room-h2', 'room.height', 'Plafondhoogte', 'm', room.height, 2)}</div>` : ''}
+    <label class="chk"><input type="checkbox" id="f-roof-knee-on" data-f="roof.kneeOn" ${r.kneeOn ? 'checked' : ''}> Knieschot (schot onder de schuine kap)</label>
+    ${
+      r.kneeOn
+        ? (() => {
+            const K = kneeLines(room);
+            return `<div class="fields">${numField('f-roof-kh', 'roof.kneeH', 'Hoogte knieschot', 'm', r.kneeH, 2)}</div>
+      ${
+        K.cs.length
+          ? `<div class="det">Knieschot op ${fmt(K.d, 2)} m van de gevel${R.type === 'zadel' ? ' (aan beide kanten)' : ' (aan de lage kant)'}</div>`
+          : `<p class="note" style="color:var(--warn)">⚠ Het knieschot moet hoger zijn dan de muurplaat (${fmt(R.knee, 2)} m) en lager dan de nok.</p>`
+      }
+      <p class="note">Het knieschot staat als stippellijn in de tekening en telt niet mee in de berekening: de bergruimte erachter ligt binnen de schil. Wil je de zolder opdelen, trek dan met <b>Wand</b> een lijn van knieschot naar knieschot; de wand loopt door tot de gevels.</p>`;
+          })()
+        : ''
+    }
     <div class="det">${R.type === 'zadel' ? 'Nokhoogte' : 'Hoogste punt'} ${fmt(R.nok)} m${!r.flat ? ' · open tot in de nok' : R.nok > R.cap ? ` · vlak plafond op ${fmt(R.cap)} m` : ' · plafond ligt boven de nok, dus open tot in de nok'}<br>Dakvlak ${fmt(slopeA / R.cosA, 1)} m² (${fmt(slopeA, 1)} m² horizontaal)${capA > 0 ? ` · vlak plafond ${fmt(capA, 1)} m²` : ''}<br>Inhoud ${fmt(roomVolume(room), 1)} m³</div>
     <p class="note"><b>Hoogte muurplaat</b> is de hoogte boven de vloer waar het schuine dak begint, meestal de bovenkant van de gevelmuur. Teken je de ruimte tot een laag wandje op zolder, vul dan de hoogte van dat wandje in. De nokhoogte volgt uit de dakhelling, deze hoogte en de breedte van de ruimte. Zonder vlak plafond loopt het dak door tot in de nok. Met een vlak plafond wordt alleen het stuk boven de plafondhoogte afgevlakt. Ligt de nok lager dan het plafond, dan blijft het gewoon een punt.</p></div>
   ${isoSvg(room)}

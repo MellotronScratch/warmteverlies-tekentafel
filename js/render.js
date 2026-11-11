@@ -429,6 +429,16 @@ function render3d() {
             `<text x="${cc.X}" y="${cc.Y - 4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y + 13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${fmt(k.total / 1000, 2)} kW</text>`
           );
         }
+        // knee walls: a low partition under the slope (dashed outline)
+        kneeSegs(r).forEach(sg => {
+          const h = r.roof.kneeH,
+            q = [P3(sg[0], z0), P3(sg[1], z0), P3(sg[1], z0 + h), P3(sg[0], z0 + h)];
+          items.push({
+            mid: true,
+            d: q.reduce((a, p) => a + p.d, 0) / 4,
+            svg: `<polygon points="${q.map(pt).join(' ')}" fill="var(--surface)" fill-opacity=".35" stroke="var(--ink)" stroke-opacity=".7" stroke-width="1.4" stroke-dasharray="6 4" pointer-events="none"/>`
+          });
+        });
         // walls, per wall part, with the top following a sloped roof
         const R = roofOf(r);
         r.pts.forEach((_, i) => {
@@ -818,6 +828,23 @@ function renderCanvas() {
     if (hover.kind === 'riser')
       out += `<text x="${q.x + 10}" y="${q.y - 8}" class="dim" font-size="10" fill="#DC2626">stijgleiding</text>`;
   }
+  // knee walls: a dashed line where the partition stands, storage behind it
+  curRooms().forEach(r => {
+    const K = kneeLines(r);
+    K.cs.forEach(k => {
+      const sg = lineAcross(r, K.R, k.c);
+      if (!sg) return;
+      const a = S(sg[0]),
+        b = S(sg[1]),
+        m = S({ x: (sg[0].x + sg[1].x) / 2, y: (sg[0].y + sg[1].y) / 2 }),
+        cc = S(labelPt(r.pts)),
+        dx = m.x - cc.x,
+        dy = m.y - cc.y,
+        d = Math.hypot(dx, dy) || 1;
+      out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--ink)" stroke-opacity=".75" stroke-width="2.2" stroke-dasharray="8 5" pointer-events="none"/>`;
+      out += `<text x="${m.x + (dx / d) * 14}" y="${m.y + (dy / d) * 14 + 3}" text-anchor="middle" class="dim" font-size="10" pointer-events="none">knieschot ${fmt(r.roof.kneeH, 2)} m</text>`;
+    });
+  });
   // sloped roofs: ridge (orange dashes) and the edge of a flat ceiling (grey dashes), with heights
   curRooms().forEach(r => {
     const R = roofOf(r);
@@ -833,8 +860,8 @@ function renderCanvas() {
         ly = a.y + (b.y - a.y) * 0.12;
       out += `<text x="${lx}" y="${ly - 5}" class="dim" font-size="10" pointer-events="none" ${ridge ? '' : 'style="fill:var(--muted)"'}>${ridge ? 'nok' : 'plafond'} ${fmt(R.z(c), 2)} m</text>`;
     });
-    // knee walls: mark the low eave(s) with their height
-    const eaves = R.type === 'zadel' ? [R.smin, R.smax] : [R.lowMin ? R.smin : R.smax];
+    // outer walls: mark the low eave(s) with the height of the wall plate (not when a knee wall stands in front of it)
+    const eaves = kneeLines(r).cs.length ? [] : R.type === 'zadel' ? [R.smin, R.smax] : [R.lowMin ? R.smin : R.smax];
     eaves.forEach(c => {
       const sg = lineAcross(r, R, c + (c === R.smin ? 1e-6 : -1e-6));
       if (!sg) return;

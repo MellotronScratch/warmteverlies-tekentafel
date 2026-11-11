@@ -67,7 +67,7 @@ function neighbourIntervals(room, i) {
   const maxT = Math.max(0.02, P.settings.maxWall);
   const res = [];
   for (const o of P.rooms) {
-    if (o === room || !levelsMeet(room, o)) continue;
+    if (o.id === room.id || !levelsMeet(room, o)) continue;
     const ivs = [];
     for (let k = 0; k < o.pts.length; k++) {
       const f = edge(o, k);
@@ -110,7 +110,7 @@ function sharedParts(room, i, s0, s1) {
   const maxT = Math.max(0.02, P.settings.maxWall);
   const res = [];
   for (const o of P.rooms) {
-    if (o === room || !levelsMeet(room, o)) continue;
+    if (o.id === room.id || !levelsMeet(room, o)) continue;
     for (let k = 0; k < o.pts.length; k++) {
       const f = edge(o, k);
       if (f.L < 1e-6 || Math.abs(e.ux * f.uy - e.uy * f.ux) > 0.01) continue;
@@ -321,7 +321,7 @@ function surfNeighbours(room, k, poly) {
   const fid = P.floors[fi].id,
     res = [];
   P.rooms.forEach(o => {
-    if (o === room || !presentOn(o, fid)) return;
+    if (o.id === room.id || !presentOn(o, fid)) return;
     const A = overlapArea(poly, o.pts);
     if (A > 0.01) res.push({ room: o, A });
   });

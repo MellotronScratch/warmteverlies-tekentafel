@@ -119,8 +119,8 @@ function makeRoom(pts) {
   {
     const below = surfNeighbours(r, 'floor', r.pts);
     if (below && below.length) {
-      const big = below.slice().sort((a, b) => b.A - a.A)[0].room;
-      if (big.ceil && big.ceil.cid) r.floor.cid = big.ceil.cid;
+      const big = (below.filter(n => n.room).sort((a, b) => b.A - a.A)[0] || {}).room;
+      if (big && big.ceil && big.ceil.cid) r.floor.cid = big.ceil.cid;
     }
   }
   const pieces = clipToVides(r);
@@ -441,6 +441,17 @@ function wallSnap(wp, o) {
       }
     })
   );
+  // knee walls (dashed lines) count as a place to start or end a wall
+  curRooms().forEach(r =>
+    kneeSegs(r).forEach(([a, b]) => {
+      const h = onSeg(wp, a, b, tol);
+      if (h && dist(wp, h.q) < bd) {
+        const L = dist(a, b);
+        bd = dist(wp, h.q);
+        best = { e: { a, b, ux: (b.x - a.x) / L, uy: (b.y - a.y) / L }, q: h.q, knee: true };
+      }
+    })
+  );
   if (!best) return v;
   const e = best.e,
     st = Math.max(0.001, P.settings.snap),
@@ -458,7 +469,40 @@ function wallSnap(wp, o) {
     x = r3(x);
     y = r3(y);
   }
-  return { x, y, kind: 'edge' };
+  return { x, y, kind: best.knee ? 'knie' : 'edge' };
+}
+const onKneeLine = p => curRooms().some(r => kneeSegs(r).some(([a, b]) => onSeg(p, a, b, 2e-3)));
+// a wall drawn from knee wall to knee wall runs on, in the same direction, to the outer walls of the room
+function extendToBoundary(line) {
+  const room = curRooms().find(r => {
+    const a = line[0],
+      b = line[1];
+    return pointInPoly({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, r.pts);
+  });
+  if (!room) return line;
+  const hit = (p, d) => {
+    let best = null;
+    room.pts.forEach((a, i) => {
+      const b = room.pts[(i + 1) % room.pts.length],
+        den = d.x * (b.y - a.y) - d.y * (b.x - a.x);
+      if (Math.abs(den) < 1e-12) return;
+      const t = ((a.x - p.x) * (b.y - a.y) - (a.y - p.y) * (b.x - a.x)) / den,
+        u = ((a.x - p.x) * d.y - (a.y - p.y) * d.x) / den;
+      if (t > 1e-6 && u >= -1e-9 && u <= 1 + 1e-9 && (best == null || t < best)) best = t;
+    });
+    return best == null ? null : { x: r3(p.x + d.x * best), y: r3(p.y + d.y * best) };
+  };
+  const out = line.slice(),
+    n = out.length;
+  if (onBoundary(room, out[0]) < 0 && onKneeLine(out[0])) {
+    const q = hit(out[0], { x: out[0].x - out[1].x, y: out[0].y - out[1].y });
+    if (q) out[0] = q;
+  }
+  if (onBoundary(room, out[n - 1]) < 0 && onKneeLine(out[n - 1])) {
+    const q = hit(out[n - 1], { x: out[n - 1].x - out[n - 2].x, y: out[n - 1].y - out[n - 2].y });
+    if (q) out[n - 1] = q;
+  }
+  return out;
 }
 function crossesProper(p1, p2, q1, q2) {
   const o = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
@@ -776,10 +820,10 @@ function clipAbove(vide) {
 }
 
 function wallClick(p) {
-  const onAny = curRooms().some(r => onBoundary(r, p) >= 0);
+  const onAny = curRooms().some(r => onBoundary(r, p) >= 0) || onKneeLine(p);
   if (!drawPts.length) {
     if (!onAny) {
-      toast('Begin de wand op de rand van een ruimte.');
+      toast('Begin de wand op de rand van een ruimte of op een knieschot.');
       return;
     }
     drawPts.push({ x: p.x, y: p.y });
@@ -788,7 +832,7 @@ function wallClick(p) {
   }
   const last = drawPts[drawPts.length - 1];
   if (dist(p, last) < 1e-6) return;
-  const line = drawPts.concat([{ x: p.x, y: p.y }]);
+  const line = extendToBoundary(drawPts.concat([{ x: p.x, y: p.y }]));
   if (onAny) {
     const r = splitTarget(line);
     if (r) {

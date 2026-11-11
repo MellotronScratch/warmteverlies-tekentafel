@@ -77,6 +77,14 @@ Kies bij een ruimte onder *Dak en plafond* een **Zadeldak** of **Lessenaarsdak**
 
 Heeft de zolder een vlak plafond, bijvoorbeeld een zoldervloer of hanenbalk, vink dan **Vlak plafond** aan en vul de **Plafondhoogte** in. Alleen het stuk boven die hoogte wordt dan vlak. Komt de nok niet hoger dan het plafond, dan blijft het gewoon een punt. Projecten van voor deze wijziging houden hun vlakke plafond op de hoogte die al was ingevuld.
 
+### Knieschot
+
+Een knieschot is een laag schot onder de schuine kap, bijvoorbeeld op een kwart van de lengte van het spant. Er zit vaak een plaat of luikje in, met bergruimte erachter. Vink bij de ruimte onder *Dak en plafond* **Knieschot** aan en vul de hoogte in. De app laat zien op welke afstand van de gevel het knieschot staat, en tekent het als stippellijn.
+
+Het knieschot is een aanvulling op de tekening en telt niet mee in de berekening: de bergruimte erachter ligt binnen de geïsoleerde schil. De ruimte rekent dus gewoon als één geheel tot aan de gevels.
+
+Wil je de zolder opdelen in kamers, trek dan met **Wand** een lijn van knieschot naar knieschot. De lijn klikt vast op de stippellijnen, en de app laat de wand doorlopen tot de gevels. Elke kamer houdt zo zijn eigen stuk knieschot.
+
 ### Binnenmaat of buitenmaat?
 
 De muurdikte wordt niet getekend. De getekende lijn is de rand van de ruimte zelf:

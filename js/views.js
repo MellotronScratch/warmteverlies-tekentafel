@@ -468,10 +468,11 @@ function applyField(el, final) {
       if (!room) return;
       const r = room.roof,
         k = parts[1];
-      if (k === 'pitch' || k === 'knee') {
+      if (k === 'pitch' || k === 'knee' || k === 'kneeH') {
         const n = num(v);
         if (n == null || n < 0) return;
         if (k === 'pitch' && (n < 1 || n > 80)) return;
+        if (k === 'kneeH' && (n < 0.2 || n > 3)) return;
         r[k] = n;
         changed = true;
         break;
@@ -494,6 +495,11 @@ function applyField(el, final) {
       }
       if (k === 'flat') {
         r.flat = el.checked;
+        changed = true;
+        break;
+      }
+      if (k === 'kneeOn') {
+        r.kneeOn = el.checked;
         changed = true;
         break;
       }
