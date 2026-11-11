@@ -20,6 +20,7 @@ function viewRes() {
   ${adviceHtml(c)}
   ${hpSectionHtml(c)}
   ${volumeHtml()}
+  ${networkHtml()}
   <div class="sec"><h3>Tabel</h3></div>
   <div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>θi</th><th>A m²</th><th>Transm.</th><th>Vent.+inf.</th><th>Totaal W</th><th>W/m²</th></tr></thead><tbody>`;
   P.floors.forEach(f => {
@@ -760,7 +761,8 @@ function act(a, b) {
     case 'selseg': {
       const r = getRoom(b.dataset.r);
       if (!r) return;
-      if (r.floorId !== curFloor) {
+      // a room that runs through the current floor can be shown here; for one of its walls go to its own floor
+      if (r.floorId !== curFloor && !(a === 'selroom' && presentOn(r, curFloor))) {
         curFloor = r.floorId;
         try {
           localStorage.setItem('wvt.floor.' + P.id, curFloor);

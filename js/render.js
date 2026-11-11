@@ -372,6 +372,36 @@ function render3d() {
       const list = byFloor[fi] || [],
         top = fi === ci;
       const items = [];
+      // staircases leading to this storey, and the pipes (with risers) on this floor
+      items.push(...(stairItems[fi] || []));
+      if (P.floors[fi]) {
+        const fid = P.floors[fi].id;
+        (P.pipes || [])
+          .filter(pp => pp.floorId === fid)
+          .forEach(pp => {
+            const z = el[pp.floorId] + 0.12,
+              ps = pp.pts.map(p => P3(p, z)),
+              d = ps.reduce((a, p) => a + p.d, 0) / ps.length,
+              pl = ps.map(pt).join(' ');
+            items.push({
+              mid: true,
+              d,
+              svg: `<polyline points="${pl}" fill="none" stroke="#2563EB" stroke-width="5" stroke-linejoin="round" pointer-events="none"/><polyline points="${pl}" fill="none" stroke="#DC2626" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`
+            });
+          });
+        if ((P.pipes || []).length)
+          network()
+            .edges.filter(e => e.vert && e.a.f === fid && floorIdx(e.b.f) <= ci)
+            .forEach(e => {
+              const a = P3(e.a, el[e.a.f] + 0.12),
+                b = P3(e.b, el[e.b.f] + 0.12);
+              items.push({
+                mid: true,
+                d: (a.d + b.d) / 2,
+                svg: `<line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="#2563EB" stroke-width="5" pointer-events="none"/><line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="#DC2626" stroke-width="2" pointer-events="none"/>`
+              });
+            });
+      }
       // floors
       list.forEach(({ r, z0 }) => {
         const isSel = top && sel && sel.r === r.id;
@@ -399,21 +429,6 @@ function render3d() {
             `<text x="${cc.X}" y="${cc.Y - 4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y + 13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${fmt(k.total / 1000, 2)} kW</text>`
           );
         }
-        items.push(...(stairItems[fi] || []));
-        if (P.floors[fi])
-          (P.pipes || [])
-            .filter(pp => pp.floorId === P.floors[fi].id)
-            .forEach(pp => {
-              const z = el[pp.floorId] + 0.12,
-                ps = pp.pts.map(p => P3(p, z)),
-                d = ps.reduce((a, p) => a + p.d, 0) / ps.length,
-                pl = ps.map(pt).join(' ');
-              items.push({
-                mid: true,
-                d,
-                svg: `<polyline points="${pl}" fill="none" stroke="#2563EB" stroke-width="5" stroke-linejoin="round" pointer-events="none"/><polyline points="${pl}" fill="none" stroke="#DC2626" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`
-              });
-            });
         // walls, per wall part, with the top following a sloped roof
         const R = roofOf(r);
         r.pts.forEach((_, i) => {
@@ -551,6 +566,8 @@ function renderCanvas() {
       .join(' ');
     const c = S(centroid(r.pts));
     const base = P.floors[floorIdx(r.floorId)];
+    if (sel && sel.r === r.id)
+      out += `<polygon points="${pts}" fill="var(--accent-soft-2)" stroke="none" pointer-events="none"/>`;
     out += `<polygon data-k="vide" data-r="${r.id}" points="${pts}" fill="url(#videhatch)" stroke="var(--wall)" stroke-width="5" stroke-linejoin="miter" style="cursor:pointer"/>`;
     out += `<text x="${c.x}" y="${c.y - 4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${r.kind === 'trap' ? 'Trappenhuis' : 'Vide'} · ${esc(r.name)}</text><text x="${c.x}" y="${c.y + 12}" text-anchor="middle" class="rsub" font-size="10" pointer-events="none">loopt door vanaf ${esc(base.name)}</text>`;
   });
@@ -636,6 +653,24 @@ function renderCanvas() {
         out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--heat)" stroke-opacity=".35" stroke-width="12" stroke-dasharray="10 6" pointer-events="none"/>`;
       });
   }
+  // pipe network: index circuit (orange glow) and risers
+  const NET = (P.pipes || []).length || P.hpPos ? network() : null;
+  if (NET) {
+    NET.edges.forEach(e => {
+      if (e.vert) {
+        [e.a, e.b].forEach(n => {
+          if (n.f !== curFloor) return;
+          const q = S(n);
+          out += `<circle cx="${q.x}" cy="${q.y}" r="8" fill="var(--surface)" stroke="#DC2626" stroke-width="1.5" pointer-events="none"/><text x="${q.x}" y="${q.y + 4}" text-anchor="middle" font-size="11" fill="#DC2626" stroke="none" pointer-events="none">↕</text>`;
+        });
+        return;
+      }
+      if (e.a.f !== curFloor || !NET.indexEdges.has(e)) return;
+      const a = S(e.a),
+        b = S(e.b);
+      out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#F59E0B" stroke-opacity=".55" stroke-width="15" stroke-linecap="round" pointer-events="none"/>`;
+    });
+  }
   // pipe network: one line = supply (red) and return (blue)
   (P.pipes || [])
     .filter(pp => pp.floorId === curFloor)
@@ -661,7 +696,10 @@ function renderCanvas() {
       const a = pp.pts[bi - 1],
         b = pp.pts[bi],
         m = S({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-      out += `<text x="${m.x}" y="${m.y - 9}" text-anchor="middle" class="dim" font-size="10" pointer-events="none">${esc((PIPES[pp.mat] || {}).label || '')} ${esc(dnLabel(pp.mat, pp.dn))} · ${fmt(pipeLen(pp) + pp.extra, 1)} m</text>`;
+      const tr = NET ? NET.edges.filter(e => e.pp === pp && e.inTree && !e.vert) : [],
+        mq = tr.length ? Math.max(...tr.map(e => e.lh)) : 0,
+        mv = tr.length ? Math.max(...tr.map(e => e.v)) : 0;
+      out += `<text x="${m.x}" y="${m.y - 9}" text-anchor="middle" class="dim" font-size="10" pointer-events="none" ${mv > V_OK ? 'style="fill:var(--warn)"' : ''}>${esc((PIPES[pp.mat] || {}).label || '')} ${esc(dnLabel(pp.mat, pp.dn))} · ${fmt(pipeLen(pp) + pp.extra, 1)} m${tr.length ? ` · ${fmtW(mq)} l/h · ${fmt(mv, 2)} m/s` : ''}</text>`;
       if (isSel && tool === 'select') {
         pp.pts.forEach((p, i) => {
           const q = S(p);
@@ -765,6 +803,20 @@ function renderCanvas() {
   if ((tool === 'emit' || tool === 'vv') && hover && !drag) {
     const q = S(hover);
     out += `<circle cx="${q.x}" cy="${q.y}" r="4" fill="none" stroke="var(--c-hp)" stroke-width="1.8"/>`;
+  }
+  // heat pump: start of the pipe network
+  const hpMark = (p, ghost) => {
+    const q = S(p);
+    return `<g pointer-events="none" ${ghost ? 'opacity=".5"' : ''}><rect x="${q.x - 15}" y="${q.y - 11}" width="30" height="22" rx="4" fill="var(--surface)" stroke="#DC2626" stroke-width="2"/><text x="${q.x}" y="${q.y + 4}" text-anchor="middle" font-size="10" font-weight="700" fill="#DC2626" stroke="none">WP</text></g>`;
+  };
+  if (P.hpPos && P.hpPos.floorId === curFloor) out += hpMark(P.hpPos, false);
+  if (tool === 'hp' && hover) out += hpMark(hover, true);
+  if (tool === 'pipe' && hover && !drag) {
+    const q = S(hover),
+      big = hover.kind && hover.kind !== 'grid' && hover.kind !== 'align';
+    out += `<circle cx="${q.x}" cy="${q.y}" r="${big ? 7 : 4}" fill="none" stroke="#DC2626" stroke-width="1.8" ${hover.kind === 'riser' ? 'stroke-dasharray="3 2"' : ''}/>`;
+    if (hover.kind === 'riser')
+      out += `<text x="${q.x + 10}" y="${q.y - 8}" class="dim" font-size="10" fill="#DC2626">stijgleiding</text>`;
   }
   // sloped roofs: ridge (orange dashes) and the edge of a flat ceiling (grey dashes), with heights
   curRooms().forEach(r => {

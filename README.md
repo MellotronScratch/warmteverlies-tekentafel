@@ -61,6 +61,8 @@ De twee delen delen dezelfde lijn, net als bij hart-op-hart tekenen. Ongedaan ma
 
 Een vide of trappenhuis teken je op de laagste verdieping. Kies bij de ruimte *Soort ruimte: Vide* (of *Trappenhuis*) en bij **Loopt door tot** de hoogste verdieping. Op de verdiepingen erboven staat de vide dan gearceerd.
 
+Klik je op een hogere verdieping de vide aan, dan blijf je op die verdieping en zie je de ruimte in het paneel. Voor de wanden ga je naar de verdieping waar de vide begint.
+
 Teken je op zo'n hogere verdieping een ruimte die over de vide heen valt, dan knipt de app het stuk binnen de vide eruit. Andersom gaat het ook: laat je een bestaande ruimte later doorlopen, dan worden de ruimtes erboven op dezelfde manier geknipt.
 
 - De nieuwe wanden langs de vide worden binnenwanden. Is daar geen muur, maar bijvoorbeeld een balustrade, kies dan bij dat wanddeel **Open verbinding (geen wand)**.
@@ -163,6 +165,26 @@ Onder **Resultaten → Systeeminhoud** telt de app de waterinhoud op: getekende 
 
 Is de inhoud te klein, dan adviseert de app een buffervat. Tel in gedachten alleen kringen mee die altijd open staan: thermostaatkranen en ruimteregeling verkleinen de werkelijke inhoud. Of je een schakelvat (hydraulische scheiding) nodig hebt, volgt niet uit de inhoud. Dat hangt af van het minimale debiet van de warmtepomp en van eventuele extra pompgroepen. De waterinhoud van radiatoren is een schatting per meter of per kW. Bij een convector loopt er meestal een lus koperbuis van 15 mm door de lamellen, over de lengte min ongeveer 15 cm. Een lus is twee buizen, en een dubbele convector heeft twee lussen (vier buizen). Kies het aantal lussen bij de convector. Bij elk afgifte-element zie je de geschatte inhoud.
 
+### Leidingnet, debiet en indexcircuit
+
+Plaats met **Warmtepomp** (`K`) de warmtepomp, of de plek waar de leidingen van het buitendeel binnenkomen. Teken daarna met **Leiding** de leidingen vanaf dat punt. De app maakt er een netwerk van:
+
+- **Vastklikken**: een leiding klikt vast op de warmtepomp, op de uiteinden van radiatoren en convectoren, op de hoeken van vloerverwarming en op andere leidingen. Eindigt een leiding óp een andere leiding, dan is dat een T-stuk.
+- **Stijgleidingen**: laat een leiding op twee verdiepingen op precies hetzelfde punt eindigen (de app helpt met vastklikken op de leidingen van de verdieping eronder of erboven, ↕). Ze worden dan verticaal verbonden.
+- **Aangesloten**: een radiator of vloerverwarming hangt aan het leidingnet als er binnen 30 cm een leidingpunt ligt.
+
+Vanaf de warmtepomp rekent de app per leidingstuk het debiet (de som van alles erachter), de stroomsnelheid en het drukverlies (Darcy-Weisbach, aanvoer + retour, met een instelbare opslag voor bochten en koppelingen). Het debiet per element is zijn aandeel in het warmteverlies van de ruimte, bij de ΔT tussen aanvoer en retour.
+
+Het **indexcircuit** is de route naar het element met het grootste totale drukverlies: leidingen plus het element zelf. Het licht oranje op in de plattegrond. Onder **Resultaten → Leidingnet en indexcircuit** zie je:
+
+- per element het debiet, het drukverlies en hoeveel extra weerstand het nodig heeft om goed ingeregeld te zijn ten opzichte van het indexcircuit;
+- leidingstukken waar het water sneller stroomt dan 0,5 m/s;
+- elementen die niet zijn aangesloten, en lussen in het net.
+
+In een gesloten cv-systeem hoeft de pomp het water niet omhoog te pompen. Hij moet alleen de weerstand overwinnen, en dat is het drukverlies van het indexcircuit. Zet je bij een warmtepomp in `data/warmtepompen.json` de `restopvoerhoogte` (kPa), dan vergelijkt de app die ermee.
+
+De weerstand van een element is indicatief: 3 kPa voor een radiator of convector met kraan, 10 kPa voor een fancoil. Vloerverwarming rekent de lussen van 16×2 mm, verdeeld over groepen van hoogstens 100 m, plus 2 kPa voor de verdeler.
+
 ## Radiatorvermogen
 
 Klik een radiator aan. De lengte verander je door een uiteinde in de tekening te slepen, of door hem in te vullen bij **Lengte** (mm). Dat werkt ook voor convectoren en fancoils. Onder **Vermogen bepalen** kies je:
@@ -249,6 +271,7 @@ js/render.js      plattegrond, trappen en de 2,5D-weergave
 js/interaction.js gereedschappen, bewerkingen, muis en toetsenbord
 js/panel.js       zijpaneel: ruimte, wanddeel, constructies
 js/emitters.js    afgifte, leidingen en systeeminhoud
+js/hydraulics.js  leidingnet: debiet, drukverlies, indexcircuit
 js/heatpumps.js   warmtepompen en verbeteradviezen
 js/views.js       resultaten, ventilatie, project, invoer en knoppen
 js/io.js          export (JSON, CSV, heatlossjs)

@@ -79,6 +79,7 @@ const DEFAULT_SETTINGS = {
   snap: 0.05,
   height: 2.6,
   hpVol: 3,
+  fitPct: 30,
   bufVol: 0,
   minVolL: 15,
   ventSys: 'D',
@@ -456,6 +457,14 @@ function normalizeProject(p) {
   p.rooms.forEach(r => {
     if (!p.floors.some(f => f.id === r.floorId)) r.floorId = p.floors[0].id;
   });
+  // where the heat pump stands (start of the pipe network)
+  p.hpPos =
+    p.hpPos &&
+    p.floors.some(f => f.id === p.hpPos.floorId) &&
+    Number.isFinite(+p.hpPos.x) &&
+    Number.isFinite(+p.hpPos.y)
+      ? { floorId: p.hpPos.floorId, x: +p.hpPos.x, y: +p.hpPos.y }
+      : null;
   p.pipes = (Array.isArray(p.pipes) ? p.pipes : [])
     .filter(x => x && Array.isArray(x.pts) && x.pts.length >= 2 && p.floors.some(f => f.id === x.floorId))
     .map(x => {

@@ -1,6 +1,6 @@
 {
   "versie": 1,
-  "toelichting": "Lijst met warmtepompen voor de Warmteverlies Tekentafel. Per warmtepomp geef je in 'punten' het minimale en maximale verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal nodig: een punt bij -10 °C en een punt bij een hogere temperatuur (bij voorkeur +7 of +10 °C). Tussen en buiten de punten rekent de app rechtlijnig door. Voeg een warmtepomp toe door een blok te kopiëren en de waarden aan te passen.",
+  "toelichting": "Lijst met warmtepompen voor de Warmteverlies Tekentafel. Per warmtepomp geef je in 'punten' het minimale en maximale verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal nodig: een punt bij -10 °C en een punt bij een hogere temperatuur (bij voorkeur +7 of +10 °C). Tussen en buiten de punten rekent de app rechtlijnig door. Voeg een warmtepomp toe door een blok te kopiëren en de waarden aan te passen. Optioneel per warmtepomp: 'minInhoud' (minimale waterinhoud van het systeem in liter, uit de installatiehandleiding) en 'restopvoerhoogte' (kPa die de pomp nog over heeft voor het leidingnet bij het nominale debiet). Zonder die velden rekent de app met een vuistregel voor de inhoud en geeft hij alleen het drukverlies van het indexcircuit.",
   "warmtepompen": [
     {
       "id": "weheat-flint",

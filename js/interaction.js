@@ -2,6 +2,7 @@
 'use strict';
 /* ---------- hints & tools ---------- */
 const HINTS = {
+  hp: 'Klik waar de warmtepomp (of de aansluiting van het buitendeel) staat. Laat daarna een leiding hier beginnen: het leidingnet wordt vanaf dit punt doorgerekend.',
   select:
     'Klik een wanddeel of ruimte om te bewerken. Sleep hoekpunten of een hele ruimte. Dubbelklik op een wand om een hoekpunt toe te voegen. Sleep een lege plek om te schuiven, scroll om te zoomen.',
   rect: 'Sleep een rechthoek voor een nieuwe ruimte. Punten klikken vast op het raster en op hoeken van andere ruimtes. Alt: niet vastklikken.',
@@ -69,8 +70,13 @@ function validateSel() {
     return;
   }
   const r = getRoom(sel.r);
-  if (!r || r.floorId !== curFloor) {
+  if (!r || !presentOn(r, curFloor)) {
     sel = null;
+    return;
+  }
+  // a stairwell or vide from a floor below can be selected here as a whole; its walls and radiators only on its own floor
+  if (r.floorId !== curFloor) {
+    sel = { t: 'room', r: r.id };
     return;
   }
   if (sel.t === 'seg') {
@@ -151,6 +157,57 @@ function finishVV() {
   else renderCanvas();
 }
 let lastPipeSpec = { mat: 'pex', dn: '26' };
+// snapping for pipes: heat pump, radiator ends, floor heating corners, points of other pipes (also one floor up or down,
+// for a riser), onto another pipe (a T-junction), otherwise the grid
+function pipeSnap(wp, o) {
+  o = o || {};
+  if (!o.alt) {
+    let best = null,
+      bd = 10 / view.s;
+    const tryP = (p, kind) => {
+      const d = dist(p, wp);
+      if (d < bd) {
+        bd = d;
+        best = { x: p.x, y: p.y, kind };
+      }
+    };
+    if (P.hpPos && P.hpPos.floorId === curFloor) tryP(P.hpPos, 'vtx');
+    curRooms().forEach(r =>
+      (r.emitters || []).forEach(em => {
+        if (em.kind === 'vv') em.pts.forEach(p => tryP(p, 'vtx'));
+        else if (em.a && em.b) {
+          tryP(em.a, 'vtx');
+          tryP(em.b, 'vtx');
+        }
+      })
+    );
+    const fi = floorIdx(curFloor);
+    (P.pipes || []).forEach(pp => {
+      const pf = floorIdx(pp.floorId);
+      if (Math.abs(pf - fi) > 1) return;
+      pp.pts.forEach((p, i) => {
+        if (o.skip && o.skip.p === pp.id && o.skip.i === i) return;
+        tryP(p, pf === fi ? 'vtx' : 'riser');
+      });
+    });
+    drawPts.forEach(p => tryP(p, 'vtx'));
+    if (best) return best;
+    (P.pipes || [])
+      .filter(pp => pp.floorId === curFloor)
+      .forEach(pp => {
+        for (let i = 1; i < pp.pts.length; i++) {
+          if (o.skip && o.skip.p === pp.id && (o.skip.i === i || o.skip.i === i - 1)) continue;
+          const h = onSeg(wp, pp.pts[i - 1], pp.pts[i], bd);
+          if (h && dist(wp, h.q) < bd) {
+            bd = dist(wp, h.q);
+            best = { x: r3(h.q.x), y: r3(h.q.y), kind: 'edge' };
+          }
+        }
+      });
+    if (best) return best;
+  }
+  return snapPoint(wp, { prev: o.prev, next: o.next, alt: o.alt });
+}
 function finishPipe() {
   const pts = drawPts.filter((p, i) => i === 0 || dist(p, drawPts[i - 1]) > 1e-6);
   drawPts = [];
@@ -873,7 +930,7 @@ svg.addEventListener('pointerdown', e => {
     if (k === 'vide') {
       const r = getRoom(tgt.dataset.r);
       if (r) {
-        setFloor(r.floorId, true);
+        // stay on this floor: the stairwell or vide runs through it
         sel = { t: 'room', r: r.id };
         tab = 'sel';
         renderAll();
@@ -1062,8 +1119,21 @@ svg.addEventListener('pointerdown', e => {
     renderCanvas();
     return;
   }
+  if (tool === 'hp') {
+    const p = pipeSnap(wp, { alt: e.altKey });
+    pushUndo();
+    P.hpPos = { floorId: curFloor, x: p.x, y: p.y };
+    markDirty();
+    setTool('select');
+    renderAll();
+    toast('Warmtepomp geplaatst. Teken met Leiding (L) vanaf hier naar de verdeler en de radiatoren.');
+    return;
+  }
   if (tool === 'vv' || tool === 'pipe') {
-    const p = snapPoint(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey }),
+    const p =
+        tool === 'pipe'
+          ? pipeSnap(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey })
+          : snapPoint(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey }),
       fin = tool === 'vv' ? finishVV : finishPipe;
     if (drawPts.length) {
       if (tool === 'vv' && drawPts.length >= 3 && dist(p, drawPts[0]) * view.s < 10) {
@@ -1237,7 +1307,10 @@ svg.addEventListener('pointermove', e => {
         closed = drag.type === 'vvpt',
         prev = closed ? pts[(drag.i - 1 + n) % n] : pts[drag.i - 1],
         next = closed ? pts[(drag.i + 1) % n] : pts[drag.i + 1];
-      const p = snapPoint(wp, { prev, next, alt: e.altKey });
+      const p =
+        drag.type === 'pipept'
+          ? pipeSnap(wp, { prev, next, alt: e.altKey, skip: { p: drag.p, i: drag.i } })
+          : snapPoint(wp, { prev, next, alt: e.altKey });
       const cur = pts[drag.i];
       if (cur.x === p.x && cur.y === p.y) return;
       if (!drag.moved) {
@@ -1307,7 +1380,12 @@ svg.addEventListener('pointermove', e => {
     renderCanvas();
     return;
   }
-  if (tool === 'poly' || tool === 'rect' || tool === 'emit' || tool === 'vv' || tool === 'pipe') {
+  if (tool === 'pipe' || tool === 'hp') {
+    hover = pipeSnap(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey });
+    renderCanvas();
+    return;
+  }
+  if (tool === 'poly' || tool === 'rect' || tool === 'emit' || tool === 'vv') {
     hover = snapPoint(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey });
     renderCanvas();
     return;
@@ -1472,6 +1550,7 @@ document.addEventListener('keydown', e => {
   else if (k === 'a') setTool('emit');
   else if (k === 'h') setTool('vv');
   else if (k === 'l') setTool('pipe');
+  else if (k === 'k') setTool('hp');
   else if (k === 'f') $('tool-fit').click();
   else if (e.key === 'Escape') {
     if (pendSplit) closeAsk();

@@ -1057,7 +1057,8 @@ svg .pilltxt {
 .stage.t-split,
 .stage.t-wall,
 .stage.t-vv,
-.stage.t-pipe {
+.stage.t-pipe,
+.stage.t-hp {
   cursor: crosshair;
 }
 .ask {

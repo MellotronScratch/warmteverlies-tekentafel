@@ -81,6 +81,7 @@ function viewPipe(pp) {
       )
       .join('')}</select></label>
     ${numField('f-pipe-x', 'pipe.extra', 'Extra lengte', 'm', pp.extra, 1)}</div>
+  ${netPipeHtml(pp)}
   <div class="det">Getekend ${fmt(len)} m + extra ${fmt(pp.extra)} m = ${fmt(tot)} m<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b><br>Draagt bij ${nv(V_OK, 1)} m/s ongeveer ${fmt(cap, 1)} kW (ΔT ${nv(S.twSup - S.twRet, 1)} K)</div>
   ${cap < need ? `<p class="note" style="color:var(--warn)">⚠ Is dit de hoofdleiding, dan is hij te klein voor het hele huis (${fmt(need, 2)} kW): het water stroomt dan sneller dan ${nv(V_OK, 1)} m/s.</p>` : ''}
   <p class="note">Eén lijn staat voor aanvoer én retour. Vul bij <i>Extra lengte</i> stijgleidingen naar een andere verdieping in, en stukken die je niet tekent. Koppelingen en bochten tellen niet mee. De inhoud gaat mee in de systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="res">Resultaten</button>.</p>
@@ -289,6 +290,7 @@ function viewEm(room, em) {
   let h = `<div class="sec"><button class="crumb" data-act="selroom" data-r="${room.id}">← ${esc(room.name)}</button><input class="title" id="f-em-name" data-f="em.name" value="${esc(em.name)}" aria-label="Naam"></div>
   <div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup, 1)}/${nv(S.twRet, 1)} °C</span><b>${fmt(out / 1000, 2)} kW</b></div>
     <div class="seglegend"><span style="--c:transparent">${fmtW(pc.lh)} l/h water</span><span style="--c:transparent">inhoud ca. ${fmt(emVolume(em), 1)} l</span><span style="--c:transparent">ruimte ${nv(room.temp, 1)} °C</span></div></div>
+  ${netEmHtml(em)}
   <div class="fields"><label class="f" for="f-em-kind">Soort<select class="in" id="f-em-kind" data-f="em.kind" ${isV ? 'disabled' : ''}>${kinds}</select></label>`;
   if (!isV) {
     const nom = EM_NOM[em.kind],
