@@ -79,13 +79,28 @@ function ventSettingsHtml() {
         : `<div class="fields">${numField('f-s-n', 'set.nInf', 'Infiltratie n', '1/h', S.nInf, 2)}</div>`
     }</div>`;
 }
+// <option>s of all rooms (per floor) as a destination for air from room
+function flowOptions(room, selected) {
+  return (
+    `<option value="">— nergens heen —</option>` +
+    P.floors
+      .map(f => {
+        const rs = P.rooms.filter(r => r.floorId === f.id && r !== room);
+        return rs.length
+          ? `<optgroup label="${esc(f.name)}">${rs.map(r => `<option value="${r.id}" ${r.id === selected ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</optgroup>`
+          : '';
+      })
+      .join('')
+  );
+}
 function roomAirHtml(room) {
   const a = airBalance(room);
   const ins = [`toevoer ${nv(room.sup, 0)}`, ...a.tin.map(t => `uit ${esc(t.room.name)} ${nv(t.q, 0)}`)];
   if (a.rest > 0) ins.push(`aanvulling ${nv(a.rest, 0)}`);
   const outs = [`afzuiging ${nv(room.ext, 0)}`, ...a.tout.map(t => `naar ${esc(t.room.name)} ${nv(t.q, 0)}`)];
-  return `<div class="det">Lucht in: ${ins.join(' + ')} = ${nv(a.inn + a.rest, 0)} m³/h<br>Lucht uit: ${outs.join(' + ')} = ${nv(a.out, 0)} m³/h</div>
-  ${a.surplus > 1 ? `<div class="warnbox">Er komt ${nv(a.surplus, 0)} m³/h meer binnen dan er weggaat. Geef onder Ventilatie aan naar welke ruimte die lucht overstroomt.</div>` : ''}
+  return `<label class="f" for="f-room-flow">Lucht stroomt over naar<select class="in" id="f-room-flow" data-f="room.flowTo">${flowOptions(room, room.flowTo)}</select></label>
+  <div class="det">Lucht in: ${ins.join(' + ')} = ${nv(a.inn + a.rest, 0)} m³/h<br>Lucht uit: ${outs.join(' + ')} = ${nv(a.out, 0)} m³/h</div>
+  ${a.surplus > 1 ? `<div class="warnbox">Er komt ${nv(a.surplus, 0)} m³/h meer binnen dan er weggaat. Kies hierboven naar welke ruimte die lucht overstroomt, bijvoorbeeld de overloop of de hal.</div>` : ''}
   ${a.rest > 1 && (a.tin.length || room.sup > 0) ? `<div class="warnbox">Er gaat ${nv(a.rest, 0)} m³/h meer weg dan er binnenkomt. De app rekent het verschil als lucht uit de woning op ${nv(P.settings.tRet, 1)} °C.</div>` : ''}`;
 }
 function transferRow(t) {
@@ -107,12 +122,12 @@ function viewVent() {
   const S = P.settings;
   let h = `<div class="sec"><h2>Ventilatie</h2><p class="note">Kies het ventilatiesysteem en vul per ruimte de luchthoeveelheden in. Dat kan hieronder in één overzicht, of per ruimte onder Selectie.</p></div>
   ${ventSettingsHtml()}
-  <div class="sec"><h3>Debieten per ruimte</h3><div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>θi</th><th>${S.ventSys === 'D' ? 'Inblaas' : 'Toevoer'} m³/h</th><th>Afzuig m³/h</th><th>Over&shy;stroom in/uit</th><th>Φ W</th></tr></thead><tbody>`;
+  <div class="sec"><h3>Debieten per ruimte</h3><div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>θi</th><th>${S.ventSys === 'D' ? 'Inblaas' : 'Toevoer'} m³/h</th><th>Afzuig m³/h</th><th>Stroomt naar</th><th>Over&shy;stroom in/uit</th><th>Φ W</th></tr></thead><tbody>`;
   P.floors.forEach(f => {
     const rs = P.rooms.filter(r => r.floorId === f.id);
     if (!rs.length) return;
     if (P.floors.length > 1)
-      h += `<tr><td colspan="6" style="font-family:var(--font-body);font-weight:600;padding-top:10px">${esc(f.name)}</td></tr>`;
+      h += `<tr><td colspan="7" style="font-family:var(--font-body);font-weight:600;padding-top:10px">${esc(f.name)}</td></tr>`;
     rs.forEach(r => {
       const c = calcRoom(r),
         a = c.air;
@@ -124,13 +139,14 @@ function viewVent() {
             : '';
       h += `<tr><td><button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button>${st}</td><td>${nv(r.temp, 1)}</td>
       <td><input class="in num" style="width:56px" id="f-vr-${r.id}-s" data-f="vr.${r.id}.sup" inputmode="decimal" value="${nv(r.sup, 0)}" aria-label="${S.ventSys === 'D' ? 'Inblaas' : 'Toevoer'} ${esc(r.name)}"></td>
-      <td><input class="in num" style="width:56px" id="f-vr-${r.id}-e" data-f="vr.${r.id}.ext" inputmode="decimal" value="${nv(r.ext, 0)}" aria-label="Afzuiging ${esc(r.name)}"></td><td style="white-space:nowrap">${nv(a.qin, 0)}/${nv(a.qout, 0)}</td><td id="vphi-${r.id}">${fmtW(c.vent)}</td></tr>`;
+      <td><input class="in num" style="width:56px" id="f-vr-${r.id}-e" data-f="vr.${r.id}.ext" inputmode="decimal" value="${nv(r.ext, 0)}" aria-label="Afzuiging ${esc(r.name)}"></td><td><select class="in" style="min-width:90px" id="f-vr-${r.id}-to" data-f="vr.${r.id}.flowTo" aria-label="Lucht van ${esc(r.name)} stroomt naar">${flowOptions(r, r.flowTo)}</select></td><td style="white-space:nowrap">${nv(a.qin, 0)}/${nv(a.qout, 0)}</td><td id="vphi-${r.id}">${fmtW(c.vent)}</td></tr>`;
     });
   });
   h += `</tbody></table></div></div>
-  <div class="sec"><h3>Overstroom tussen ruimtes</h3><p class="note">Lucht die van de ene naar de andere ruimte stroomt, via een spleet onder de deur, een overstroomrooster of een open verbinding (bijvoorbeeld hal → keuken, of woonkamer → open keuken). De ontvangende ruimte rekent met de temperatuur van de ruimte waar de lucht vandaan komt. Gaat er uit een ruimte meer lucht weg dan er binnenkomt, dan rekent de app het verschil als lucht uit de woning op ${nv(S.tRet, 1)} °C.</p>
-  ${(P.transfers || []).map(transferRow).join('') || '<p class="note">Nog geen overstroom opgegeven.</p>'}
-  <div class="row"><button class="btn small" data-act="addtr" ${P.rooms.length < 2 ? 'disabled' : ''}>+ Overstroom</button></div></div>`;
+  <div class="sec"><p class="note">Bij <i>Stroomt naar</i> kies je per ruimte waar de lucht heen gaat, via een spleet onder de deur, een overstroomrooster of een open verbinding (bijvoorbeeld slaapkamer → overloop → badkamer). Hoeveel het is, rekent de app zelf uit: wat er na de afzuiging in die ruimte overblijft, plus wat er uit andere ruimtes binnenkomt. De ontvangende ruimte rekent met de temperatuur van de ruimte waar de lucht vandaan komt. De pijlen in de tekening laten de luchtstromen zien.</p></div>
+  <div class="sec"><h3>Handmatige overstroom (geavanceerd)</h3><p class="note">Alleen nodig als lucht uit één ruimte naar meer dan één andere ruimte stroomt, met vaste hoeveelheden. Gaat er uit een ruimte meer lucht weg dan er binnenkomt, dan rekent de app het verschil als lucht uit de woning op ${nv(S.tRet, 1)} °C.</p>
+  ${(P.transfers || []).map(transferRow).join('') || '<p class="note">Geen handmatige overstroom.</p>'}
+  <div class="row"><button class="btn small" data-act="addtr" ${P.rooms.length < 2 ? 'disabled' : ''}>+ Handmatige overstroom</button></div></div>`;
   return h;
 }
 function viewSet() {
@@ -327,6 +343,9 @@ function applyField(el, final) {
       }
       if (k === 'name') {
         room.name = v;
+        changed = true;
+      } else if (k === 'flowTo') {
+        room.flowTo = v && getRoom(v) && v !== room.id ? v : '';
         changed = true;
       } else {
         const n = num(v);
@@ -642,6 +661,11 @@ function applyField(el, final) {
     case 'vr': {
       const r = getRoom(parts[1]);
       if (!r) return;
+      if (parts[2] === 'flowTo') {
+        r.flowTo = v && getRoom(v) && v !== r.id ? v : '';
+        changed = true;
+        break;
+      }
       const n = num(v);
       if (n == null || n < 0) return;
       r[parts[2]] = n;
@@ -702,6 +726,7 @@ $('tabs').addEventListener('click', e => {
   tab = b.dataset.tab;
   confirmDel = false;
   renderPanel();
+  renderCanvas(); // the air flow arrows depend on the tab
 });
 pbody.addEventListener('click', e => {
   const b = e.target.closest('[data-act]');
@@ -757,6 +782,7 @@ function act(a, b) {
       tab = b.dataset.tab;
       confirmDel = false;
       renderPanel();
+      renderCanvas();
       pbody.scrollTop = 0;
       break;
     case 'selroom':

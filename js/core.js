@@ -454,6 +454,21 @@ function normalizeProject(p) {
   p.transfers = (Array.isArray(p.transfers) ? p.transfers : [])
     .map(t => ({ id: t.id || rid(), from: t.from, to: t.to, q: Math.max(0, +t.q || 0) }))
     .filter(t => rids.has(t.from) && rids.has(t.to));
+  // air flows over to one other room (the amount follows by itself)
+  p.rooms.forEach(
+    r => (r.flowTo = typeof r.flowTo === 'string' && rids.has(r.flowTo) && r.flowTo !== r.id ? r.flowTo : '')
+  );
+  // older projects: a room with exactly one manual transfer that carries exactly what is left becomes 'flows over to'
+  p.rooms.forEach(r => {
+    if (r.flowTo) return;
+    const out = p.transfers.filter(t => t.from === r.id);
+    if (out.length !== 1) return;
+    const inn = (+r.sup || 0) + p.transfers.filter(t => t.to === r.id).reduce((a, t) => a + t.q, 0);
+    if (Math.abs(inn - (+r.ext || 0) - out[0].q) < 0.5) {
+      r.flowTo = out[0].to;
+      p.transfers = p.transfers.filter(t => t !== out[0]);
+    }
+  });
   p.rooms.forEach(r => {
     if (!p.floors.some(f => f.id === r.floorId)) r.floorId = p.floors[0].id;
   });

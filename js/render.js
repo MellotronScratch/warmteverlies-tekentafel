@@ -545,7 +545,7 @@ function renderCanvas() {
   curRooms().forEach(r => (calc[r.id] = calcRoom(r)));
   let out =
     gridSvg(W, H) +
-    '<defs><pattern id="vvhatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--c-hp)" stroke-width="1.3" stroke-opacity=".45"/></pattern><pattern id="videhatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0M-2 2L2 -2M8 12L12 8" stroke="var(--muted)" stroke-width="1" stroke-opacity=".4"/></pattern></defs>';
+    '<defs><pattern id="vvhatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--c-hp)" stroke-width="1.3" stroke-opacity=".45"/></pattern><marker id="airhead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--c-air)"/></marker><pattern id="videhatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0M-2 2L2 -2M8 12L12 8" stroke="var(--muted)" stroke-width="1" stroke-opacity=".4"/></pattern></defs>';
   const off = 6 / view.s;
   const selR = sel && sel.r;
   // underlay: floor below in light grey
@@ -846,6 +846,49 @@ function renderCanvas() {
       out += `<text x="${m.x + (dx / d) * 18}" y="${m.y + (dy / d) * 18 + 3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--muted)" pointer-events="none">${fmt(R.knee, 2)} m</text>`;
     });
   });
+  // air flows between rooms: moving arrows, in the Ventilatie tab for all rooms, otherwise for the selected room
+  if ((tab === 'vent' || (sel && sel.t === 'room')) && P.rooms.length > 1) {
+    airFlows()
+      .filter(t => tab === 'vent' || t.from === sel.r || t.to === sel.r)
+      .forEach(t => {
+        const a = getRoom(t.from),
+          b = getRoom(t.to);
+        if (!a || !b) return;
+        const onA = presentOn(a, curFloor),
+          onB = presentOn(b, curFloor),
+          w = Math.min(7, 1.5 + t.q / 25);
+        if (onA && onB) {
+          const p = S(labelPt(a.pts)),
+            q = S(labelPt(b.pts)),
+            dx = q.x - p.x,
+            dy = q.y - p.y,
+            L = Math.hypot(dx, dy) || 1,
+            ux = dx / L,
+            uy = dy / L,
+            off = Math.min(52, L / 3);
+          const p0 = { x: p.x + ux * off, y: p.y + uy * off },
+            p1 = { x: q.x - ux * off, y: q.y - uy * off },
+            mx = (p0.x + p1.x) / 2 - uy * L * 0.12,
+            my = (p0.y + p1.y) / 2 + ux * L * 0.12;
+          out += `<path d="M${p0.x.toFixed(1)} ${p0.y.toFixed(1)}Q${mx.toFixed(1)} ${my.toFixed(1)} ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}" fill="none" stroke="var(--c-air)" stroke-width="${w.toFixed(1)}" stroke-linecap="round" class="airflow" marker-end="url(#airhead)" pointer-events="none"/>`;
+          out += `<text x="${mx}" y="${my - 7}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-air)" pointer-events="none">${fmtW(t.q)} m³/h</text>`;
+        } else if (onA || onB) {
+          // to or from another floor: a note at the room on this floor
+          const r = onA ? a : b,
+            other = onA ? b : a,
+            p = S(labelPt(r.pts)),
+            above = floorIdx(other.floorId) > floorIdx(curFloor);
+          out += `<text x="${p.x}" y="${p.y + 52}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-air)" pointer-events="none">${onA ? (above ? '↑' : '↓') + ' naar ' : (above ? '↓' : '↑') + ' uit '}${esc(other.name)} ${fmtW(t.q)} m³/h</text>`;
+        }
+      });
+    // supply and extraction per room
+    if (tab === 'vent')
+      curRooms().forEach(r => {
+        if (!(r.sup > 0 || r.ext > 0)) return;
+        const p = S(labelPt(r.pts));
+        out += `<text x="${p.x}" y="${p.y - 30}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-air)" pointer-events="none">${r.sup > 0 ? '+' + fmtW(r.sup) + (P.settings.ventSys === 'D' ? ' inblaas' : ' toevoer') : ''}${r.sup > 0 && r.ext > 0 ? ' · ' : ''}${r.ext > 0 ? '−' + fmtW(r.ext) + ' afzuig' : ''}</text>`;
+      });
+  }
   // labels: small caps name + area, heat load in kW, breakdown bar, temperature
   curRooms().forEach(r => {
     const c = S(labelPt(r.pts));

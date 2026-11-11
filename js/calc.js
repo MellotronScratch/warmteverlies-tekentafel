@@ -549,8 +549,43 @@ function segHtml(c, legend) {
       : '')
   );
 }
+/* ---------- air flows between rooms ----------
+   Per room: room.flowTo = the room the air flows over to (via a door gap, grille or open connection). The amount follows
+   by itself: what is left after the room's own extraction, including what flows in from other rooms. Manual transfers
+   (P.transfers, advanced) are counted as well. */
+let _flowKey = '',
+  _flows = [];
+function airFlows() {
+  const key = JSON.stringify([P.rooms.map(r => [r.id, r.sup, r.ext, r.flowTo]), P.transfers]);
+  if (key === _flowKey) return _flows;
+  const manual = (P.transfers || []).filter(t => t.from !== t.to && t.q > 0 && getRoom(t.from) && getRoom(t.to));
+  const auto = P.rooms
+    .filter(r => r.flowTo && r.flowTo !== r.id && getRoom(r.flowTo))
+    .map(r => ({ id: 'auto-' + r.id, from: r.id, to: r.flowTo, q: 0, auto: true }));
+  // repeat so a chain (bedroom → landing → bathroom) settles; a loop stops after a fixed number of rounds
+  for (let k = 0; k < P.rooms.length + 2; k++) {
+    let changed = false;
+    auto.forEach(t => {
+      const r = getRoom(t.from),
+        inn =
+          r.sup +
+          manual.filter(x => x.to === r.id).reduce((a, x) => a + x.q, 0) +
+          auto.filter(x => x.to === r.id).reduce((a, x) => a + x.q, 0),
+        out = r.ext + manual.filter(x => x.from === r.id).reduce((a, x) => a + x.q, 0),
+        q = Math.max(0, Math.round((inn - out) * 10) / 10);
+      if (q !== t.q) {
+        t.q = q;
+        changed = true;
+      }
+    });
+    if (!changed) break;
+  }
+  _flowKey = key;
+  _flows = manual.concat(auto.filter(t => t.q > 0));
+  return _flows;
+}
 function airBalance(room) {
-  const tr = (P.transfers || []).filter(t => t.from !== t.to && t.q > 0);
+  const tr = airFlows();
   const tin = tr
     .filter(t => t.to === room.id)
     .map(t => ({ id: t.id, q: t.q, room: getRoom(t.from) }))

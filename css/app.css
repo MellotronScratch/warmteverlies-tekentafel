@@ -29,6 +29,7 @@
   --seg-fabric: #e06a12;
   --seg-glass: #efa45e;
   --seg-air: #9cb3b9;
+  --c-air: #0284c7;
   --seg-track: #e3eaea;
   --c-loss: #e06a12;
   --c-hp: #0079b8;
@@ -68,6 +69,7 @@
     --seg-fabric: #f39446;
     --seg-glass: #f6c18a;
     --seg-air: #6f9099;
+    --c-air: #38bdf8;
     --seg-track: #24383e;
     --c-loss: #db6e22;
     --c-hp: #2b8fd6;
@@ -104,6 +106,7 @@
   --seg-fabric: #f39446;
   --seg-glass: #f6c18a;
   --seg-air: #6f9099;
+  --c-air: #38bdf8;
   --seg-track: #24383e;
   --c-loss: #db6e22;
   --c-hp: #2b8fd6;
@@ -1418,5 +1421,16 @@ label.chk {
   * {
     transition: none !important;
     animation: none !important;
+  }
+}
+
+/* air flows between rooms (ventilation): moving dashes along the arrow */
+.airflow {
+  stroke-dasharray: 9 6;
+  animation: airflow 1.1s linear infinite;
+}
+@keyframes airflow {
+  to {
+    stroke-dashoffset: -15;
   }
 }
