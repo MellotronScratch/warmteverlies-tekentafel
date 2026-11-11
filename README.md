@@ -144,6 +144,29 @@ Trek je met **Wand** een nieuwe scheiding, dan kies je in het venster meteen of 
 
 Met de knop **2,5D** rechtsonder, of de toets `D`, zie je de woning schuin van boven. De verdiepingen tot en met de gekozen verdieping staan op elkaar. Wanden hebben de kleur van hun constructie, en ramen en deuren zijn oranje. Om te draaien en te kantelen sleep je met ingedrukt scrollwiel, of met Shift + slepen. De weergave draait dan om het punt waar je begon met slepen. Gewoon slepen schuift, en scrollen zoomt rond de muis. Klik een vloer of wand aan om hem in het paneel te bewerken. Tekenen doe je in de plattegrond: kies je een tekengereedschap, dan schakelt de app daar vanzelf naar terug.
 
+## Stooklijn
+
+Een warmtepomp stelt de aanvoertemperatuur in op de buitentemperatuur: hoe kouder het buiten is, hoe warmer het water. Dat verband heet de **stooklijn** (ook weerafhankelijke regeling of heating curve). Een warmtepomp werkt grofweg 2 à 3 % zuiniger per graad lagere aanvoer, dus een stooklijn die niet hoger staat dan nodig, loont.
+
+Onder **Resultaten → Stooklijn** rekent de app voor elke buitentemperatuur van de ontwerptemperatuur tot +15 °C uit welke aanvoertemperatuur nodig is. Het warmteverlies van elke ruimte neemt daarbij evenredig af met het verschil tussen binnen en buiten, en de app zoekt de laagste aanvoer waarbij de radiatoren en de vloerverwarming dat nog dekken. Je ziet:
+
+- de berekende lijn, en de rechte lijn die je op de warmtepomp instelt: het **eindpunt** bij de laagste buitentemperatuur en het **voetpunt** bij +15 °C;
+- de helling;
+- de **maatgevende ruimte**: de ruimte die de hoogste aanvoer nodig heeft. Vergroot je daar de afgifte, dan kan de hele lijn omlaag.
+
+De berekening gaat uit van één aanvoertemperatuur voor het hele huis, met de ΔT tussen aanvoer en retour uit het project. Stel de lijn daarna in de praktijk bij.
+
+## Radiatoradvies
+
+Is de afgifte in een ruimte te klein bij de ingestelde aanvoer- en retourtemperatuur, dan staat bij die ruimte onder *Afgifte* een advies:
+
+- hoeveel vermogen er extra nodig is, gerekend bij 75/65/20 °C zoals het in de catalogus staat;
+- **bijplaatsen**: de minimale lengte van een extra paneelradiator (T21, T22, T33) bij 400, 500, 600 en 900 mm hoogte;
+- **vervangen**: dezelfde tabel voor één radiator die de hele ruimte verwarmt;
+- **boosters**: of ventilatoren onder de bestaande radiator het tekort zouden dekken.
+
+Onder Resultaten staat welke ruimtes een tekort hebben. De lengtes komen uit de vuistregel in `data/radiatoren.json` (±10 %). Kies uiteindelijk uit de tabel van de fabrikant.
+
 ## Vloerverwarming
 
 Kies **Vloerverw.** (`H`) en klik de hoekpunten. Zo teken je ook een L-vorm. Sluit af door op het eerste punt te klikken, te dubbelklikken of op Enter te drukken. Slepen geeft nog steeds een rechthoek. Moet de hele ruimte vloerverwarming krijgen, klik dan bij de ruimte onder *Afgifte* op **Vloerverwarming in de hele ruimte**. De app tekent die dan op 10 cm van de wanden.
@@ -272,6 +295,7 @@ js/interaction.js gereedschappen, bewerkingen, muis en toetsenbord
 js/panel.js       zijpaneel: ruimte, wanddeel, constructies
 js/emitters.js    afgifte, leidingen en systeeminhoud
 js/hydraulics.js  leidingnet: debiet, drukverlies, indexcircuit
+js/sizing.js      stooklijn en radiatoradvies
 js/heatpumps.js   warmtepompen en verbeteradviezen
 js/views.js       resultaten, ventilatie, project, invoer en knoppen
 js/io.js          export (JSON, CSV, heatlossjs)

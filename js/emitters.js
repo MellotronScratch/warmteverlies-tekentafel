@@ -261,7 +261,7 @@ function roomEmitHtml(room, c) {
     ems = room.emitters || [];
   const fillBtn = `<div class="row"><button class="btn small" data-act="vvfill" data-r="${room.id}">Vloerverwarming in de hele ruimte</button></div>`;
   if (!ems.length)
-    return `<h3>Afgifte</h3><p class="note">Nog geen afgifte in deze ruimte. Teken een radiator met <b>Radiator</b> (A) of vloerverwarming met <b>Vloerverw.</b> (H).</p>${fillBtn}`;
+    return `<h3>Afgifte</h3><p class="note">Nog geen afgifte in deze ruimte. Teken een radiator met <b>Radiator</b> (A) of vloerverwarming met <b>Vloerverw.</b> (H).</p>${radAdviceHtml(room, c.total)}${fillBtn}`;
   const emit = roomEmit(room),
     need = c.total,
     ns = neededSupply(room, need),
@@ -277,7 +277,7 @@ function roomEmitHtml(room, c) {
         return `<button class="linkrow" data-act="selem" data-r="${room.id}" data-e="${em.id}"><span>${esc(em.name)} <span class="note">· ${EM_KINDS[em.kind]}${em.boost ? ' met boosters' : ''}${pc.state !== 'ok' ? ' · ⚠ leiding ' + pc.state : ''}</span></span><span>${fmt(o / 1000, 2)} kW</span></button>`;
       })
       .join('')}
-    ${fillBtn}${twFieldsHtml()}`;
+    ${radAdviceHtml(room, need)}${fillBtn}${twFieldsHtml()}`;
 }
 function viewEm(room, em) {
   const S = P.settings,

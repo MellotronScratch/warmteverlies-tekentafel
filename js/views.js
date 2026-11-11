@@ -17,6 +17,8 @@ function viewRes() {
     })
     .join('')}
   ${emitOverviewHtml(c)}
+  ${shortageSummaryHtml(c)}
+  ${curveHtml()}
   ${adviceHtml(c)}
   ${hpSectionHtml(c)}
   ${volumeHtml()}
