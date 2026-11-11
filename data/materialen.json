@@ -1,0 +1,152 @@
+{
+  "toelichting": "Materialen die een nieuw project meekrijgt voor de opbouw van constructies. soort: 'lambda' (waarde = λ in W/mK, de dikte vul je per laag in), 'R' (waarde = vaste R in m²K/W, bijvoorbeeld een folie) of 'spouw' (luchtspouw, de R komt uit de tabel van NEN-EN-ISO 6946; waarde 0). kleur: kleur in de doorsnede. Verander de id van een bestaand materiaal niet: projecten en het voorbeeldproject verwijzen ernaar. Een nieuw materiaal krijgt een eigen, unieke id. Bestaande projecten houden hun eigen materialenlijst; wijzigingen hier gelden voor nieuwe projecten.",
+  "materialen": [
+    {
+      "id": "m-gips",
+      "naam": "Gipskartonplaat",
+      "soort": "lambda",
+      "waarde": 0.25,
+      "kleur": "#D9D4C7"
+    },
+    {
+      "id": "m-pleister",
+      "naam": "Gipspleister",
+      "soort": "lambda",
+      "waarde": 0.4,
+      "kleur": "#E6E1D6"
+    },
+    {
+      "id": "m-osb",
+      "naam": "OSB-plaat",
+      "soort": "lambda",
+      "waarde": 0.13,
+      "kleur": "#C9A46A"
+    },
+    {
+      "id": "m-multi",
+      "naam": "Multiplex",
+      "soort": "lambda",
+      "waarde": 0.13,
+      "kleur": "#C49A5E"
+    },
+    {
+      "id": "m-hout",
+      "naam": "Naaldhout (stijlen, regels, bekleding)",
+      "soort": "lambda",
+      "waarde": 0.13,
+      "kleur": "#A97B45"
+    },
+    {
+      "id": "m-glaswol",
+      "naam": "Glaswol",
+      "soort": "lambda",
+      "waarde": 0.035,
+      "kleur": "#E8CF5A"
+    },
+    {
+      "id": "m-steenwol",
+      "naam": "Steenwol",
+      "soort": "lambda",
+      "waarde": 0.035,
+      "kleur": "#C8B25A"
+    },
+    {
+      "id": "m-pir",
+      "naam": "PIR-isolatieplaat",
+      "soort": "lambda",
+      "waarde": 0.022,
+      "kleur": "#E9E39A"
+    },
+    {
+      "id": "m-eps",
+      "naam": "EPS",
+      "soort": "lambda",
+      "waarde": 0.035,
+      "kleur": "#EDEDE6"
+    },
+    {
+      "id": "m-xps",
+      "naam": "XPS",
+      "soort": "lambda",
+      "waarde": 0.034,
+      "kleur": "#9EC7E0"
+    },
+    {
+      "id": "m-houtvezel",
+      "naam": "Houtvezelisolatie",
+      "soort": "lambda",
+      "waarde": 0.04,
+      "kleur": "#B88E5A"
+    },
+    {
+      "id": "m-cellulose",
+      "naam": "Cellulose (inblaas)",
+      "soort": "lambda",
+      "waarde": 0.04,
+      "kleur": "#BDB7A6"
+    },
+    {
+      "id": "m-baksteen",
+      "naam": "Baksteen metselwerk",
+      "soort": "lambda",
+      "waarde": 0.9,
+      "kleur": "#B5583A"
+    },
+    {
+      "id": "m-kzs",
+      "naam": "Kalkzandsteen",
+      "soort": "lambda",
+      "waarde": 1.0,
+      "kleur": "#CFCBC2"
+    },
+    {
+      "id": "m-cellenbeton",
+      "naam": "Cellenbeton",
+      "soort": "lambda",
+      "waarde": 0.15,
+      "kleur": "#DADAD5"
+    },
+    {
+      "id": "m-beton",
+      "naam": "Beton gewapend",
+      "soort": "lambda",
+      "waarde": 2.3,
+      "kleur": "#9A9C98"
+    },
+    {
+      "id": "m-dekvloer",
+      "naam": "Zandcement dekvloer",
+      "soort": "lambda",
+      "waarde": 1.4,
+      "kleur": "#B3AFA5"
+    },
+    {
+      "id": "m-dampremmend",
+      "naam": "Dampremmende folie",
+      "soort": "R",
+      "waarde": 0,
+      "kleur": "#3A4A55"
+    },
+    {
+      "id": "m-dampopen",
+      "naam": "Dampopen folie",
+      "soort": "R",
+      "waarde": 0,
+      "kleur": "#5C7C8A"
+    },
+    {
+      "id": "m-spouw",
+      "naam": "Luchtspouw",
+      "soort": "spouw",
+      "waarde": 0,
+      "kleur": "#FFFFFF"
+    },
+    {
+      "id": "m-staal",
+      "naam": "Staal (metal stud-profiel)",
+      "soort": "lambda",
+      "waarde": 50,
+      "kleur": "#8A9399"
+    }
+  ]
+}

@@ -20,7 +20,14 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 
 ## Gebruik
 
-Open `index.html` in een browser of gebruik de link hierboven. Je hoeft niets te installeren en er is geen server nodig.
+Gebruik de link hierboven, of draai de app op je eigen computer. Installeren hoeft niet, maar je hebt wel een eenvoudige webserver nodig. De app laadt zijn gegevens uit de map `data/`, en browsers laden zulke bestanden niet als je `index.html` direct opent. Bijvoorbeeld:
+
+```sh
+cd warmteverlies-tekentafel
+python3 -m http.server
+```
+
+Open daarna http://localhost:8000. In VS Code kan het ook met de extensie *Live Server*.
 
 Projecten worden in je browser opgeslagen (localStorage). Exporteer regelmatig een `.json` als reservekopie, want bij het wissen van browsergegevens ben je ze kwijt.
 
@@ -210,9 +217,46 @@ Vereenvoudigde methode op basis van NEN-EN 12831 / ISSO 51:
 
 Grond rekent met een vaste vervangende temperatuur. Opwarmtoeslag en de exacte correctiefactoren uit ISSO 51 zitten er niet in. **Controleer de uitkomst voordat je erop dimensioneert.**
 
-## Warmtepomplijst
+## Gegevens aanpassen (map `data/`)
 
-De standaardlijst staat in `index.html` (blok `hp-default`). In de app kun je hem downloaden, aanvullen en weer importeren. Bijdragen met fabrieksgegevens zijn welkom; vermeld de bron.
+De tabellen waar de app mee rekent, staan als JSON in de map `data/`. Je kunt ze aanpassen zonder de code aan te raken. Elk bestand begint met een `toelichting` die uitlegt wat de velden betekenen.
+
+| Bestand | Inhoud |
+|---|---|
+| `warmtepompen.json` | Standaardlijst warmtepompen: minimaal en maximaal vermogen bij een paar buitentemperaturen, en optioneel `minInhoud` (minimale systeeminhoud in liter). |
+| `materialen.json` | Materialen voor de laagopbouw van constructies (λ-waarde, vaste R of luchtspouw). Geldt voor nieuwe projecten. |
+| `leidingen.json` | Leidingtypes (koper, alupex, staal) met per buitendiameter de binnendiameter. |
+| `radiatoren.json` | Paneeltypes (T10 t/m T33) met vermogen en waterinhoud per meter bij 600 mm hoogte. |
+| `vloerverwarming.json` | Vloerafwerkingen (warmteweerstand) en de afgiftecoëfficiënt per hart-op-hartafstand. |
+
+Verander de sleutels en id's van bestaande regels niet, want projecten verwijzen ernaar. Voeg je een regel toe, geef die dan een nieuwe, unieke id. Na een wijziging ververs je de pagina. Is een bestand geen geldige JSON meer, dan meldt de app dat bij het opstarten.
+
+De warmtepomplijst kun je in de app ook downloaden, aanvullen en als eigen lijst weer importeren. Die eigen lijst staat dan alleen in je browser. Bijdragen met fabrieksgegevens zijn welkom; vermeld de bron.
+
+## Opbouw van de code
+
+Geen build-stap en geen afhankelijkheden: gewone JavaScript-bestanden die `index.html` op volgorde laadt.
+
+```
+index.html        de pagina
+css/app.css       opmaak
+data/*.json       gegevens (zie hierboven)
+js/data.js        laadt data/*.json
+js/core.js        constanten, voorbeeldproject, normalizeProject (oude projecten bijwerken)
+js/geometry.js    wanden, buurruimtes, gedeelde wanden, ramen, vloeren en plafonds
+js/calc.js        laagopbouw, daken en de warmteverliesberekening
+js/render.js      plattegrond, trappen en de 2,5D-weergave
+js/interaction.js gereedschappen, bewerkingen, muis en toetsenbord
+js/panel.js       zijpaneel: ruimte, wanddeel, constructies
+js/emitters.js    afgifte, leidingen en systeeminhoud
+js/heatpumps.js   warmtepompen en verbeteradviezen
+js/views.js       resultaten, ventilatie, project, invoer en knoppen
+js/io.js          export (JSON, CSV, heatlossjs)
+js/storage.js     opslaan
+js/main.js        opstarten
+```
+
+De code is opgemaakt met [Prettier](https://prettier.io) (instellingen in `.prettierrc.json`), bijvoorbeeld met `npx prettier --write "js/*.js" css/app.css index.html "data/*.json"`.
 
 ## Licentie
 

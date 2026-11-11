@@ -1,0 +1,42 @@
+{
+  "toelichting": "Leidingtypes voor aansluitleidingen en het leidingnetwerk. Per type: binnendiameter in mm per maat; de maat (sleutel) is de buitendiameter in mm, de wanddikte rekent de app uit (buiten − binnen) / 2. Daarmee rekent de app de stroomsnelheid, de capaciteit bij 0,5 m/s en de waterinhoud. Verander de sleutels koper, pex en staal niet: projecten verwijzen ernaar.",
+  "leidingen": {
+    "koper": {
+      "naam": "Koper",
+      "binnendiameter": {
+        "10": 8,
+        "12": 10,
+        "15": 13,
+        "18": 16,
+        "22": 20,
+        "28": 26,
+        "35": 32,
+        "42": 39
+      }
+    },
+    "pex": {
+      "naam": "PEX / alupex",
+      "binnendiameter": {
+        "14": 10,
+        "16": 12,
+        "17": 13,
+        "20": 16,
+        "26": 20,
+        "32": 26,
+        "40": 33
+      }
+    },
+    "staal": {
+      "naam": "Staal (cv-buis)",
+      "binnendiameter": {
+        "12": 9.6,
+        "15": 12.6,
+        "18": 15.6,
+        "22": 19.6,
+        "28": 25.6,
+        "35": 32,
+        "42": 39
+      }
+    }
+  }
+}

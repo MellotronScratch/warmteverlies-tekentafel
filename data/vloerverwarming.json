@@ -1,0 +1,30 @@
+{
+  "toelichting": "Vloerverwarming. vloerafwerkingen: naam en warmteweerstand R in m²K/W. afgifteCoefficient: indicatieve afgiftecoëfficiënt in W/m²K (over het logaritmisch temperatuurverschil water–ruimte) per hart-op-hartafstand in cm, voor een dekvloer van ongeveer 45 mm boven een buis van 16 mm, bij een afwerking met R = 0 / 0,05 / 0,10 / 0,15 m²K/W. De app interpoleert daartussen en begrenst de vloertemperatuur op 29 °C.",
+  "vloerafwerkingen": {
+    "tegels": {
+      "naam": "Tegels / natuursteen",
+      "R": 0.01
+    },
+    "pvc": {
+      "naam": "PVC / vinyl",
+      "R": 0.03
+    },
+    "laminaat": {
+      "naam": "Laminaat met ondervloer",
+      "R": 0.07
+    },
+    "parket": {
+      "naam": "Parket",
+      "R": 0.1
+    },
+    "tapijt": {
+      "naam": "Tapijt",
+      "R": 0.15
+    }
+  },
+  "afgifteCoefficient": {
+    "10": [6.7, 5.0, 4.0, 3.3],
+    "15": [5.9, 4.5, 3.6, 3.0],
+    "20": [5.2, 4.0, 3.3, 2.8]
+  }
+}

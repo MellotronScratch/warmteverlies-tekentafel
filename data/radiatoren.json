@@ -1,0 +1,35 @@
+{
+  "toelichting": "Vuistregel voor stalen paneelradiatoren. wattPerMeter: afgifte per meter lengte bij 75/65/20 °C (EN 442) en 600 mm hoogte; voor een andere hoogte rekent de app met (hoogte / 600)^0,9. literPerMeter: waterinhoud per meter bij 600 mm hoogte, naar verhouding van de hoogte. Indicatieve waarden, ongeveer ±10 %; de tabel van de fabrikant is altijd beter.",
+  "paneelradiatoren": {
+    "T10": {
+      "omschrijving": "Type 10 · één plaat, geen lamellen",
+      "wattPerMeter": 640,
+      "literPerMeter": 3.0
+    },
+    "T11": {
+      "omschrijving": "Type 11 · één plaat met lamellen",
+      "wattPerMeter": 1000,
+      "literPerMeter": 3.0
+    },
+    "T20": {
+      "omschrijving": "Type 20 · twee platen, geen lamellen",
+      "wattPerMeter": 1080,
+      "literPerMeter": 5.5
+    },
+    "T21": {
+      "omschrijving": "Type 21 · twee platen, één rij lamellen",
+      "wattPerMeter": 1300,
+      "literPerMeter": 5.5
+    },
+    "T22": {
+      "omschrijving": "Type 22 · twee platen, twee rijen lamellen",
+      "wattPerMeter": 1700,
+      "literPerMeter": 5.8
+    },
+    "T33": {
+      "omschrijving": "Type 33 · drie platen met lamellen",
+      "wattPerMeter": 2450,
+      "literPerMeter": 8.5
+    }
+  }
+}

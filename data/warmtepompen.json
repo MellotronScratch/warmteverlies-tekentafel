@@ -1,0 +1,196 @@
+{
+  "versie": 1,
+  "toelichting": "Lijst met warmtepompen voor de Warmteverlies Tekentafel. Per warmtepomp geef je in 'punten' het minimale en maximale verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal nodig: een punt bij -10 °C en een punt bij een hogere temperatuur (bij voorkeur +7 of +10 °C). Tussen en buiten de punten rekent de app rechtlijnig door. Voeg een warmtepomp toe door een blok te kopiëren en de waarden aan te passen.",
+  "warmtepompen": [
+    {
+      "id": "weheat-flint",
+      "merk": "WeHeat",
+      "model": "Flint",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.4,
+          "max": 3.7
+        },
+        {
+          "buiten": 7,
+          "min": 2.5,
+          "max": 6.2
+        }
+      ]
+    },
+    {
+      "id": "itho-amber-65",
+      "merk": "Itho Daalderop",
+      "model": "Amber 65",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.2,
+          "max": 3.4
+        },
+        {
+          "buiten": 7,
+          "min": 2.3,
+          "max": 6.7
+        }
+      ]
+    },
+    {
+      "id": "weheat-sparrow-p60",
+      "merk": "WeHeat",
+      "model": "Sparrow P60",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.4,
+          "max": 6.0
+        },
+        {
+          "buiten": 7,
+          "min": 2.1,
+          "max": 9.0
+        }
+      ]
+    },
+    {
+      "id": "itho-hp-s-55",
+      "merk": "Itho Daalderop",
+      "model": "HP-S 55",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.939,
+          "max": 3.545
+        },
+        {
+          "buiten": 7,
+          "min": 1.569,
+          "max": 5.431
+        }
+      ]
+    },
+    {
+      "id": "vaillant-vwl-35-6",
+      "merk": "Vaillant",
+      "model": "VWL 35/6",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.4,
+          "max": 4.1
+        },
+        {
+          "buiten": 7,
+          "min": 2.2,
+          "max": 6.3
+        }
+      ]
+    },
+    {
+      "id": "vaillant-vwl-55-6",
+      "merk": "Vaillant",
+      "model": "VWL 55/6",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Warmteverlies 3.0.xlsx",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.4,
+          "max": 6.2
+        },
+        {
+          "buiten": 7,
+          "min": 2.1,
+          "max": 8.0
+        }
+      ]
+    },
+    {
+      "id": "voorbeeld-4",
+      "merk": "Voorbeeld",
+      "model": "Compact 4 kW (fictief)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "fictief voorbeeld, geen echt product",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 0.9,
+          "max": 3.0
+        },
+        {
+          "buiten": 2,
+          "min": 1.1,
+          "max": 3.9
+        },
+        {
+          "buiten": 10,
+          "min": 1.4,
+          "max": 4.8
+        }
+      ]
+    },
+    {
+      "id": "voorbeeld-9",
+      "merk": "Voorbeeld",
+      "model": "Midi 9 kW (fictief)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "fictief voorbeeld, geen echt product",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 2.5,
+          "max": 8.5
+        },
+        {
+          "buiten": 2,
+          "min": 2.8,
+          "max": 10.0
+        },
+        {
+          "buiten": 10,
+          "min": 3.3,
+          "max": 11.8
+        }
+      ]
+    },
+    {
+      "id": "voorbeeld-12",
+      "merk": "Voorbeeld",
+      "model": "Maxi 12 kW (fictief)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "fictief voorbeeld, geen echt product",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 3.2,
+          "max": 11.2
+        },
+        {
+          "buiten": 7,
+          "min": 3.9,
+          "max": 14.5
+        }
+      ]
+    }
+  ]
+}
