@@ -322,7 +322,7 @@ De tabellen waar de app mee rekent, staan als JSON in de map `data/`. Je kunt ze
 
 | Bestand | Inhoud |
 |---|---|
-| `warmtepompen.json` | Standaardlijst warmtepompen: minimaal en maximaal vermogen bij een paar buitentemperaturen, en optioneel `minInhoud` (minimale systeeminhoud in liter). |
+| `warmtepompen.json` | Standaardlijst warmtepompen: minimaal en maximaal vermogen bij een paar buitentemperaturen (35 °C aanvoer), en optioneel `minInhoud` (minimale systeeminhoud in liter), `restopvoerhoogte` (kPa), `punten55` (vermogen bij 55 °C aanvoer) en `koelen` (koelvermogen). De Itho Daalderop Amber 65, 95 en 120 komen uit de grafieken in de installatiehandleiding. |
 | `materialen.json` | Materialen voor de laagopbouw van constructies (λ-waarde, vaste R of luchtspouw). Geldt voor nieuwe projecten. |
 | `leidingen.json` | Leidingtypes (koper, alupex, staal) met per buitendiameter de binnendiameter. |
 | `radiatoren.json` | Paneeltypes (T10 t/m T33) met vermogen en waterinhoud per meter bij 600 mm hoogte. |

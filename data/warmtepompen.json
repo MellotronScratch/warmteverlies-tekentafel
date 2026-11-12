@@ -1,6 +1,6 @@
 {
   "versie": 1,
-  "toelichting": "Lijst met warmtepompen voor de Warmteverlies Tekentafel. Per warmtepomp geef je in 'punten' het minimale en maximale verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal nodig: een punt bij -10 °C en een punt bij een hogere temperatuur (bij voorkeur +7 of +10 °C). Tussen en buiten de punten rekent de app rechtlijnig door. Voeg een warmtepomp toe door een blok te kopiëren en de waarden aan te passen. Optioneel per warmtepomp: 'minInhoud' (minimale waterinhoud van het systeem in liter, uit de installatiehandleiding) en 'restopvoerhoogte' (kPa die de pomp nog over heeft voor het leidingnet bij het nominale debiet). Zonder die velden rekent de app met een vuistregel voor de inhoud en geeft hij alleen het drukverlies van het indexcircuit.",
+  "toelichting": "Lijst met warmtepompen voor de Warmteverlies Tekentafel. Per warmtepomp geef je in 'punten' het minimale en maximale verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal nodig: een punt bij -10 °C en een punt bij een hogere temperatuur (bij voorkeur +7 of +10 °C). Tussen en buiten de punten rekent de app rechtlijnig door. Voeg een warmtepomp toe door een blok te kopiëren en de waarden aan te passen. Optioneel per warmtepomp: 'minInhoud' (minimale waterinhoud van het systeem in liter, uit de installatiehandleiding) en 'restopvoerhoogte' (kPa die de pomp nog over heeft voor het leidingnet bij het nominale debiet). Zonder die velden rekent de app met een vuistregel voor de inhoud en geeft hij alleen het drukverlies van het indexcircuit. Ook optioneel: 'punten55' (minimaal en maximaal verwarmingsvermogen bij 55 °C aanvoer, in dezelfde vorm als 'punten') en 'koelen' met 'aanvoer' (°C) en 'punten' (minimaal en maximaal koelvermogen in kW bij een buitentemperatuur). De app gebruikt die nog niet in de beoordeling, maar bewaart ze wel.",
   "warmtepompen": [
     {
       "id": "weheat-flint",
@@ -8,17 +8,17 @@
       "model": "Flint",
       "type": "lucht/water",
       "aanvoer": 35,
-      "bron": "Warmteverlies 3.0.xlsx",
+      "bron": "weheat.com (maximum 4 kW bij −10 °C, 6 kW bij +7 °C); minima uit Warmteverlies 3.0.xlsx",
       "punten": [
         {
           "buiten": -10,
           "min": 1.4,
-          "max": 3.7
+          "max": 4.0
         },
         {
           "buiten": 7,
           "min": 2.5,
-          "max": 6.2
+          "max": 6.0
         }
       ]
     },
@@ -28,19 +28,213 @@
       "model": "Amber 65",
       "type": "lucht/water",
       "aanvoer": 35,
-      "bron": "Warmteverlies 3.0.xlsx",
+      "bron": "Itho Daalderop, Handleiding Amber (01-06419-001, 2024), bijlage 17 Grafieken; afgelezen",
+      "minInhoud": 65,
       "punten": [
         {
           "buiten": -10,
-          "min": 1.2,
+          "min": 1.3,
           "max": 3.4
         },
         {
+          "buiten": 2,
+          "min": 2.0,
+          "max": 5.1
+        },
+        {
           "buiten": 7,
-          "min": 2.3,
+          "min": 2.2,
           "max": 6.7
+        },
+        {
+          "buiten": 12,
+          "min": 2.6,
+          "max": 7.2
         }
-      ]
+      ],
+      "punten55": [
+        {
+          "buiten": -10,
+          "min": 1.1,
+          "max": 2.8
+        },
+        {
+          "buiten": 2,
+          "min": 1.8,
+          "max": 5.0
+        },
+        {
+          "buiten": 7,
+          "min": 2.05,
+          "max": 6.2
+        },
+        {
+          "buiten": 12,
+          "min": 2.35,
+          "max": 6.6
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 20,
+            "min": 2.45,
+            "max": 7.0
+          },
+          {
+            "buiten": 35,
+            "min": 2.0,
+            "max": 6.1
+          }
+        ]
+      }
+    },
+    {
+      "id": "itho-amber-95",
+      "merk": "Itho Daalderop",
+      "model": "Amber 95",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Itho Daalderop, Handleiding Amber (01-06419-001, 2024), bijlage 17 Grafieken; afgelezen",
+      "minInhoud": 95,
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.9,
+          "max": 5.4
+        },
+        {
+          "buiten": -8,
+          "min": 2.05,
+          "max": 5.5
+        },
+        {
+          "buiten": 2,
+          "min": 2.8,
+          "max": 6.9
+        },
+        {
+          "buiten": 7,
+          "min": 3.15,
+          "max": 9.6
+        },
+        {
+          "buiten": 12,
+          "min": 3.4,
+          "max": 10.1
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -10,
+          "min": 1.8,
+          "max": 4.9
+        },
+        {
+          "buiten": 2,
+          "min": 2.5,
+          "max": 7.3
+        },
+        {
+          "buiten": 7,
+          "min": 2.85,
+          "max": 8.9
+        },
+        {
+          "buiten": 12,
+          "min": 3.3,
+          "max": 9.8
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 20,
+            "min": 4.0,
+            "max": 8.7
+          },
+          {
+            "buiten": 35,
+            "min": 3.4,
+            "max": 7.6
+          }
+        ]
+      }
+    },
+    {
+      "id": "itho-amber-120",
+      "merk": "Itho Daalderop",
+      "model": "Amber 120",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Itho Daalderop, Handleiding Amber (01-06419-001, 2024), bijlage 17 Grafieken; afgelezen",
+      "minInhoud": 120,
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 2.4,
+          "max": 7.2
+        },
+        {
+          "buiten": 2,
+          "min": 3.5,
+          "max": 8.7
+        },
+        {
+          "buiten": 7,
+          "min": 4.0,
+          "max": 11.9
+        },
+        {
+          "buiten": 12,
+          "min": 4.6,
+          "max": 12.1
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -10,
+          "min": 2.2,
+          "max": 6.8
+        },
+        {
+          "buiten": -7,
+          "min": 2.4,
+          "max": 7.5
+        },
+        {
+          "buiten": 2,
+          "min": 3.2,
+          "max": 9.6
+        },
+        {
+          "buiten": 7,
+          "min": 3.7,
+          "max": 11.0
+        },
+        {
+          "buiten": 12,
+          "min": 4.2,
+          "max": 11.1
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 20,
+            "min": 5.0,
+            "max": 11.8
+          },
+          {
+            "buiten": 35,
+            "min": 4.2,
+            "max": 10.4
+          }
+        ]
+      }
     },
     {
       "id": "weheat-sparrow-p60",
@@ -48,7 +242,7 @@
       "model": "Sparrow P60",
       "type": "lucht/water",
       "aanvoer": 35,
-      "bron": "Warmteverlies 3.0.xlsx",
+      "bron": "Weheat: handleidingen Sparrow P60 (bereik 1,4–6 kW bij −10 °C, systeeminhoud 60 l) en weheat.com (9 kW bij +7 °C); minimum bij +7 °C uit Warmteverlies 3.0.xlsx",
       "punten": [
         {
           "buiten": -10,
@@ -60,7 +254,8 @@
           "min": 2.1,
           "max": 9.0
         }
-      ]
+      ],
+      "minInhoud": 60
     },
     {
       "id": "itho-hp-s-55",

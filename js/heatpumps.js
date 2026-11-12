@@ -16,6 +16,7 @@ function hpValid(list) {
             h.punten.filter(p => Number.isFinite(+p.buiten) && Number.isFinite(+p.max)).length >= 2
         )
         .map((h, i) => ({
+          ...h, // keep optional fields (minInhoud, restopvoerhoogte, punten55, koelen)
           id: String(h.id || 'hp' + i),
           merk: String(h.merk || ''),
           model: String(h.model || 'Warmtepomp'),
@@ -223,7 +224,7 @@ function hpSectionHtml(c) {
     )
     .join('');
   h += `<div class="row"><button class="btn small" data-act="hpexport">Lijst downloaden (.json)</button><button class="btn small" data-act="hpimport">Eigen lijst importeren</button>${hpSource === 'eigen' ? '<button class="btn small" data-act="hpreset">Standaardlijst terugzetten</button>' : ''}</div>
-    <p class="note">${hpSource === 'eigen' ? 'Je gebruikt je eigen lijst.' : 'Dit is de standaardlijst.'} Download de lijst, vul hem aan in een teksteditor en importeer hem weer. Per warmtepomp geef je het minimale en maximale vermogen bij een paar buitentemperaturen; daartussen rekent de app rechtlijnig door. De warmtepompen uit je Excel hebben gegevens bij −10 en +7 °C; de waarde bij +10 °C is doorgerekend. De voorbeelden met 'fictief' in de naam zijn verzonnen.</p></div>`;
+    <p class="note">${hpSource === 'eigen' ? 'Je gebruikt je eigen lijst.' : 'Dit is de standaardlijst.'} Download de lijst, vul hem aan in een teksteditor en importeer hem weer. Per warmtepomp geef je het minimale en maximale vermogen bij een paar buitentemperaturen; daartussen rekent de app rechtlijnig door. Staan er alleen gegevens bij −10 en +7 °C in, dan is de waarde bij +10 °C doorgerekend. De voorbeelden met 'fictief' in de naam zijn verzonnen.</p></div>`;
   return h;
 }
 function hpChartHtml(hp, j, L, L0) {
