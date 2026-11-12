@@ -109,7 +109,7 @@ function reportHtml() {
     <tr><td>Toeslag koudebruggen ΔU</td><td>${nv(S.dU, 2)} W/m²K</td></tr>
     <tr><td>Ventilatie</td><td>${esc(VENT_SYS[S.ventSys] || S.ventSys)}${S.ventSys === 'D' ? `, WTW-rendement ${nv(S.eta, 2)} (toevoer ${fmt(supplyTemp(), 1)} °C)` : ''}</td></tr>
     <tr><td>Infiltratie</td><td>${S.infMode === 'qv10' ? `qv10 = ${nv(S.qv10, 2)} dm³/s·m², correctiefactor ${nv(S.fInf, 2)} → ${fmtW(it.q)} m³/h` : `n = ${nv(S.nInf, 2)} /h`}</td></tr>
-    <tr><td>Aanvoer / retour (ontwerp)</td><td>${nv(S.twSup, 1)} / ${nv(S.twRet, 1)} °C, maximaal ${nv(S.tMax, 0)} °C</td></tr>
+    <tr><td>Aanvoer / retour (ontwerp)</td><td>${nv(S.twSup, 1)} / ${fmt(tRet(), 1)} °C${+S.flow > 0 ? ` (debiet ${fmtW(S.flow)} l/h)` : ` (debiet ${fmtW(sysFlow())} l/h)`}, maximaal ${nv(S.tMax, 0)} °C</td></tr>
     </tbody></table>${balanceHtml()}</section>`;
   // plattegronden
   if (box)
@@ -173,7 +173,7 @@ function reportHtml() {
   // afgifte
   const ems = P.rooms.flatMap(r => (r.emitters || []).map(em => ({ r, em })));
   if (ems.length) {
-    h += `<section class="rsec"><h2>Afgifte</h2><table class="calc"><thead><tr><th>Ruimte / element</th><th>Soort</th><th>Nominaal</th><th>Bij ${nv(S.twSup, 0)}/${nv(S.twRet, 0)} °C</th><th>Aansluitleiding</th></tr></thead><tbody>`;
+    h += `<section class="rsec"><h2>Afgifte</h2><table class="calc"><thead><tr><th>Ruimte / element</th><th>Soort</th><th>Nominaal</th><th>Bij ${nv(S.twSup, 0)}/${fmt(tRet(), 0)} °C</th><th>Aansluitleiding</th></tr></thead><tbody>`;
     ems.forEach(({ r, em }) => {
       const o = emOutput(em, r),
         pc = pipeCheck(em, o, N);

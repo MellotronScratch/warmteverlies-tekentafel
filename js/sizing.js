@@ -8,25 +8,37 @@ const CURVE_TOP = 15; // °C buiten: het voetpunt van de stooklijn
 function heatingCurve() {
   const S = P.settings,
     c = calcAll(),
-    dT = Math.max(0.5, S.twSup - S.twRet),
+    fixed = +S.flow > 0,
+    dT = sysDT(),
     tMax = Math.max(30, +S.tMax || 55), // a heat pump cannot go higher than this
-    rooms = c.per.filter(x => x.c.total > 0);
+    rooms = c.per.filter(x => x.c.total > 0),
+    loadAt = t =>
+      rooms.reduce(
+        (a, x) =>
+          a +
+          ((x.room.emitters || []).length && x.room.temp > S.te
+            ? (x.c.total * Math.max(0, x.room.temp - t)) / (x.room.temp - S.te)
+            : 0),
+        0
+      );
   const pts = [];
   let missing = rooms.filter(x => !(x.room.emitters || []).length).map(x => x.room);
   for (let t = Math.floor(S.te); t <= CURVE_TOP; t++) {
     let best = null,
       lim = null;
-    const short = [];
+    const short = [],
+      // with a fixed flow the difference shrinks with the load: ΔT(t) = ΔT(design) × load(t) / load(design)
+      dTt = fixed ? Math.max(0.5, (dT * loadAt(t)) / Math.max(1, loadAt(S.te))) : dT;
     rooms.forEach(x => {
       const r = x.room;
       if (!(r.emitters || []).length || r.temp <= S.te) return;
       const need = (x.c.total * Math.max(0, r.temp - t)) / (r.temp - S.te);
       if (need <= 0) return;
-      const ns = neededSupply(r, need);
+      const ns = neededSupply(r, need, dTt);
       if (ns == null) return;
       // above the maximum of the heat pump: this room stays too cold, by this much
       if (ns === Infinity || ns > tMax + 1e-6) {
-        short.push({ room: r, W: need - roomEmit(r, tMax, tMax - dT) });
+        short.push({ room: r, W: need - roomEmit(r, tMax, tMax - dTt) });
         return;
       }
       if (best == null || ns > best) {
@@ -132,7 +144,7 @@ function radAdvice(room, need) {
     have = roomEmit(room),
     short = need - have;
   if (!(short > 1)) return null;
-  const lm = lmtd(S.twSup, S.twRet, room.temp);
+  const lm = lmtd(S.twSup, tRet(), room.temp);
   if (lm <= 0) return { short, impossible: true };
   const f = Math.pow(lm / lmtd(75, 65, 20), 1.3),
     nomExtra = short / f;
@@ -171,7 +183,7 @@ function radAdviceHtml(room, need) {
       .map(r => `<tr><td>${esc(r.t)}</td>${r.lens.map(l => `<td>${l ? fmtW(l) : '–'}</td>`).join('')}</tr>`)
       .join('')}</tbody></table></div>`;
   const hasRad = (room.emitters || []).some(e => e.kind === 'rad' || e.kind === 'conv');
-  return `<div class="card"><b>Advies: ${fmtW(A.short)} W tekort bij ${nv(S.twSup, 0)}/${nv(S.twRet, 0)} °C</b>
+  return `<div class="card"><b>Advies: ${fmtW(A.short)} W tekort bij ${nv(S.twSup, 0)}/${fmt(tRet(), 0)} °C</b>
     <p class="note">Daarvoor is ${fmtW(A.nomExtra)} W extra nodig, gerekend bij 75/65/20 °C zoals in de catalogus. Bij ${nv(S.twSup, 0)} °C geeft een radiator maar ${fmtW(A.f * 100)} % van dat vermogen.</p>
     <p class="note"><b>Bijplaatsen</b>: minimale lengte in mm van een extra paneelradiator:</p>${tbl(A.add)}
     ${
@@ -190,7 +202,7 @@ function shortageSummaryHtml(c) {
   const S = P.settings,
     list = c.per.filter(x => x.c.total > 0 && (x.room.emitters || []).length && roomEmit(x.room) < x.c.total - 1);
   if (!list.length) return '';
-  return `<p class="note" style="color:var(--warn)">⚠ Tekort bij ${nv(S.twSup, 0)}/${nv(S.twRet, 0)} °C in ${list
+  return `<p class="note" style="color:var(--warn)">⚠ Tekort bij ${nv(S.twSup, 0)}/${fmt(tRet(), 0)} °C in ${list
     .map(x => `<button class="crumb" data-act="selroom" data-r="${x.room.id}">${esc(x.room.name)}</button>`)
     .join(', ')}. Bij elke ruimte staat welke radiator erbij of in de plaats kan.</p>`;
 }

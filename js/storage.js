@@ -41,6 +41,7 @@ function loadLocal() {
   }
 }
 function markDirty(noStamp) {
+  _dtMemo = null;
   if (!P) return;
   if (!noStamp) {
     P.updatedAt = Date.now();

@@ -90,7 +90,8 @@ const DEFAULT_SETTINGS = {
   qv10: 1.0,
   fInf: 1,
   twSup: 35,
-  twRet: 30
+  twRet: 30,
+  flow: 0 // l/h; 0 = flow follows from the supply/return difference
 };
 // improvement advice: constructions of this kind facing outside/ground/unheated with U above 'on' get the measure, to U 'to'
 const ADVICE_DEFAULT = {

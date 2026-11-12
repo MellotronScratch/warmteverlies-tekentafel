@@ -8,7 +8,7 @@ function sanityHtml(c) {
     w.push(
       `De temperatuur van de afvoer- en overstroomlucht staat op ${nv(S.tRet, 1)} °C. Dat is vrijwel zeker een tikfout (bedoeld is meestal 20 à 22 °C). Pas het aan onder <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie</button>.`
     );
-  if (S.twSup <= S.twRet)
+  if (!(+S.flow > 0) && S.twSup <= S.twRet)
     w.push('De aanvoertemperatuur is niet hoger dan de retourtemperatuur. Controleer het afgiftesysteem.');
   const neg = c.per.filter(x => x.c.total < -1);
   if (neg.length)
@@ -660,10 +660,13 @@ function applyField(el, final) {
         tNeighbour: [0, 30],
         twSup: [20, 90],
         twRet: [15, 85],
-        tMax: [30, 80]
+        tMax: [30, 80],
+        flow: [0, 5000]
       };
       if (RANGE[k] && (n < RANGE[k][0] || n > RANGE[k][1])) {
-        toast(`Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} °C en is niet overgenomen.`);
+        toast(
+          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${k === 'flow' ? 'l/h' : '°C'} en is niet overgenomen.`
+        );
         return;
       }
       P.settings[k] = n;

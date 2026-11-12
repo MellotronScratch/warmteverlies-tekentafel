@@ -1,6 +1,6 @@
 {
   "versie": 1,
-  "toelichting": "Lijst met warmtepompen voor de Warmteverlies Tekentafel. Per warmtepomp geef je in 'punten' het minimale en maximale verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal nodig: een punt bij -10 °C en een punt bij een hogere temperatuur (bij voorkeur +7 of +10 °C). Tussen en buiten de punten rekent de app rechtlijnig door. Voeg een warmtepomp toe door een blok te kopiëren en de waarden aan te passen. Optioneel per warmtepomp: 'minInhoud' (minimale waterinhoud van het systeem in liter, uit de installatiehandleiding) en 'restopvoerhoogte' (kPa die de pomp nog over heeft voor het leidingnet bij het nominale debiet). Zonder die velden rekent de app met een vuistregel voor de inhoud en geeft hij alleen het drukverlies van het indexcircuit. Ook optioneel: 'punten55' (minimaal en maximaal verwarmingsvermogen bij 55 °C aanvoer, in dezelfde vorm als 'punten') en 'koelen' met 'aanvoer' (°C) en 'punten' (minimaal en maximaal koelvermogen in kW bij een buitentemperatuur). De app gebruikt die nog niet in de beoordeling, maar bewaart ze wel.",
+  "toelichting": "Lijst met warmtepompen voor de Warmteverlies Tekentafel. Per warmtepomp geef je in 'punten' het minimale en maximale verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal nodig: een punt bij -10 °C en een punt bij een hogere temperatuur (bij voorkeur +7 of +10 °C). Tussen en buiten de punten rekent de app rechtlijnig door. Voeg een warmtepomp toe door een blok te kopiëren en de waarden aan te passen. Optioneel per warmtepomp: 'minInhoud' (minimale waterinhoud van het systeem in liter, uit de installatiehandleiding) en 'restopvoerhoogte' (kPa die de pomp nog over heeft voor het leidingnet bij het nominale debiet). Zonder die velden rekent de app met een vuistregel voor de inhoud en geeft hij alleen het drukverlies van het indexcircuit. Ook optioneel: 'punten55' (minimaal en maximaal verwarmingsvermogen bij 55 °C aanvoer, in dezelfde vorm als 'punten') en 'koelen' met 'aanvoer' (°C) en 'punten' (minimaal en maximaal koelvermogen in kW bij een buitentemperatuur). De app gebruikt die nog niet in de beoordeling, maar bewaart ze wel. Optioneel: 'minDebiet' (minimale volumestroom door de warmtepomp in l/h, uit de handleiding); de app waarschuwt als het debiet van het systeem lager is.",
   "warmtepompen": [
     {
       "id": "weheat-flint",
@@ -255,7 +255,8 @@
           "max": 9.0
         }
       ],
-      "minInhoud": 60
+      "minInhoud": 60,
+      "minDebiet": 1000
     },
     {
       "id": "itho-hp-s-55",
@@ -369,7 +370,8 @@
             "max": 7.94
           }
         ]
-      }
+      },
+      "minDebiet": 430
     },
     {
       "id": "vaillant-vwl-55-8-1",
@@ -423,7 +425,8 @@
             "max": 7.94
           }
         ]
-      }
+      },
+      "minDebiet": 430
     },
     {
       "id": "vaillant-vwl-75-8-1",
@@ -477,7 +480,8 @@
             "max": 9.5
           }
         ]
-      }
+      },
+      "minDebiet": 605
     },
     {
       "id": "vaillant-vwl-105-8-1",
@@ -531,7 +535,8 @@
             "max": 17.77
           }
         ]
-      }
+      },
+      "minDebiet": 1075
     },
     {
       "id": "vaillant-vwl-125-8-1",
@@ -585,7 +590,8 @@
             "max": 17.77
           }
         ]
-      }
+      },
+      "minDebiet": 1075
     },
     {
       "id": "voorbeeld-4",

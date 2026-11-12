@@ -48,7 +48,7 @@ function emDist(em, p) {
 
 function buildNetwork() {
   const S = P.settings,
-    dT = Math.max(0.5, S.twSup - S.twRet),
+    dT = sysDT(),
     el = floorElev(),
     fit = 1 + Math.max(0, +S.fitPct || 0) / 100;
   const nodes = new Map(),
@@ -229,6 +229,8 @@ function network() {
       P.hpPos,
       P.settings.twSup,
       P.settings.twRet,
+      P.settings.flow,
+      hpSel,
       P.settings.fitPct,
       P.rooms.map(r => [r.id, r.floorId, r.emitters, r.temp])
     ]) + calcAll().total;

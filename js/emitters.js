@@ -4,6 +4,25 @@
 const EM_KINDS = { rad: 'Radiator', conv: 'Convector', fan: 'Fancoil', vv: 'Vloerverwarming' };
 const EM_N = { rad: 1.3, conv: 1.4, fan: 1.0, vv: 1.0 };
 const EM_NOM = { rad: [75, 65, 20], conv: [75, 65, 20], fan: [35, 30, 20] }; // conditions the stated output refers to
+/* ---------- supply/return difference and flow ----------
+   Without a set flow, the return temperature from the settings applies and the flow follows from it.
+   With a set flow (l/h), the difference follows from the design heat load: ΔT = Φ / (1,163 × q). A higher flow gives a
+   smaller ΔT, a higher return and mean water temperature and so more output from the emitters. */
+const designLoad = () =>
+  calcAll().per.reduce((a, x) => a + ((x.room.emitters || []).length ? Math.max(0, x.c.total) : 0), 0);
+let _dtMemo = null;
+function sysDT() {
+  const S = P.settings;
+  if (!(+S.flow > 0)) return Math.max(0.5, S.twSup - S.twRet);
+  if (_dtMemo == null) {
+    _dtMemo = Math.min(S.twSup - 15, Math.max(0.5, designLoad() / (1.163 * S.flow)));
+    Promise.resolve().then(() => (_dtMemo = null));
+  }
+  return Math.max(0.5, _dtMemo);
+}
+const tRet = () => P.settings.twSup - sysDT();
+// flow of the whole system at the design load (l/h)
+const sysFlow = () => (+P.settings.flow > 0 ? +P.settings.flow : designLoad() / (1.163 * sysDT()));
 // rule of thumb for steel panel radiators: output per metre length at 75/65/20 °C (EN 442) for a height of 600 mm,
 // scaled with (height/600)^0.9. Within ±10 % of common brands; the manufacturer's table is always better.
 const radP = (t, h, l) =>
@@ -56,7 +75,7 @@ function systemVolume() {
 }
 function pipeCapacity(mat, dn) {
   const d = ((PIPES[mat] || PIPES.koper).d[dn] || 13) / 1000,
-    dT = Math.max(0.5, P.settings.twSup - P.settings.twRet);
+    dT = sysDT();
   return ((V_OK * Math.PI * d * d) / 4) * 1000 * 4.19 * dT;
 } // kW at 0,5 m/s
 function viewPipe(pp) {
@@ -83,7 +102,7 @@ function viewPipe(pp) {
       .join('')}</select></label>
     ${numField('f-pipe-x', 'pipe.extra', 'Extra lengte', 'm', pp.extra, 1)}</div>
   ${netPipeHtml(pp)}
-  <div class="det">Getekend ${fmt(len)} m + extra ${fmt(pp.extra)} m = ${fmt(tot)} m<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b><br>Draagt bij ${nv(V_OK, 1)} m/s ongeveer ${fmt(cap, 1)} kW (ΔT ${nv(S.twSup - S.twRet, 1)} K)</div>
+  <div class="det">Getekend ${fmt(len)} m + extra ${fmt(pp.extra)} m = ${fmt(tot)} m<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b><br>Draagt bij ${nv(V_OK, 1)} m/s ongeveer ${fmt(cap, 1)} kW (ΔT ${fmt(sysDT(), 1)} K)</div>
   ${cap < need ? `<p class="note" style="color:var(--warn)">⚠ Is dit de hoofdleiding, dan is hij te klein voor het hele huis (${fmt(need, 2)} kW): het water stroomt dan sneller dan ${nv(V_OK, 1)} m/s.</p>` : ''}
   <p class="note">Eén lijn staat voor aanvoer én retour. Vul bij <i>Extra lengte</i> stijgleidingen naar een andere verdieping in, en stukken die je niet tekent. Koppelingen en bochten tellen niet mee. De inhoud gaat mee in de systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="res">Resultaten</button>.</p>
   <p class="note">Hoekpunt verslepen: sleep het. Klik op een + om een punt toe te voegen, en dubbelklik op een punt om het weg te halen.</p>
@@ -99,16 +118,16 @@ function volumeHtml() {
     ok = v.total >= req;
   const row = (l, x) => `<tr><td>${l}</td><td>${fmt(x, 1)} l</td></tr>`;
   return `<div class="sec"><h3>Systeeminhoud</h3>
-    <div class="tablewrap"><table class="calc"><tbody>${row('Leidingen (getekend, aanvoer + retour)', v.pipes)}${row('Radiatoren, convectoren en fancoils', v.rad)}${row('Vloerverwarming (lussen 16×2)', v.vv)}${row('Warmtepomp', v.hp)}${v.buf > 0 ? row('Buffervat', v.buf) : ''}<tr class="sum"><td>Totaal</td><td>${fmt(v.total, 0)} l</td></tr></tbody></table></div>
-    <div class="fields">${numField('f-s-hpvol', 'set.hpVol', 'Inhoud warmtepomp', 'l', S.hpVol, 1)}${numField('f-s-buf', 'set.bufVol', 'Buffervat', 'l', S.bufVol, 0)}${numField('f-s-minv', 'set.minVolL', 'Vuistregel minimaal', 'l per kW', S.minVolL, 1)}</div>
+    <div class="tablewrap"><table class="calc"><tbody>${row('Leidingen (getekend, aanvoer + retour)', v.pipes)}${row('Radiatoren, convectoren en fancoils', v.rad)}${row('Vloerverwarming (lussen 16×2)', v.vv)}${row('Warmtepomp', v.hp)}${v.buf > 0 ? row('Schakelvat', v.buf) : ''}<tr class="sum"><td>Totaal</td><td>${fmt(v.total, 0)} l</td></tr></tbody></table></div>
+    <div class="fields">${numField('f-s-hpvol', 'set.hpVol', 'Inhoud warmtepomp', 'l', S.hpVol, 1)}${numField('f-s-buf', 'set.bufVol', 'Schakelvat (extra inhoud)', 'l', S.bufVol, 0)}${numField('f-s-minv', 'set.minVolL', 'Vuistregel minimaal', 'l per kW', S.minVolL, 1)}</div>
     ${
       hp
         ? `<div class="kcard"><div class="kh"><span>Nodig voor ${esc(hp.merk)} ${esc(hp.model)}</span><b>${fmt(req, 0)} l</b></div>
-      <div class="row">${ok ? `<span class="chip ok">✓ voldoende inhoud (${fmt(v.total, 0)} l)</span>` : `<span class="chip bad">⚠ ${fmt(req - v.total, 0)} l te weinig: overweeg een buffervat</span>`}</div>
+      <div class="row">${ok ? `<span class="chip ok">✓ voldoende inhoud (${fmt(v.total, 0)} l)</span>` : `<span class="chip bad">⚠ ${fmt(req - v.total, 0)} l te weinig: overweeg een schakelvat</span>`}</div>
       <span class="note">${+hp.minInhoud > 0 ? 'Minimale inhoud volgens de opgave in de warmtepomplijst.' : `Vuistregel: ${nv(S.minVolL, 1)} l per kW maximaal vermogen bij +7 °C (${fmt(max7, 1)} kW). Kijk in de installatiehandleiding voor de echte eis.`}</span></div>`
         : '<p class="note">Kies hierboven een warmtepomp om de inhoud te beoordelen.</p>'
     }
-    <p class="note">Een warmtepomp heeft genoeg water in het systeem nodig om te kunnen ontdooien en niet te vaak aan en uit te gaan. Tel alleen kringen mee die altijd open staan. Hebben radiatoren thermostaatkranen of heeft de vloerverwarming ruimteregeling, dan is de werkelijke inhoud lager. Een <b>schakelvat</b> (hydraulische scheiding) volgt niet uit de inhoud. Dat heb je nodig als de warmtepomp meer water moet rondpompen dan het afgiftesysteem doorlaat, of bij meerdere pompgroepen, zoals vloerverwarming met een eigen mengpomp. Overleg dat met de installateur.</p>
+    <p class="note">Een warmtepomp heeft genoeg water in het systeem nodig om te kunnen ontdooien en niet te vaak aan en uit te gaan. Tel alleen kringen mee die altijd open staan. Hebben radiatoren thermostaatkranen of heeft de vloerverwarming ruimteregeling, dan is de werkelijke inhoud lager. Is de inhoud te klein, dan vergroot een <b>schakelvat</b> de systeeminhoud. Een <b>buffervat</b> tussen aanvoer en retour (hydraulische scheiding) is iets anders: dat heb je nodig als de warmtepomp meer water moet rondpompen dan het afgiftesysteem aankan, of bij meerdere pompgroepen, zoals vloerverwarming met een eigen mengpomp. Dat volgt niet uit de inhoud maar uit het debiet. Overleg het met de installateur.</p>
     <p class="note">Indicatieve inhoud: paneelradiatoren per meter (bij 600 mm hoog: T11 3 l, T22 5,8 l, T33 8,5 l), andere radiatoren 3,4 l per kW, convectoren een of meer lussen koperbuis 15 mm over de lengte min 15 cm (een lus is twee buizen), fancoils 0,5 l per kW. Aansluitleidingen naar de radiatoren tellen alleen mee als je ze tekent.</p></div>`;
 }
 const V_OK = 0.5,
@@ -125,7 +144,7 @@ function emOutput(em, room, ts, tr) {
   const S = P.settings;
   if (ts == null) {
     ts = S.twSup;
-    tr = S.twRet;
+    tr = tRet();
   }
   const ti = room.temp,
     dt = lmtd(ts, tr, ti);
@@ -158,8 +177,7 @@ function emPipe(em, N) {
 }
 // water flow and velocity in the connecting pipe; state 'los' when no pipe is drawn to the emitter
 function pipeCheck(em, W, N) {
-  const S = P.settings,
-    dT = Math.max(0.5, S.twSup - S.twRet);
+  const dT = sysDT();
   const Q = W / (4190 * dT) / 1000, // m³/s
     pp = emPipe(em, N);
   if (!pp) return { lh: Q * 3.6e6, v: 0, pmax: 0, di: 0, state: 'los', pp: null };
@@ -181,9 +199,8 @@ function roomEmit(room, ts, tr) {
   return (room.emitters || []).reduce((a, e) => a + emOutput(e, room, ts, tr), 0);
 }
 // lowest supply temperature (same ΔT as the design) at which the room's emitters cover its heat loss
-function neededSupply(room, need) {
-  const S = P.settings,
-    dT = Math.max(0.5, S.twSup - S.twRet);
+function neededSupply(room, need, dT) {
+  dT = dT || sysDT();
   if (!(room.emitters || []).length || need <= 0) return null;
   let lo = room.temp + dT + 0.05,
     hi = 90;
@@ -262,10 +279,25 @@ function selEm() {
   const r = selRoom();
   return r && sel.t === 'em' ? (r.emitters || []).find(x => x.id === sel.e) : null;
 }
+// the minimum flow of the chosen heat pump (from the list), if known
+function hpMinFlow() {
+  const hp = typeof hpList !== 'undefined' && hpList && hpList.find(x => x.id === hpSel);
+  return hp && +hp.minDebiet > 0 ? { hp, q: +hp.minDebiet } : null;
+}
+function flowWarnHtml() {
+  const m = hpMinFlow(),
+    q = sysFlow();
+  if (!m || !(q > 0) || q >= m.q) return '';
+  return `<div class="warnbox">Het debiet (${fmtW(q)} l/h) is lager dan het minimale debiet van de ${esc(m.hp.merk)} ${esc(m.hp.model)} (${fmtW(m.q)} l/h). Dan gaat de warmtepomp pendelen of in storing. Stel het debiet in op minstens ${fmtW(m.q)} l/h: de ΔT wordt kleiner en de radiatoren geven meer af. Kan het afgiftesysteem dat debiet niet aan (te veel drukverlies), dan is een buffervat tussen aanvoer en retour nodig, zodat de warmtepomp zijn eigen debiet kan rondpompen.</div>`;
+}
 function twFieldsHtml() {
-  const S = P.settings;
-  return `<div class="card"><b>Afgiftesysteem</b><div class="fields">${numField('f-tw-s', 'set.twSup', 'Aanvoertemperatuur', '°C', S.twSup, 1)}${numField('f-tw-r', 'set.twRet', 'Retourtemperatuur', '°C', S.twRet, 1)}</div>
-  <p class="note">Alle afgiftevermogens worden bij deze temperaturen berekend. Geldt voor het hele project.</p></div>`;
+  const S = P.settings,
+    fixed = +S.flow > 0,
+    q = sysFlow();
+  return `<div class="card"><b>Afgiftesysteem</b><div class="fields">${numField('f-tw-s', 'set.twSup', 'Aanvoertemperatuur', '°C', S.twSup, 1)}${fixed ? '' : numField('f-tw-r', 'set.twRet', 'Retourtemperatuur', '°C', S.twRet, 1)}${numField('f-tw-q', 'set.flow', 'Debiet warmtepomp', 'l/h', fixed ? S.flow : 0, 0)}</div>
+  <div class="det">${fixed ? `Debiet ${fmtW(S.flow)} l/h → ΔT ${fmt(sysDT(), 1)} K → retour ${fmt(tRet(), 1)} °C` : `ΔT ${fmt(sysDT(), 1)} K → debiet ${q > 0 ? fmtW(q) : '–'} l/h`} bij een ontwerpvermogen van ${fmt(designLoad() / 1000, 2)} kW</div>
+  ${flowWarnHtml()}
+  <p class="note">Alle afgiftevermogens worden bij deze temperaturen berekend. Geldt voor het hele project. Vul je een debiet in (bijvoorbeeld wat de warmtepomp minimaal rondpompt), dan volgt de retourtemperatuur daaruit: ΔT = vermogen / (1,163 × debiet). Een hoger debiet geeft een hogere gemiddelde watertemperatuur en dus meer afgifte, maar ook meer drukverlies in de leidingen. 0 = het debiet volgt uit de retourtemperatuur.</p></div>`;
 }
 function pipeChip(pc) {
   return pc.state === 'ok'
@@ -285,10 +317,10 @@ function roomEmitHtml(room, c) {
     need = c.total,
     ns = neededSupply(room, need),
     ok = emit >= need - 1;
-  return `<h3>Afgifte</h3><div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup, 1)}/${nv(S.twRet, 1)} °C</span><b>${fmt(emit / 1000, 2)} kW</b></div>
+  return `<h3>Afgifte</h3><div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)} °C</span><b>${fmt(emit / 1000, 2)} kW</b></div>
     <div class="seglegend"><span style="--c:transparent">warmteverlies ${fmt(need / 1000, 2)} kW</span></div>
     <div class="row">${ok ? `<span class="chip ok">✓ voldoende${need > 0 ? ` (${fmtW((emit / need) * 100)}%)` : ''}</span>` : `<span class="chip bad">⚠ tekort ${fmt((need - emit) / 1000, 2)} kW</span>`}</div>
-    <span class="note">${ns == null ? '' : ns === Infinity ? 'Ook bij 90 °C aanvoer niet voldoende: meer of grotere afgifte nodig.' : `Minimaal nodige aanvoertemperatuur in deze ruimte: ${fmt(ns, 1)} °C (bij ΔT ${nv(S.twSup - S.twRet, 1)} K).`}</span></div>
+    <span class="note">${ns == null ? '' : ns === Infinity ? 'Ook bij 90 °C aanvoer niet voldoende: meer of grotere afgifte nodig.' : `Minimaal nodige aanvoertemperatuur in deze ruimte: ${fmt(ns, 1)} °C (bij ΔT ${fmt(sysDT(), 1)} K).`}</span></div>
     ${ems
       .map(em => {
         const o = emOutput(em, room),
@@ -304,10 +336,10 @@ function convHtml(em, room, out) {
     nom = EM_NOM[em.kind] || EM_NOM.rad,
     n = em.n || EM_N[em.kind] || 1.3,
     d0 = lmtd(nom[0], nom[1], nom[2]),
-    d1 = lmtd(S.twSup, S.twRet, room.temp),
+    d1 = lmtd(S.twSup, tRet(), room.temp),
     f = d0 > 0 ? Math.pow(d1 / d0, n) : 0,
     boost = em.boost && (em.kind === 'rad' || em.kind === 'conv') ? 1 + (em.boostPct || 0) / 100 : 1;
-  return `<div class="det">Omrekening: ${fmtW(em.p)} W bij ${nom[0]}/${nom[1]}/${nom[2]} °C × (${fmt(d1, 1)} K / ${fmt(d0, 1)} K)^${nv(n, 2)}${boost !== 1 ? ` × ${nv(boost, 2)} (boosters)` : ''}<br><b>= ${fmtW(out)} W bij ${nv(S.twSup, 1)}/${nv(S.twRet, 1)}/${nv(room.temp, 1)} °C</b> (${fmtW(f * boost * 100)}% van het opgegeven vermogen)</div>
+  return `<div class="det">Omrekening: ${fmtW(em.p)} W bij ${nom[0]}/${nom[1]}/${nom[2]} °C × (${fmt(d1, 1)} K / ${fmt(d0, 1)} K)^${nv(n, 2)}${boost !== 1 ? ` × ${nv(boost, 2)} (boosters)` : ''}<br><b>= ${fmtW(out)} W bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)}/${nv(room.temp, 1)} °C</b> (${fmtW(f * boost * 100)}% van het opgegeven vermogen)</div>
   <p class="note">K is het gemiddelde temperatuurverschil tussen water en lucht (logaritmisch). Bij lage aanvoertemperaturen geeft een radiator maar een klein deel van zijn vermogen bij 75/65 °C af: bij 35/30 °C ongeveer een zesde.</p>`;
 }
 function viewEm(room, em) {
@@ -319,7 +351,7 @@ function viewEm(room, em) {
     .map(k => `<option value="${k}" ${em.kind === k ? 'selected' : ''}>${EM_KINDS[k]}</option>`)
     .join('');
   let h = `<div class="sec"><button class="crumb" data-act="selroom" data-r="${room.id}">← ${esc(room.name)}</button><input class="title" id="f-em-name" data-f="em.name" value="${esc(em.name)}" aria-label="Naam"></div>
-  <div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup, 1)}/${nv(S.twRet, 1)} °C</span><b>${fmt(out / 1000, 2)} kW</b></div>
+  <div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)} °C</span><b>${fmt(out / 1000, 2)} kW</b></div>
     <div class="seglegend"><span style="--c:transparent">${fmtW(pc.lh)} l/h water</span><span style="--c:transparent">inhoud ca. ${fmt(emVolume(em), 1)} l</span><span style="--c:transparent">ruimte ${nv(room.temp, 1)} °C</span></div></div>
   ${isV ? '' : convHtml(em, room, out)}
   ${netEmHtml(em)}
@@ -354,7 +386,7 @@ function viewEm(room, em) {
             .join('')}</select></label>`
         : ''
     }${''}</div>
-    <p class="note">${em.kind === 'conv' ? 'Bij convectoren hangt het vermogen sterk af van de bouwhoogte, de lamellen en de inbouw (vloerput, omkasting). Neem de waarde uit de catalogus van de fabrikant bij 75/65/20 °C. ' : em.kind === 'rad' ? 'Vul het vermogen van de typeplaat of uit de documentatie in (EN 442, 75/65/20 °C), of laat het afleiden uit type, hoogte en lengte. ' : 'Vul het vermogen uit de documentatie in (fancoils worden meestal bij 35 °C opgegeven). '}De app rekent het om naar ${nv(S.twSup, 1)}/${nv(S.twRet, 1)} °C met exponent n (radiator 1,3, convector 1,4, fancoil 1,0). De lengte verander je hier of door een uiteinde in de tekening te slepen; het vermogen blijft dan wat je hebt ingevuld.</p>`;
+    <p class="note">${em.kind === 'conv' ? 'Bij convectoren hangt het vermogen sterk af van de bouwhoogte, de lamellen en de inbouw (vloerput, omkasting). Neem de waarde uit de catalogus van de fabrikant bij 75/65/20 °C. ' : em.kind === 'rad' ? 'Vul het vermogen van de typeplaat of uit de documentatie in (EN 442, 75/65/20 °C), of laat het afleiden uit type, hoogte en lengte. ' : 'Vul het vermogen uit de documentatie in (fancoils worden meestal bij 35 °C opgegeven). '}De app rekent het om naar ${nv(S.twSup, 1)}/${fmt(tRet(), 1)} °C met exponent n (radiator 1,3, convector 1,4, fancoil 1,0). De lengte verander je hier of door een uiteinde in de tekening te slepen; het vermogen blijft dan wat je hebt ingevuld.</p>`;
     h += `${
       em.kind === 'rad' || em.kind === 'conv'
         ? `<div class="card"><label class="chk"><input type="checkbox" id="f-em-boost" data-f="em.boost" ${em.boost ? 'checked' : ''}> Voorzien van boosters (ventilatoren)</label>
@@ -379,7 +411,7 @@ function viewEm(room, em) {
     pc.pp
       ? `<button class="linkrow" data-act="selpipe" data-p="${pc.pp.id}"><span>${esc(pc.pp.name)} <span class="note">· ${esc((PIPES[pc.pp.mat] || PIPES.koper).label)} ${esc(dnLabel(pc.pp.mat, pc.pp.dn))}</span></span><span>›</span></button>
     <div class="row">${pipeChip(pc)}</div>
-    <p class="note">De aansluitleiding is de getekende leiding waar dit element aan hangt. Waterdebiet ${fmtW(pc.lh)} l/h bij ΔT ${nv(S.twSup - S.twRet, 1)} K. Deze leiding transporteert bij ${nv(V_OK, 1)} m/s ongeveer ${fmt(pc.pmax / 1000, 2)} kW. Boven ${nv(V_OK, 1)} m/s nemen geluid en drukval toe; boven ${nv(V_MAX, 1)} m/s is de leiding te klein. Een andere maat kies je bij de leiding zelf.</p>`
+    <p class="note">De aansluitleiding is de getekende leiding waar dit element aan hangt. Waterdebiet ${fmtW(pc.lh)} l/h bij ΔT ${fmt(sysDT(), 1)} K. Deze leiding transporteert bij ${nv(V_OK, 1)} m/s ongeveer ${fmt(pc.pmax / 1000, 2)} kW. Boven ${nv(V_OK, 1)} m/s nemen geluid en drukval toe; boven ${nv(V_MAX, 1)} m/s is de leiding te klein. Een andere maat kies je bij de leiding zelf.</p>`
       : `<p class="note">Nog geen leiding aangesloten. Teken met <b>Leiding</b> (L) een leiding die eindigt bij dit element (binnen ${nv(ATTACH * 100, 0)} cm). Daarna kiest de app de aansluitleiding zelf en rekent hij debiet, snelheid en drukverlies uit. Waterdebiet nu: ${fmtW(pc.lh)} l/h.</p>`
   }</div>
   ${twFieldsHtml()}

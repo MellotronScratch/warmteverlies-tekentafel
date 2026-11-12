@@ -247,7 +247,7 @@ function toHeatlossjs() {
   return {
     project_name: P.name,
     degreedays: 2900,
-    heating_MWT: (S.twSup + S.twRet) / 2,
+    heating_MWT: (S.twSup + tRet()) / 2,
     heatpump_flow_rate: 12,
     T,
     element_type,
