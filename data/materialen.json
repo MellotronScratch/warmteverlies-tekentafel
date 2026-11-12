@@ -86,6 +86,27 @@
       "kleur": "#BDB7A6"
     },
     {
+      "id": "m-supafil-spouw",
+      "naam": "Knauf Supafil Cavity Wall 034 (spouwmuur, inblaas)",
+      "soort": "lambda",
+      "waarde": 0.034,
+      "kleur": "#E9D46A"
+    },
+    {
+      "id": "m-supafil-frame",
+      "naam": "Knauf Supafil Timber Frame 034 (houtskelet, inblaas)",
+      "soort": "lambda",
+      "waarde": 0.034,
+      "kleur": "#E3C95E"
+    },
+    {
+      "id": "m-supafil-loft",
+      "naam": "Knauf Supafil Loft 045 (zoldervloer, inblaas)",
+      "soort": "lambda",
+      "waarde": 0.045,
+      "kleur": "#EEDB7E"
+    },
+    {
       "id": "m-baksteen",
       "naam": "Baksteen metselwerk",
       "soort": "lambda",

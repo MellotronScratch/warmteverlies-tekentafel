@@ -26,7 +26,7 @@ const DU_TYPES = new Set(['buiten', 'grond', 'onverwarmd']);
 const KINDS = { wand: 'Wand', raam: 'Raam / deur', vloer: 'Vloer', dak: 'Dak / plafond' };
 const RS = { wand: [0.13, 0.04], raam: [0.13, 0.04], vloer: [0.17, 0.04], dak: [0.1, 0.04] };
 const LET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-const MAT_ADDED = { 2: ['m-staal'] }; // presets added later: version -> ids, added once to existing projects
+const MAT_ADDED = { 2: ['m-staal'], 3: ['m-supafil-spouw', 'm-supafil-frame', 'm-supafil-loft'] }; // presets added later: version -> ids, added once to existing projects
 const presetMaterials = () =>
   MAT_PRESETS.map(([id, name, type, v, color]) => ({
     id,
