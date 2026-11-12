@@ -594,72 +594,462 @@
       "minDebiet": 1075
     },
     {
-      "id": "voorbeeld-4",
-      "merk": "Voorbeeld",
-      "model": "Compact 4 kW (fictief)",
+      "id": "nibe-s2125-8",
+      "merk": "NIBE",
+      "model": "S2125-8",
       "type": "lucht/water",
       "aanvoer": 35,
-      "bron": "fictief voorbeeld, geen echt product",
+      "bron": "NIBE, Handleiding voor installateur S2125 (IHB NL 2525-1), hoofdstuk 11: grafieken min./max. capaciteit (afgelezen, ±0,1 kW) en tabel",
+      "minInhoud": 120,
+      "minDebiet": 1152,
       "punten": [
         {
           "buiten": -10,
-          "min": 0.9,
-          "max": 3.0
+          "min": 2.3,
+          "max": 4.9
+        },
+        {
+          "buiten": -7,
+          "min": 2.3,
+          "max": 5.5
         },
         {
           "buiten": 2,
-          "min": 1.1,
-          "max": 3.9
-        },
-        {
-          "buiten": 10,
-          "min": 1.4,
-          "max": 4.8
-        }
-      ]
-    },
-    {
-      "id": "voorbeeld-9",
-      "merk": "Voorbeeld",
-      "model": "Midi 9 kW (fictief)",
-      "type": "lucht/water",
-      "aanvoer": 35,
-      "bron": "fictief voorbeeld, geen echt product",
-      "punten": [
-        {
-          "buiten": -10,
-          "min": 2.5,
-          "max": 8.5
-        },
-        {
-          "buiten": 2,
-          "min": 2.8,
-          "max": 10.0
-        },
-        {
-          "buiten": 10,
-          "min": 3.3,
-          "max": 11.8
-        }
-      ]
-    },
-    {
-      "id": "voorbeeld-12",
-      "merk": "Voorbeeld",
-      "model": "Maxi 12 kW (fictief)",
-      "type": "lucht/water",
-      "aanvoer": 35,
-      "bron": "fictief voorbeeld, geen echt product",
-      "punten": [
-        {
-          "buiten": -10,
-          "min": 3.2,
-          "max": 11.2
+          "min": 2.35,
+          "max": 6.35
         },
         {
           "buiten": 7,
-          "min": 3.9,
-          "max": 14.5
+          "min": 2.55,
+          "max": 6.7
+        },
+        {
+          "buiten": 12,
+          "min": 2.9,
+          "max": 6.55
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -10,
+          "min": 2.0,
+          "max": 4.7
+        },
+        {
+          "buiten": 2,
+          "min": 2.05,
+          "max": 6.0
+        },
+        {
+          "buiten": 7,
+          "min": 2.35,
+          "max": 6.25
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 20,
+            "min": 3.0,
+            "max": 9.75
+          },
+          {
+            "buiten": 35,
+            "min": 2.4,
+            "max": 8.7
+          }
+        ]
+      }
+    },
+    {
+      "id": "nibe-s2125-12",
+      "merk": "NIBE",
+      "model": "S2125-12",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "NIBE, Handleiding voor installateur S2125 (IHB NL 2525-1), hoofdstuk 11: grafieken min./max. capaciteit (afgelezen, ±0,1 kW) en tabel",
+      "minInhoud": 120,
+      "minDebiet": 1152,
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 2.15,
+          "max": 7.6
+        },
+        {
+          "buiten": -7,
+          "min": 2.2,
+          "max": 8.3
+        },
+        {
+          "buiten": 2,
+          "min": 2.35,
+          "max": 9.55
+        },
+        {
+          "buiten": 7,
+          "min": 2.6,
+          "max": 9.9
+        },
+        {
+          "buiten": 12,
+          "min": 2.95,
+          "max": 9.75
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -10,
+          "min": 2.0,
+          "max": 7.8
+        },
+        {
+          "buiten": 2,
+          "min": 2.2,
+          "max": 9.5
+        },
+        {
+          "buiten": 7,
+          "min": 2.45,
+          "max": 9.7
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 20,
+            "min": 3.0,
+            "max": 9.75
+          },
+          {
+            "buiten": 35,
+            "min": 2.4,
+            "max": 8.7
+          }
+        ]
+      }
+    },
+    {
+      "id": "viessmann-vitocal-250a-04",
+      "merk": "Viessmann",
+      "model": "Vitocal 250-A 04 (251.A04)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Viessmann, Datenblatt Vitocal 250-A (AWO-M-E-AC 251.A), technische Angaben: Leistungsregelung bij A2/W35 en A7/W35; max bij −7 °C = Nenn-Wärmeleistung A−7/W35; minimum bij −7 °C gelijk aan dat bij +2 °C (geschat)",
+      "minDebiet": 1000,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 1.8,
+          "max": 3.8
+        },
+        {
+          "buiten": 2,
+          "min": 1.8,
+          "max": 4.5
+        },
+        {
+          "buiten": 7,
+          "min": 2.1,
+          "max": 4.0
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 3.2,
+            "max": 4.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "viessmann-vitocal-250a-06",
+      "merk": "Viessmann",
+      "model": "Vitocal 250-A 06 (251.A06)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Viessmann, Datenblatt Vitocal 250-A (AWO-M-E-AC 251.A), technische Angaben: Leistungsregelung bij A2/W35 en A7/W35; max bij −7 °C = Nenn-Wärmeleistung A−7/W35; minimum bij −7 °C gelijk aan dat bij +2 °C (geschat)",
+      "minDebiet": 1000,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 1.8,
+          "max": 5.6
+        },
+        {
+          "buiten": 2,
+          "min": 1.8,
+          "max": 6.0
+        },
+        {
+          "buiten": 7,
+          "min": 2.1,
+          "max": 6.0
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 3.2,
+            "max": 5.5
+          }
+        ]
+      }
+    },
+    {
+      "id": "viessmann-vitocal-250a-08",
+      "merk": "Viessmann",
+      "model": "Vitocal 250-A 08 (251.A08)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Viessmann, Datenblatt Vitocal 250-A (AWO-M-E-AC 251.A), technische Angaben: Leistungsregelung bij A2/W35 en A7/W35; max bij −7 °C = Nenn-Wärmeleistung A−7/W35; minimum bij −7 °C gelijk aan dat bij +2 °C (geschat)",
+      "minDebiet": 1000,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 1.8,
+          "max": 6.5
+        },
+        {
+          "buiten": 2,
+          "min": 1.8,
+          "max": 6.8
+        },
+        {
+          "buiten": 7,
+          "min": 2.1,
+          "max": 8.0
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 3.2,
+            "max": 6.7
+          }
+        ]
+      }
+    },
+    {
+      "id": "viessmann-vitocal-250a-10",
+      "merk": "Viessmann",
+      "model": "Vitocal 250-A 10 (251.A10)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Viessmann, Datenblatt Vitocal 250-A (AWO-M-E-AC 251.A), technische Angaben: Leistungsregelung bij A2/W35 en A7/W35; max bij −7 °C = Nenn-Wärmeleistung A−7/W35; minimum bij −7 °C gelijk aan dat bij +2 °C (geschat)",
+      "minDebiet": 1000,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 2.2,
+          "max": 9.7
+        },
+        {
+          "buiten": 2,
+          "min": 2.2,
+          "max": 11.0
+        },
+        {
+          "buiten": 7,
+          "min": 2.6,
+          "max": 12.0
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 6.3,
+            "max": 12.9
+          }
+        ]
+      }
+    },
+    {
+      "id": "viessmann-vitocal-250a-13",
+      "merk": "Viessmann",
+      "model": "Vitocal 250-A 13 (251.A13)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Viessmann, Datenblatt Vitocal 250-A (AWO-M-E-AC 251.A), technische Angaben: Leistungsregelung bij A2/W35 en A7/W35; max bij −7 °C = Nenn-Wärmeleistung A−7/W35; minimum bij −7 °C gelijk aan dat bij +2 °C (geschat)",
+      "minDebiet": 1000,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 2.6,
+          "max": 11.1
+        },
+        {
+          "buiten": 2,
+          "min": 2.6,
+          "max": 12.3
+        },
+        {
+          "buiten": 7,
+          "min": 3.0,
+          "max": 13.4
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 6.6,
+            "max": 14.1
+          }
+        ]
+      }
+    },
+    {
+      "id": "bosch-cs5800i-aw-4",
+      "merk": "Bosch",
+      "model": "Compress 5800i AW 4 OR-S",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Bosch, Installatie-instructie Compress 5800i AW 4|5|7 OR-S (6721866763, 2023/06), technische gegevens; minimum alleen opgegeven bij A2/W35 (1,8 kW): bij −7 en −10 °C gelijk gehouden, bij +7 °C geschat naar de verhouding van het maximum",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.8,
+          "max": 3.63
+        },
+        {
+          "buiten": -7,
+          "min": 1.8,
+          "max": 3.92
+        },
+        {
+          "buiten": 2,
+          "min": 1.8,
+          "max": 4.31
+        },
+        {
+          "buiten": 7,
+          "min": 2.08,
+          "max": 4.99
+        }
+      ]
+    },
+    {
+      "id": "bosch-cs5800i-aw-5",
+      "merk": "Bosch",
+      "model": "Compress 5800i AW 5 OR-S",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Bosch, Installatie-instructie Compress 5800i AW 4|5|7 OR-S (6721866763, 2023/06), technische gegevens; minimum alleen opgegeven bij A2/W35 (1,8 kW): bij −7 en −10 °C gelijk gehouden, bij +7 °C geschat naar de verhouding van het maximum",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.8,
+          "max": 5.45
+        },
+        {
+          "buiten": -7,
+          "min": 1.8,
+          "max": 5.42
+        },
+        {
+          "buiten": 2,
+          "min": 1.8,
+          "max": 6.43
+        },
+        {
+          "buiten": 7,
+          "min": 1.9,
+          "max": 6.8
+        }
+      ]
+    },
+    {
+      "id": "bosch-cs5800i-aw-7",
+      "merk": "Bosch",
+      "model": "Compress 5800i AW 7 OR-S",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Bosch, Installatie-instructie Compress 5800i AW 4|5|7 OR-S (6721866763, 2023/06), technische gegevens; minimum alleen opgegeven bij A2/W35 (1,8 kW): bij −7 en −10 °C gelijk gehouden, bij +7 °C geschat naar de verhouding van het maximum",
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 1.8,
+          "max": 5.86
+        },
+        {
+          "buiten": -7,
+          "min": 1.8,
+          "max": 6.71
+        },
+        {
+          "buiten": 2,
+          "min": 1.8,
+          "max": 7.09
+        },
+        {
+          "buiten": 7,
+          "min": 2.02,
+          "max": 7.97
+        }
+      ]
+    },
+    {
+      "id": "stiebel-wpl-a-05-hk-230",
+      "merk": "Stiebel Eltron",
+      "model": "WPL-A 05 HK 230 Premium",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Stiebel Eltron, Bedienung und Installation WPL-A 05/07 HK 230 Premium, Datentabelle (Wärmeleistung min./max.)",
+      "minDebiet": 640,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 2.05,
+          "max": 4.97
+        },
+        {
+          "buiten": 2,
+          "min": 2.1,
+          "max": 5.9
+        },
+        {
+          "buiten": 7,
+          "min": 2.65,
+          "max": 7.4
+        }
+      ]
+    },
+    {
+      "id": "stiebel-wpl-a-07-hk-230",
+      "merk": "Stiebel Eltron",
+      "model": "WPL-A 07 HK 230 Premium",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Stiebel Eltron, Bedienung und Installation WPL-A 05/07 HK 230 Premium, Datentabelle (Wärmeleistung min./max.)",
+      "minDebiet": 640,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 2.05,
+          "max": 6.87
+        },
+        {
+          "buiten": 2,
+          "min": 2.1,
+          "max": 8.3
+        },
+        {
+          "buiten": 7,
+          "min": 2.65,
+          "max": 10.75
         }
       ]
     }

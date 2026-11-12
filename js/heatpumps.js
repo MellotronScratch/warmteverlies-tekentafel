@@ -236,7 +236,7 @@ function hpSectionHtml(c) {
     )
     .join('');
   h += `<div class="row"><button class="btn small" data-act="hpexport">Lijst downloaden (.json)</button><button class="btn small" data-act="hpimport">Eigen lijst importeren</button>${hpSource === 'eigen' ? '<button class="btn small" data-act="hpreset">Standaardlijst terugzetten</button>' : ''}</div>
-    <p class="note">${hpSource === 'eigen' ? 'Je gebruikt je eigen lijst.' : 'Dit is de standaardlijst.'} Download de lijst, vul hem aan in een teksteditor en importeer hem weer. Per warmtepomp geef je het minimale en maximale vermogen bij een paar buitentemperaturen; daartussen rekent de app rechtlijnig door. Staan er alleen gegevens bij −10 en +7 °C in, dan is de waarde bij +10 °C doorgerekend. De voorbeelden met 'fictief' in de naam zijn verzonnen.</p></div>`;
+    <p class="note">${hpSource === 'eigen' ? 'Je gebruikt je eigen lijst.' : 'Dit is de standaardlijst.'} Download de lijst, vul hem aan in een teksteditor en importeer hem weer. Per warmtepomp geef je het minimale en maximale vermogen bij een paar buitentemperaturen; daartussen rekent de app rechtlijnig door. Staan er alleen gegevens bij −10 en +7 °C in, dan is de waarde bij +10 °C doorgerekend.</p></div>`;
   return h;
 }
 function hpChartHtml(hp, j, L, L0) {
