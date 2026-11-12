@@ -584,6 +584,7 @@ function renderCanvas() {
   let out =
     gridSvg(W, H) +
     '<defs><pattern id="vvhatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--c-hp)" stroke-width="1.3" stroke-opacity=".45"/></pattern><marker id="airhead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--c-air)"/></marker><pattern id="videhatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0M-2 2L2 -2M8 12L12 8" stroke="var(--muted)" stroke-width="1" stroke-opacity=".4"/></pattern></defs>';
+  out += bgSvg();
   const off = 6 / view.s;
   const selR = sel && sel.r;
   // underlay: floor below in light grey
@@ -1168,6 +1169,7 @@ function renderCanvas() {
     const h = S(hover);
     out += `<circle cx="${h.x}" cy="${h.y}" r="${hover.kind === 'vtx' ? 7 : 3.5}" fill="none" stroke="var(--accent)" stroke-width="1.8"/>`;
   }
+  out += bgScaleSvg();
   svg.innerHTML = out;
   renderScale();
   renderLegend();

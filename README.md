@@ -31,7 +31,7 @@ Open daarna http://localhost:8000. In VS Code kan het ook met de extensie *Live 
 
 De kolom rechts met de eigenschappen maak je breder of smaller door de rand aan de linkerkant te verslepen. Dubbelklik op die rand zet hem terug op de standaardbreedte. Je browser onthoudt de breedte.
 
-Met **Lagen** boven de tekening zet je leidingen en warmtepomp, radiatoren en vloerverwarming, luchtstromen en trappen aan of uit. Zo werk je rustiger aan de ruimtes en wanden. Kies je een gereedschap voor iets wat uit staat, zoals *Leiding*, dan komt die laag vanzelf terug.
+Met **Lagen** boven de tekening zet je leidingen en warmtepomp, radiatoren en vloerverwarming, luchtstromen, trappen en de onderlegger aan of uit. Zo werk je rustiger aan de ruimtes en wanden. Kies je een gereedschap voor iets wat uit staat, zoals *Leiding*, dan komt die laag vanzelf terug.
 
 Met **Ondergrond** kies je welke verdieping lichtgrijs onder de tekening staat, met de omtrek van de ruimtes en de leidingen. Standaard is dat de verdieping eronder, maar je kunt ook een andere kiezen, bijvoorbeeld de zolder terwijl je de 1e verdieping tekent. Je kunt ook de kruipruimte kiezen. De keuze geldt per verdieping en je browser onthoudt hem. Toets `O` zet de ondergrond aan of uit. Op de lijnen van de ondergrond kun je snappen.
 
@@ -40,6 +40,17 @@ Staat iets op de verkeerde verdieping, zoals een leiding, een ruimte of de warmt
 Met **Rapport (PDF)** bovenaan *Resultaten* maak je een rapport van het hele project. Het bevat de uitgangspunten, de plattegronden per verdieping, het warmteverlies per ruimte met de berekening, de constructies met hun laagopbouw, de afgifte en de stooklijn, het leidingnet met schema en inregeladvies, de verbeteradviezen en de warmtepomp. Bij de warmtepomp staan de gekozen warmtepomp en de geschikte alternatieven, zodat je daar later nog uit kunt kiezen. Kies **Afdrukken of bewaren als PDF** en daarna in het printvenster *Opslaan als PDF*.
 
 Projecten worden in je browser opgeslagen (localStorage). Exporteer regelmatig een `.json` als reservekopie, want bij het wissen van browsergegevens ben je ze kwijt.
+
+## Onderlegger: een bouwtekening overtekenen
+
+Onder **Project → Onderlegger** leg je een afbeelding (jpg, png of webp) onder de verdieping die je open hebt, bijvoorbeeld een scan of foto van de bouwtekening. Een pdf sla je eerst op als afbeelding of je maakt er een schermafbeelding van.
+
+1. Kies **Afbeelding kiezen**, sleep een afbeelding op de tekening of plak er een met Ctrl/Cmd+V (bijvoorbeeld een schermafbeelding van een pdf). De app verkleint de afbeelding en legt hem in beeld. Een nieuwe afbeelding vervangt de huidige; met **Andere afbeelding** kies je er een uit je bestanden.
+2. Meteen daarna stel je de **schaal** in: klik twee punten waarvan je de afstand weet, bijvoorbeeld de uiteinden van een maatlijn of een gevel, en vul de werkelijke afstand in meters in.
+3. Met **Verplaatsen** sleep je de afbeelding naar de goede plek. Esc of *Klaar* stopt.
+4. Met **Dekking** maak je hem lichter of donkerder. Onder **Lagen** zet je hem aan of uit.
+
+Daarna teken je de ruimtes er gewoon overheen. Elke verdieping kan een eigen onderlegger hebben. De afbeelding wordt verkleind opgeslagen in het project en gaat mee in de export. Houd ze klein: de opslag in de browser is beperkt (een paar MB voor alle projecten samen). Is die vol, dan meldt de app dat.
 
 ## Wanden intekenen
 
@@ -359,6 +370,7 @@ js/geometry.js    wanden, buurruimtes, gedeelde wanden, ramen, vloeren en plafon
 js/calc.js        laagopbouw, daken en de warmteverliesberekening
 js/render.js      plattegrond, trappen en de 2,5D-weergave
 js/interaction.js gereedschappen, bewerkingen, muis en toetsenbord
+js/underlay.js    onderlegger: afbeelding onder een verdieping, schaal en plaats
 js/panel.js       zijpaneel: ruimte, wanddeel, constructies
 js/emitters.js    afgifte, leidingen en systeeminhoud
 js/hydraulics.js  leidingnet: debiet, drukverlies, indexcircuit

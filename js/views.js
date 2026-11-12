@@ -195,6 +195,7 @@ function viewSet() {
       .join('')}
     <div class="row"><button class="btn small" data-act="addfloor">+ Verdieping</button>${P.floors[0] && P.floors[0].below ? '' : '<button class="btn small" data-act="addbelow" data-k="kruip">+ Kruipruimte</button><button class="btn small" data-act="addbelow" data-k="kelder">+ Kelder</button>'}</div>
     <p class="note">Een kruipruimte of kelder komt onder de laagste verdieping. Ruimtes daar zijn onverwarmd: ze tellen niet mee in het warmteverlies, maar de vloer erboven rekent met hun temperatuur. Je kunt er ook leidingen, de warmtepomp of een boilervat tekenen.</p></div>
+  ${bgPanelHtml()}
   <div class="sec"><h3>Rekenwaarden</h3><div class="fields">
     ${numField('f-s-te', 'set.te', 'Buitentemperatuur θe', '°C', S.te, 1)}${numField('f-s-tg', 'set.tGround', 'Grond / kruipruimte', '°C', S.tGround, 1)}
     ${numField('f-s-tu', 'set.tUnheated', 'Onverwarmde ruimte', '°C', S.tUnheated, 1)}${numField('f-s-tn', 'set.tNeighbour', 'Buurwoning', '°C', S.tNeighbour, 1)}
@@ -778,6 +779,14 @@ function applyField(el, final) {
       changed = true;
       break;
     }
+    case 'bg': {
+      const bg = curBg(),
+        n = num(v);
+      if (!bg || n == null) return;
+      bg.op = Math.min(1, Math.max(0.1, n / 100));
+      changed = true;
+      break;
+    }
     case 'fl': {
       const f = P.floors.find(x => x.id === parts[1]);
       if (!f) return;
@@ -1026,6 +1035,19 @@ function act(a, b) {
     }
     case 'schema':
       openSchema();
+      break;
+    case 'bgpick':
+      $('bg-in').value = '';
+      $('bg-in').click();
+      break;
+    case 'bgscale':
+      setBgMode(bgMode === 'scale' ? null : 'scale');
+      break;
+    case 'bgmove':
+      setBgMode(bgMode === 'move' ? null : 'move');
+      break;
+    case 'bgdel':
+      removeBg();
       break;
     case 'report':
       openReport();

@@ -20,10 +20,19 @@ function setStatus(txt, cls) {
   s.textContent = txt;
   s.className = 'pill' + (cls ? ' ' + cls : '');
 }
+let storeFull = false;
 function saveLocal() {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(all));
-  } catch (_) {}
+    storeFull = false;
+  } catch (_) {
+    // usually the browser storage is full, for example by large underlay images
+    if (!storeFull)
+      toast(
+        'De opslag in deze browser is vol: de laatste wijzigingen zijn niet opgeslagen. Haal een onderlegger weg of exporteer het project als .json.'
+      );
+    storeFull = true;
+  }
 }
 function loadLocal() {
   try {

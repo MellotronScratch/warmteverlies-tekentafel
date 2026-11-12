@@ -271,37 +271,6 @@
       "minDebiet": 1000
     },
     {
-      "id": "itho-hp-s-55",
-      "merk": "Itho Daalderop",
-      "model": "HP-S 55",
-      "type": "lucht/water (split, R410A)",
-      "aanvoer": 35,
-      "punten": [
-        {
-          "buiten": -10,
-          "min": 1.939,
-          "max": 3.545
-        },
-        {
-          "buiten": 7,
-          "min": 1.5,
-          "max": 5.5
-        }
-      ],
-      "bron": "Itho Daalderop, Installatiehandleiding HP-S 55-95-130 (01-02528-004), technische informatie: min./max. bij A7/W35 en A7/W45, min. debiet 0,26 l/s. Gegevens bij −10 °C staan niet in de handleiding; die komen uit een eerdere lijst.",
-      "minDebiet": 936,
-      "koelen": {
-        "aanvoer": 18,
-        "punten": [
-          {
-            "buiten": 35,
-            "min": 4.6,
-            "max": 6.0
-          }
-        ]
-      }
-    },
-    {
       "id": "vaillant-vwl-35-6",
       "merk": "Vaillant",
       "model": "aroTHERM plus VWL 35/6 A 230V",

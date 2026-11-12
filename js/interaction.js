@@ -37,16 +37,23 @@ function setTool(t) {
 }
 
 /* ---------- mutations ---------- */
+// snapshots for undo leave the underlay images out (they can be large); they stay in P.images
+const snap = () => JSON.stringify(P, (k, v) => (k === 'images' ? undefined : v));
+function restore(json) {
+  const imgs = P.images;
+  P = normalizeProject(JSON.parse(json));
+  P.images = imgs || {};
+}
 function pushUndo() {
-  undoStack.push(JSON.stringify(P));
+  undoStack.push(snap());
   if (undoStack.length > 120) undoStack.shift();
   redoStack = [];
   updateUndoBtns();
 }
 function undo() {
   if (!undoStack.length) return;
-  redoStack.push(JSON.stringify(P));
-  P = normalizeProject(JSON.parse(undoStack.pop()));
+  redoStack.push(snap());
+  restore(undoStack.pop());
   all[P.id] = P;
   validateSel();
   markDirty(true);
@@ -54,8 +61,8 @@ function undo() {
 }
 function redo() {
   if (!redoStack.length) return;
-  undoStack.push(JSON.stringify(P));
-  P = normalizeProject(JSON.parse(redoStack.pop()));
+  undoStack.push(snap());
+  restore(redoStack.pop());
   all[P.id] = P;
   validateSel();
   markDirty(true);
@@ -1000,6 +1007,7 @@ svg.addEventListener('pointerdown', e => {
     return;
   }
   if (e.button !== 0) return;
+  if (bgPointerDown(e, wp)) return;
   if (tool === 'select') {
     if (k === 'vtx') {
       sel = { t: 'vtx', r: tgt.dataset.r, i: +tgt.dataset.i };
@@ -1293,6 +1301,7 @@ svg.addEventListener('pointermove', e => {
     renderCanvas();
     return;
   }
+  if (bgPointerMove(wp)) return;
   if (drag) {
     if (drag.type === 'vtx') {
       const r = getRoom(drag.r);
@@ -1522,6 +1531,12 @@ function endPointer() {
   if (drag) {
     const d = drag;
     drag = null;
+    if (d.type === 'bgmove') {
+      if (d.moved) markDirty();
+      else undoStack.pop();
+      renderCanvas();
+      return;
+    }
     if (d.type === 'emline') {
       if (dist(d.p0, d.p1) >= 0.2) addEmitter('line', { a: { x: d.p0.x, y: d.p0.y }, b: { x: d.p1.x, y: d.p1.y } });
       else renderCanvas();
@@ -1653,7 +1668,8 @@ document.addEventListener('keydown', e => {
   else if (k === 'k') setTool('hp');
   else if (k === 'f') $('tool-fit').click();
   else if (e.key === 'Escape') {
-    if (pendSplit) closeAsk();
+    if (bgMode) setBgMode(null);
+    else if (pendSplit) closeAsk();
     else if (drawPts.length) {
       drawPts = [];
       renderCanvas();

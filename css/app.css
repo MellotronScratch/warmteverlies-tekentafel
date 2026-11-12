@@ -1841,3 +1841,12 @@ label.chk {
     break-inside: avoid;
   }
 }
+
+/* underlay image: moving and measuring */
+.stage.bgedit svg {
+  cursor: crosshair;
+}
+.stage.dropping {
+  outline: 3px dashed var(--accent);
+  outline-offset: -6px;
+}

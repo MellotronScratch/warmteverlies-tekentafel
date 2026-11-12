@@ -454,6 +454,21 @@ function normalizeProject(p) {
   p.floors.forEach(f => {
     f.name = String(f.name || 'Verdieping');
     f.below = f.below === 'kelder' || f.below === 'kruip' ? f.below : '';
+    // underlay image: position and size in metres, opacity 0.1–1
+    const b = f.bg;
+    if (b && typeof b.img === 'string' && +b.w > 0 && +b.h > 0)
+      f.bg = { img: b.img, x: +b.x || 0, y: +b.y || 0, w: +b.w, h: +b.h, op: Math.min(1, Math.max(0.1, +b.op || 0.5)) };
+    else delete f.bg;
+  });
+  p.images = p.images && typeof p.images === 'object' ? p.images : {};
+  // images that no floor uses any more (removed or replaced underlays) are dropped when a project is opened
+  Object.keys(p.images).forEach(k => {
+    if (
+      typeof p.images[k] !== 'string' ||
+      !p.images[k].startsWith('data:image/') ||
+      !p.floors.some(f => f.bg && f.bg.img === k)
+    )
+      delete p.images[k];
   });
   const rids = new Set(p.rooms.map(r => r.id));
   p.transfers = (Array.isArray(p.transfers) ? p.transfers : [])
@@ -734,7 +749,8 @@ const LAYERS = [
   ['pipes', 'Leidingen en warmtepomp'],
   ['emit', 'Radiatoren en vloerverwarming'],
   ['air', 'Luchtstromen (ventilatie)'],
-  ['stairs', 'Trappen']
+  ['stairs', 'Trappen'],
+  ['bg', 'Onderlegger (afbeelding)']
 ];
 function setLayer(k, on) {
   if (layerOn(k) === on) return;
