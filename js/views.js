@@ -759,6 +759,58 @@ pbody.addEventListener('keydown', e => {
     e.target.blur();
   }
 });
+/* side panel width: drag the handle on its left edge; remembered in this browser */
+(() => {
+  const handle = $('panel-resize'),
+    main = document.querySelector('.main'),
+    KEY = 'wvt.panelw',
+    DEF = 390;
+  if (!handle || !main) return;
+  const clampW = w => Math.round(Math.max(320, Math.min(w, Math.min(1000, main.clientWidth - 64 - 20 - 320))));
+  const setW = (w, save) => {
+    const v = clampW(w);
+    main.style.setProperty('--panel-w', v + 'px');
+    handle.setAttribute('aria-valuenow', String(v));
+    if (save)
+      try {
+        localStorage.setItem(KEY, String(v));
+      } catch (_) {}
+  };
+  try {
+    const saved = +localStorage.getItem(KEY);
+    if (saved > 0) setW(saved, false);
+  } catch (_) {}
+  let drag = null;
+  handle.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    drag = { x: e.clientX, w: handle.parentElement.getBoundingClientRect().width };
+    handle.classList.add('dragging');
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch (_) {}
+  });
+  handle.addEventListener('pointermove', e => {
+    if (drag) setW(drag.w + (drag.x - e.clientX), false);
+  });
+  const end = () => {
+    if (!drag) return;
+    drag = null;
+    handle.classList.remove('dragging');
+    setW(handle.parentElement.getBoundingClientRect().width, true);
+  };
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+  handle.addEventListener('dblclick', () => setW(DEF, true));
+  handle.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    setW(handle.parentElement.getBoundingClientRect().width + (e.key === 'ArrowLeft' ? 20 : -20), true);
+  });
+  window.addEventListener('resize', () => {
+    const cur = parseFloat(getComputedStyle(main).getPropertyValue('--panel-w'));
+    if (cur > 0) setW(cur, false);
+  });
+})();
 $('tabs').addEventListener('click', e => {
   const b = e.target.closest('[data-tab]');
   if (!b) return;

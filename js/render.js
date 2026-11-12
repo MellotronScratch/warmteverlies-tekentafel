@@ -566,7 +566,8 @@ function renderCanvas() {
       .join(' ');
     const c = S(centroid(r.pts));
     out += `<polygon points="${pts}" fill="none" stroke="var(--under)" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`;
-    out += `<text x="${c.x}" y="${c.y + 40}" text-anchor="middle" font-size="11" fill="var(--under)" stroke="none" pointer-events="none">${esc(r.name)}</text>`;
+    if (tab !== 'vent')
+      out += `<text x="${c.x}" y="${c.y + 40}" text-anchor="middle" font-size="11" fill="var(--under)" stroke="none" pointer-events="none">${esc(r.name)}</text>`;
   });
   // rooms from a lower floor that continue through this one
   videRooms().forEach(r => {
@@ -873,8 +874,40 @@ function renderCanvas() {
       out += `<text x="${m.x + (dx / d) * 18}" y="${m.y + (dy / d) * 18 + 3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--muted)" pointer-events="none">${fmt(R.knee, 2)} m</text>`;
     });
   });
-  // air flows between rooms: moving arrows, in the Ventilatie tab for all rooms, otherwise for the selected room
+  // air flows between rooms: moving arrows, in the Ventilatie tab for all rooms, otherwise for the selected room.
+  // Texts are placed so they do not cover the room labels or each other.
   if ((tab === 'vent' || (sel && sel.t === 'room')) && P.rooms.length > 1) {
+    const boxes = [],
+      hits = b => boxes.some(o => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h);
+    // room labels (name, kW, bar, temperature) are obstacles
+    curRooms().forEach(r => {
+      const c = S(labelPt(r.pts));
+      boxes.push({ x: c.x - 62, y: c.y - (tab === 'vent' ? 44 : 28), w: 124, h: tab === 'vent' ? 82 : 66 });
+    });
+    const place = (x, y, txt, steps) => {
+      const w = txt.length * 6.2 + 6,
+        h = 13;
+      for (const dy of steps || [0, -13, 13, -26, 26, -39, 39, -52, 52]) {
+        const b = { x: x - w / 2, y: y + dy - 10, w, h };
+        if (!hits(b)) {
+          boxes.push(b);
+          return y + dy;
+        }
+      }
+      boxes.push({ x: x - w / 2, y: y - 10, w, h });
+      return y;
+    };
+    const airText = (x, y, txt, steps) =>
+      `<text x="${x.toFixed(1)}" y="${place(x, y, txt, steps).toFixed(1)}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-air)" pointer-events="none">${esc(txt)}</text>`;
+    let labels = '';
+    // supply and extraction per room, just above the room name
+    if (tab === 'vent')
+      curRooms().forEach(r => {
+        if (!(r.sup > 0 || r.ext > 0)) return;
+        const p = S(labelPt(r.pts));
+        out += `<text x="${p.x}" y="${p.y - 30}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-air)" pointer-events="none">${r.sup > 0 ? '+' + fmtW(r.sup) + (P.settings.ventSys === 'D' ? ' inblaas' : ' toevoer') : ''}${r.sup > 0 && r.ext > 0 ? ' · ' : ''}${r.ext > 0 ? '−' + fmtW(r.ext) + ' afzuig' : ''}</text>`;
+      });
+    const below = {}; // notes about other floors, stacked under each room
     airFlows()
       .filter(t => tab === 'vent' || t.from === sel.r || t.to === sel.r)
       .forEach(t => {
@@ -898,23 +931,32 @@ function renderCanvas() {
             mx = (p0.x + p1.x) / 2 - uy * L * 0.12,
             my = (p0.y + p1.y) / 2 + ux * L * 0.12;
           out += `<path d="M${p0.x.toFixed(1)} ${p0.y.toFixed(1)}Q${mx.toFixed(1)} ${my.toFixed(1)} ${p1.x.toFixed(1)} ${p1.y.toFixed(1)}" fill="none" stroke="var(--c-air)" stroke-width="${w.toFixed(1)}" stroke-linecap="round" class="airflow" marker-end="url(#airhead)" pointer-events="none"/>`;
-          out += `<text x="${mx}" y="${my - 7}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-air)" pointer-events="none">${fmtW(t.q)} m³/h</text>`;
+          // the label on the curve itself (its middle), moved up or down until it is free
+          labels += airText(
+            0.25 * p0.x + 0.5 * mx + 0.25 * p1.x,
+            0.25 * p0.y + 0.5 * my + 0.25 * p1.y - 6,
+            fmtW(t.q) + ' m³/h'
+          );
         } else if (onA || onB) {
-          // to or from another floor: a note at the room on this floor
+          // to or from another floor: a note under the room on this floor
           const r = onA ? a : b,
             other = onA ? b : a,
             p = S(labelPt(r.pts)),
-            above = floorIdx(other.floorId) > floorIdx(curFloor);
-          out += `<text x="${p.x}" y="${p.y + 52}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-air)" pointer-events="none">${onA ? (above ? '↑' : '↓') + ' naar ' : (above ? '↓' : '↑') + ' uit '}${esc(other.name)} ${fmtW(t.q)} m³/h</text>`;
+            above = floorIdx(other.floorId) > floorIdx(curFloor),
+            k = (below[r.id] = (below[r.id] || 0) + 1);
+          labels += airText(
+            p.x,
+            p.y + 40 + k * 13,
+            (onA ? (above ? '↑' : '↓') + ' naar ' : (above ? '↓' : '↑') + ' uit ') +
+              other.name +
+              ' ' +
+              fmtW(t.q) +
+              ' m³/h',
+            [0, 13, 26, 39, 52, 65]
+          );
         }
       });
-    // supply and extraction per room
-    if (tab === 'vent')
-      curRooms().forEach(r => {
-        if (!(r.sup > 0 || r.ext > 0)) return;
-        const p = S(labelPt(r.pts));
-        out += `<text x="${p.x}" y="${p.y - 30}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-air)" pointer-events="none">${r.sup > 0 ? '+' + fmtW(r.sup) + (P.settings.ventSys === 'D' ? ' inblaas' : ' toevoer') : ''}${r.sup > 0 && r.ext > 0 ? ' · ' : ''}${r.ext > 0 ? '−' + fmtW(r.ext) + ' afzuig' : ''}</text>`;
-      });
+    out += labels;
   }
   // labels: small caps name + area, heat load in kW, breakdown bar, temperature
   curRooms().forEach(r => {

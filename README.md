@@ -29,6 +29,8 @@ python3 -m http.server
 
 Open daarna http://localhost:8000. In VS Code kan het ook met de extensie *Live Server*.
 
+De kolom rechts met de eigenschappen maak je breder of smaller door de rand aan de linkerkant te verslepen. Dubbelklik op die rand zet hem terug op de standaardbreedte. Je browser onthoudt de breedte.
+
 Projecten worden in je browser opgeslagen (localStorage). Exporteer regelmatig een `.json` als reservekopie, want bij het wissen van browsergegevens ben je ze kwijt.
 
 ## Wanden intekenen

@@ -537,43 +537,74 @@ function conCard(c, uses) {
     <label class="f" for="f-con-${c.id}-mode">Invoer<select class="in" id="f-con-${c.id}-mode" data-f="con.${c.id}.mode"><option value="lagen" ${c.mode === 'lagen' ? 'selected' : ''}>Opbouw in lagen</option><option value="U" ${c.mode === 'U' ? 'selected' : ''}>U-waarde invullen</option></select></label></div>
     <label class="chk"><input type="checkbox" id="f-con-${c.id}-inner" data-f="con.${c.id}.inner" ${c.inner ? 'checked' : ''}> Aan beide kanten binnen (binnenwand of verdiepingsvloer, Rse = Rsi)</label>
     ${c.mode === 'U' ? `<div class="fields">${numField('f-con-' + c.id + '-u', 'con.' + c.id + '.U', 'U-waarde', 'W/m²K', c.U, 3)}${numField('f-con-' + c.id + '-rc', 'con.' + c.id + '.Rc', 'Rc', 'm²K/W', Rc, 2)}</div><p class="note">Bijvoorbeeld de U-waarde uit <a href="https://www.ubakus.de/u-wert-rechner/" target="_blank" rel="noopener">ubakus.de</a> of van de leverancier.</p>` : layersEditor(c)}
-    <div class="row"><span class="note grow">${uses[c.id] ? `Gebruikt op ${uses[c.id]} plek${uses[c.id] > 1 ? 'ken' : ''}` : 'Nog niet gebruikt'}</span><button class="btn small" data-act="dupcon" data-c="${c.id}">Kopie</button><button class="btn small danger" data-act="delcon" data-c="${c.id}" ${uses[c.id] ? 'disabled title="Nog in gebruik"' : ''}>Verwijderen</button></div></div>`;
+    <div class="row"><span class="note grow">${uses[c.id] ? `Gebruikt op ${uses[c.id].length} plek${uses[c.id].length > 1 ? 'ken' : ''}` : 'Nog niet gebruikt'}</span><button class="btn small" data-act="dupcon" data-c="${c.id}">Kopie</button><button class="btn small danger" data-act="delcon" data-c="${c.id}" ${uses[c.id] ? 'disabled title="Nog in gebruik: kies op de plekken hieronder eerst een andere constructie"' : ''}>Verwijderen</button></div>
+    ${
+      uses[c.id]
+        ? `<div class="uselist">${uses[c.id]
+            .map(
+              u =>
+                `<button class="linkrow" data-act="${u.act}" data-r="${u.room.id}" ${u.act === 'selseg' ? `data-w="${u.w}" data-s="${u.s}"` : ''}><span>${esc(u.room.name)} · ${esc(u.label)}</span><span class="note">${esc(u.fl)}</span></button>`
+            )
+            .join(
+              ''
+            )}</div><p class="note">Klik een plek om daar een andere constructie te kiezen. Is hij nergens meer in gebruik, dan kun je hem verwijderen.</p>`
+        : ''
+    }</div>`;
   }
   return h + `</div>`;
 }
 function viewMats() {
-  const used = new Set();
+  // which constructions use each material (as a layer, or as studs in a layer)
+  const usedIn = {};
   P.constructions.forEach(c =>
     c.layers.forEach(l => {
-      used.add(l.mid);
-      if (l.mix) used.add(l.mix.mid);
+      [l.mid, l.mix && l.mix.mid].forEach(id => {
+        if (id && !(usedIn[id] = usedIn[id] || []).includes(c)) usedIn[id].push(c);
+      });
     })
   );
+  const used = { has: id => !!usedIn[id] };
   let h = `<div class="sec"><h3>Materialen</h3><p class="note">De λ-waarden zijn indicatieve rekenwaarden in W/mK. Gebruik voor isolatie de λD van het productblad of de waarde uit ubakus.</p>`;
   P.materials.forEach(m => {
     h += `<div class="matrow"><input type="color" class="colorin" id="f-mat-${m.id}-c" data-f="mat.${m.id}.color" value="${esc(m.color)}" aria-label="Kleur"><input class="in grow" style="flex-basis:150px" id="f-mat-${m.id}-n" data-f="mat.${m.id}.name" value="${esc(m.name)}" aria-label="Naam materiaal">
     <select class="in" id="f-mat-${m.id}-t" data-f="mat.${m.id}.type" aria-label="Soort"><option value="lambda" ${m.type === 'lambda' ? 'selected' : ''}>λ</option><option value="R" ${m.type === 'R' ? 'selected' : ''}>vaste R</option><option value="spouw" ${m.type === 'spouw' ? 'selected' : ''}>luchtspouw</option></select>
     ${m.type === 'lambda' ? `<input class="in num" style="width:78px" id="f-mat-${m.id}-l" data-f="mat.${m.id}.lambda" inputmode="decimal" value="${nv(m.lambda, 4)}" aria-label="Lambda in W/mK" title="λ in W/mK">` : m.type === 'R' ? `<input class="in num" style="width:78px" id="f-mat-${m.id}-r" data-f="mat.${m.id}.R" inputmode="decimal" value="${nv(m.R, 3)}" aria-label="R in m²K/W" title="R in m²K/W">` : `<span class="note" style="width:78px">uit tabel</span>`}
-    <button class="xbtn" data-act="delmat" data-m="${m.id}" ${used.has(m.id) ? 'disabled title="In gebruik"' : ''} aria-label="Verwijder ${esc(m.name)}">✕</button></div>`;
+    <button class="xbtn" data-act="delmat" data-m="${m.id}" ${used.has(m.id) ? 'disabled title="In gebruik: zie de constructies eronder"' : ''} aria-label="Verwijder ${esc(m.name)}">✕</button></div>${
+      usedIn[m.id]
+        ? `<div class="matuse note">In gebruik bij ${usedIn[m.id].map(c => `<button class="crumb" data-act="gocon" data-c="${c.id}">${esc(c.name)}</button>`).join(', ')}</div>`
+        : ''
+    }`;
   });
   return h + `<div class="row"><button class="btn small" data-act="addmat">+ Materiaal</button></div></div>`;
 }
-function viewCon(focusId) {
-  if (focusId) conOpen = focusId;
-  const uses = {};
+// every place a construction is used: wall parts, windows and doors, floors, ceilings and sloped roof surfaces
+function conUses() {
+  const uses = {},
+    add = (cid, place) => {
+      if (cid) (uses[cid] = uses[cid] || []).push(place);
+    };
   P.rooms.forEach(r => {
-    r.walls.forEach(w =>
-      w.segs.forEach(s => {
-        uses[s.cid] = (uses[s.cid] || 0) + 1;
-        s.openings.forEach(o => (uses[o.cid] = (uses[o.cid] || 0) + 1));
+    const fl = (P.floors[floorIdx(r.floorId)] || {}).name || '';
+    r.walls.forEach((w, i) =>
+      w.segs.forEach((sg, j) => {
+        const nm = 'Wand ' + (i + 1) + (w.segs.length > 1 ? LET[j] || j : '');
+        add(sg.cid, { room: r, fl, label: nm, act: 'selseg', w: i, s: j });
+        sg.openings.forEach(o =>
+          add(o.cid, { room: r, fl, label: nm + ' · ' + (o.name || 'opening'), act: 'selseg', w: i, s: j })
+        );
       })
     );
-    uses[r.floor.cid] = (uses[r.floor.cid] || 0) + 1;
-    uses[r.ceil.cid] = (uses[r.ceil.cid] || 0) + 1;
-    ['floor', 'ceil'].forEach(k => {
-      if (r[k].cidOut) uses[r[k].cidOut] = (uses[r[k].cidOut] || 0) + 1;
-    });
+    add(r.floor.cid, { room: r, fl, label: 'Vloer', act: 'selroom' });
+    add(r.floor.cidOut, { room: r, fl, label: 'Vloer (waar niets onder ligt)', act: 'selroom' });
+    add(r.ceil.cid, { room: r, fl, label: 'Plafond', act: 'selroom' });
+    add(r.ceil.cidOut, { room: r, fl, label: 'Plafond (waar niets boven ligt)', act: 'selroom' });
+    if (r.roof && r.roof.type !== 'plat') add(r.roof.cid, { room: r, fl, label: 'Dakvlak', act: 'selroom' });
   });
+  return uses;
+}
+function viewCon(focusId) {
+  if (focusId) conOpen = focusId;
+  const uses = conUses();
   let h = `<div class="sec"><h2>Constructies</h2><p class="note">Stel de opbouw samen uit lagen van binnen naar buiten, zoals op <a href="https://www.ubakus.de/u-wert-rechner/" target="_blank" rel="noopener">ubakus.de</a>. Per laag rekent de app R = d / λ uit, en daarmee de Rc en de U-waarde van de hele constructie. Voor ramen en deuren vul je meestal direct de U-waarde van de leverancier in.</p></div>`;
   Object.keys(KINDS).forEach(k => {
     const cs = P.constructions.filter(c => c.kind === k);

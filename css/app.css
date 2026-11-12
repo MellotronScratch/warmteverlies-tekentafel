@@ -285,7 +285,7 @@ select:focus-visible,
 }
 .main {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) 390px;
+  grid-template-columns: 64px minmax(0, 1fr) var(--panel-w, 390px);
   gap: 10px;
   min-height: 0;
 }
@@ -501,6 +501,7 @@ select:focus-visible,
   padding: 4px 9px;
 }
 .panel {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1432,5 +1433,56 @@ label.chk {
 @keyframes airflow {
   to {
     stroke-dashoffset: -15;
+  }
+}
+
+/* where a construction or material is used */
+.uselist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow: auto;
+}
+.matuse {
+  margin: -2px 0 8px 32px;
+}
+
+/* drag handle to make the side panel wider or narrower */
+.panel-resize {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 3;
+}
+.panel-resize::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 3px;
+  height: 44px;
+  margin-top: -22px;
+  border-radius: 2px;
+  background: var(--line);
+}
+.panel-resize:hover::after,
+.panel-resize:focus-visible::after,
+.panel-resize.dragging::after {
+  background: var(--accent);
+  top: 0;
+  height: 100%;
+  margin-top: 0;
+}
+.panel-resize:focus-visible {
+  outline: none;
+}
+@media (max-width: 900px) {
+  .panel-resize {
+    display: none;
   }
 }
