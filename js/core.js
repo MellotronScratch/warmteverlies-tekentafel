@@ -588,7 +588,9 @@ function normalizeProject(p) {
         cidR: it.cidR || '',
         winw: +it.winw >= 0 ? +it.winw : 1.6,
         winh: +it.winh >= 0 ? +it.winh : 1,
-        wincid: it.wincid || ''
+        wincid: it.wincid || '',
+        ...(Number.isFinite(+it.u) && it.u !== null && it.u !== '' ? { u: +it.u } : {}),
+        ...(Number.isFinite(+it.d) && it.d !== null && it.d !== '' ? { d: +it.d } : {})
       }));
     r.roof.kneeOn = !!r.roof.kneeOn;
     r.roof.kneeH = +r.roof.kneeH > 0 ? +r.roof.kneeH : 1;

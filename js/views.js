@@ -189,7 +189,7 @@ function viewSet() {
         const n = P.rooms.filter(r => r.floorId === f.id).length;
         return `<div class="row"><div class="lmove"><button data-act="floormove" data-f="${f.id}" data-dir="1" aria-label="Hoger" ${i === P.floors.length - 1 ? 'disabled' : ''}>▲</button><button data-act="floormove" data-f="${f.id}" data-dir="-1" aria-label="Lager" ${i === 0 ? 'disabled' : ''}>▼</button></div>
       <input class="in grow" id="f-fl-${f.id}" data-f="fl.${f.id}.name" value="${esc(f.name)}" aria-label="Naam verdieping"><span class="note">${n} ruimte${n === 1 ? '' : 's'}</span>
-      <button class="xbtn" data-act="delfloor" data-f="${f.id}" ${n || P.floors.length < 2 ? 'disabled title="Alleen een lege verdieping kan weg"' : ''} aria-label="Verwijder ${esc(f.name)}">✕</button></div>`;
+      <button class="xbtn" data-act="delfloor" data-f="${f.id}" ${P.floors.length < 2 ? 'disabled title="Er moet minstens één verdieping blijven"' : `title="${esc(f.name)} verwijderen${n ? ' met ' + n + (n === 1 ? ' ruimte' : ' ruimtes') : ''} (ongedaan maken kan)"`} aria-label="Verwijder ${esc(f.name)}">✕</button></div>`;
       })
       .reverse()
       .join('')}
@@ -413,8 +413,8 @@ function applyField(el, final) {
       else if (k === 'slope') it.slope = parseInt(v, 10) || 0;
       else {
         const n = num(v);
-        if (n == null || n < 0 || n > 30) return;
-        if ((k === 'w' || k === 'h' || k === 'hf') && n <= 0) return;
+        if (n == null || n < 0 || n > 100) return;
+        if ((k === 'w' || k === 'h' || k === 'hf') && (n <= 0 || n > 30)) return;
         it[k] = n;
       }
       changed = true;
@@ -1083,13 +1083,37 @@ function act(a, b) {
       break;
     }
     case 'delfloor': {
-      const i = floorIdx(b.dataset.f);
-      if (i < 0 || P.floors.length < 2 || P.rooms.some(r => r.floorId === b.dataset.f)) return;
+      // remove a floor with everything on it: rooms, pipes, the heat pump; can be undone
+      const fid = b.dataset.f,
+        i = floorIdx(fid);
+      if (i < 0 || P.floors.length < 2) return;
+      const fl = P.floors[i],
+        gone = new Set(P.rooms.filter(r => r.floorId === fid).map(r => r.id)),
+        np = (P.pipes || []).filter(x => x.floorId === fid).length;
       pushUndo();
+      P.rooms = P.rooms.filter(r => !gone.has(r.id));
+      P.pipes = (P.pipes || []).filter(x => x.floorId !== fid);
+      if (P.hpPos && P.hpPos.floorId === fid) P.hpPos = null;
+      P.transfers = (P.transfers || []).filter(t => !gone.has(t.from) && !gone.has(t.to));
       P.floors.splice(i, 1);
-      if (curFloor === b.dataset.f) curFloor = P.floors[Math.max(0, i - 1)].id;
+      P.rooms.forEach(r => {
+        if (gone.has(r.flowTo)) r.flowTo = '';
+        if (gone.has(r.roofFrom)) r.roofFrom = '';
+        // a stairwell or vide that ran up to this floor now stops one floor lower
+        if (r.spanTo === fid) {
+          const below = P.floors[i - 1];
+          r.spanTo = below && below.id !== r.floorId ? below.id : null;
+        }
+      });
+      if (curFloor === fid) curFloor = P.floors[Math.max(0, i - 1)].id;
+      if (sel && !getRoom(sel.r) && sel.t !== 'hp' && sel.t !== 'pipe') sel = null;
+      validateSel();
       markDirty();
       renderAll();
+      toast(
+        `${fl.name} verwijderd${gone.size || np ? ` met ${[gone.size ? gone.size + (gone.size === 1 ? ' ruimte' : ' ruimtes') : '', np ? np + (np === 1 ? ' leiding' : ' leidingen') : ''].filter(Boolean).join(' en ')}` : ''}.`,
+        true
+      );
       break;
     }
     case 'delroom':

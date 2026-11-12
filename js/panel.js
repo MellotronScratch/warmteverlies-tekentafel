@@ -173,7 +173,12 @@ function roofItemsHtml(room) {
   const R = roofOf(room),
     items = room.roof.items || [],
     nSlopes = R && R.type === 'zadel' ? 2 : 1,
-    lines = calcRoom(room).lines;
+    lines = calcRoom(room).lines,
+    geo = roofItemGeom(room);
+  const posFields = it => {
+    const g = geo.find(x => x.it === it) || {};
+    return `<div class="fields">${numField('f-ri-' + it.id + '-u', 'ri.' + it.id + '.u', 'Midden langs de nok', 'm vanaf begin', g.uc, 2)}${numField('f-ri-' + it.id + '-d', 'ri.' + it.id + '.d', it.kind === 'raam' ? 'Onderkant vanaf de goot' : 'Voorkant vanaf de goot', it.kind === 'raam' ? 'm langs de helling' : 'm horizontaal', g.d, 2)}</div>`;
+  };
   const slopeSel = it =>
     nSlopes > 1
       ? `<label class="f" for="f-ri-${it.id}-sl">Op<select class="in" id="f-ri-${it.id}-sl" data-f="ri.${it.id}.slope">${[0, 1].map(n => `<option value="${n}" ${(it.slope | 0) === n ? 'selected' : ''}>Dakvlak ${n + 1}</option>`).join('')}</select></label>`
@@ -184,16 +189,18 @@ function roofItemsHtml(room) {
     if (it.kind === 'raam')
       return `<div class="card">${head}<div class="fields">${numField('f-ri-' + it.id + '-w', 'ri.' + it.id + '.w', 'Breedte', 'm', it.w, 2)}${numField('f-ri-' + it.id + '-h', 'ri.' + it.id + '.h', 'Lengte langs de helling', 'm', it.h, 2)}${slopeSel(it)}</div>
         <label class="f" for="f-ri-${it.id}-c">Constructie<select class="in" id="f-ri-${it.id}-c" data-f="ri.${it.id}.cid">${conOptions(it.cid, 'raam')}</select></label>
+        ${posFields(it)}
         <div class="det">${fmt(it.w * it.h, 2)} m² dakraam · ${fmtW(sum)} W. Dit oppervlak gaat van het dakvlak af.</div></div>`;
     const D = dormerDepth(room, it);
     return `<div class="card">${head}<div class="fields">${numField('f-ri-' + it.id + '-w', 'ri.' + it.id + '.w', 'Breedte', 'm', it.w, 2)}${numField('f-ri-' + it.id + '-hf', 'ri.' + it.id + '.hf', 'Hoogte voorkant', 'm', it.hf, 2)}${slopeSel(it)}</div>
       <div class="fields"><label class="f" for="f-ri-${it.id}-cw">Wanden (voorkant en zijwangen)<select class="in" id="f-ri-${it.id}-cw" data-f="ri.${it.id}.cidW">${conOptions(it.cidW, 'wand')}</select></label><label class="f" for="f-ri-${it.id}-cr">Plat dak<select class="in" id="f-ri-${it.id}-cr" data-f="ri.${it.id}.cidR">${conOptions(it.cidR, 'dak')}</select></label></div>
       <div class="fields">${numField('f-ri-' + it.id + '-ww', 'ri.' + it.id + '.winw', 'Raam breedte', 'm', it.winw, 2)}${numField('f-ri-' + it.id + '-wh', 'ri.' + it.id + '.winh', 'Raam hoogte', 'm', it.winh, 2)}<label class="f" for="f-ri-${it.id}-wc">Raam<select class="in" id="f-ri-${it.id}-wc" data-f="ri.${it.id}.wincid">${conOptions(it.wincid, 'raam')}</select></label></div>
+      ${posFields(it)}
       <div class="det">Diepte ${fmt(D, 2)} m (volgt uit de hoogte en de dakhelling)<br>Voorkant ${fmt(it.w * it.hf, 1)} m² (waarvan raam ${fmt(Math.min(it.winw * it.winh, it.w * it.hf), 1)} m²) · zijwangen ${fmt(D * it.hf, 1)} m² · plat dak ${fmt(it.w * D, 1)} m²<br>Gaat van het dakvlak af: ${fmt((it.w * D) / R.cosA, 1)} m² · samen ${fmtW(sum)} W</div></div>`;
   };
   return `<div class="sec"><h3>Dakramen en dakkapellen</h3>${items.map(card).join('') || '<p class="note">Nog geen dakramen of dakkapellen in dit dakvlak.</p>'}
     <div class="row"><button class="btn small" data-act="addri" data-k="raam">+ Dakraam</button><button class="btn small" data-act="addri" data-k="kapel">+ Dakkapel</button></div>
-    <p class="note">Een dakraam (bijvoorbeeld een Velux) gaat met zijn oppervlak van het schuine dakvlak af. Een dakkapel heeft een voorkant met raam, twee driehoekige zijwangen en een plat dak. Zijn diepte volgt uit de hoogte van de voorkant en de dakhelling, en het stuk schuin dak eronder gaat eraf.</p></div>`;
+    <p class="note">Een dakraam (bijvoorbeeld een Velux) gaat met zijn oppervlak van het schuine dakvlak af. Een dakkapel heeft een voorkant met raam, twee driehoekige zijwangen en een plat dak. Zijn diepte volgt uit de hoogte van de voorkant en de dakhelling, en het stuk schuin dak eronder gaat eraf. De plek (langs de nok en vanaf de goot) bepaalt alleen waar ze in de tekening en in 2,5D staan.</p></div>`;
 }
 function roofEditor(room, surfCard) {
   const r = room.roof,

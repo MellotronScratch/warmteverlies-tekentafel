@@ -429,6 +429,34 @@ function render3d() {
             `<text x="${cc.X}" y="${cc.Y - 4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y + 13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${k.unheated ? 'onverwarmd' : fmt(k.total / 1000, 2) + ' kW'}</text>`
           );
         }
+        // sloped roof surfaces, see-through, so roof windows and dormers have something to sit on
+        {
+          const rp = roofParts(r);
+          if (rp)
+            rp.parts
+              .filter(p => p.kind === 'slope')
+              .forEach(p => {
+                const q = p.poly.map(v => P3(v, z0 + rp.R.z(rp.R.sOf(v))));
+                items.push({
+                  near: true,
+                  d: q.reduce((a, v) => a + v.d, 0) / q.length,
+                  svg: `<polygon points="${q.map(pt).join(' ')}" fill="var(--muted)" fill-opacity=".1" stroke="var(--muted)" stroke-opacity=".45" stroke-width="1" pointer-events="none"/>`
+                });
+              });
+        }
+        // roof windows (glass in the slope) and dormers (front with window, cheeks, flat roof)
+        roofItemGeom(r).forEach(g =>
+          g.polys.forEach(pl => {
+            const q = pl.pts.map(p => P3(p, z0 + p.z)),
+              fill = pl.kind === 'glass' ? 'var(--heat)' : pl.kind === 'roof' ? 'var(--muted)' : 'var(--surface)',
+              op = pl.kind === 'glass' ? 0.6 : 0.85;
+            items.push({
+              mid: true,
+              d: q.reduce((a, p) => a + p.d, 0) / q.length + 0.01,
+              svg: `<polygon points="${q.map(pt).join(' ')}" fill="${fill}" fill-opacity="${op}" stroke="${pl.kind === 'glass' ? 'var(--heat)' : 'var(--ink)'}" stroke-opacity=".8" stroke-width="1.2" stroke-linejoin="round" pointer-events="none"/>`
+            });
+          })
+        );
         // knee walls: a low partition under the slope (dashed outline)
         kneeSegs(r).forEach(sg => {
           const h = r.roof.kneeH,
@@ -836,6 +864,15 @@ function renderCanvas() {
     if (hover.kind === 'riser')
       out += `<text x="${q.x + 10}" y="${q.y - 8}" class="dim" font-size="10" fill="#DC2626">stijgleiding</text>`;
   }
+  // roof windows and dormers: their outline in the plan (dashed)
+  curRooms().forEach(r =>
+    roofItemGeom(r).forEach(g => {
+      const q = g.plan.map(S),
+        c = { x: q.reduce((a, p) => a + p.x, 0) / q.length, y: q.reduce((a, p) => a + p.y, 0) / q.length };
+      out += `<polygon points="${q.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="${g.it.kind === 'raam' ? 'var(--heat)' : 'none'}" fill-opacity=".12" stroke="var(--heat)" stroke-width="1.4" stroke-dasharray="4 3" pointer-events="none"/>`;
+      out += `<text x="${c.x}" y="${c.y + 3}" text-anchor="middle" class="dim" font-size="9.5" pointer-events="none">${esc(g.it.name)}</text>`;
+    })
+  );
   // knee walls: a dashed line where the partition stands, storage behind it
   curRooms().forEach(r => {
     const K = kneeLines(r);

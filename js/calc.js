@@ -267,6 +267,116 @@ const dormerDepth = (room, it) => {
   const R = roofOf(room);
   return R ? Math.max(0, it.hf) / R.k : 0;
 };
+// where roof windows and dormers sit, in the plan and in height (z above the floor of the room).
+// it.u = centre along the ridge (m from the start of the roof), it.d = distance from the eave:
+// along the slope to the bottom of a roof window, horizontally to the front of a dormer. Both optional (automatic).
+function slopeFrame(R, n) {
+  if (R.type === 'zadel') {
+    const wc = R.wc || 0;
+    return n === 0 ? { se: R.smin, dir: 1, st: R.sr - wc } : { se: R.smax, dir: -1, st: R.sr + wc };
+  }
+  const inside = R.sc > R.smin && R.sc < R.smax;
+  return R.lowMin
+    ? { se: R.smin, dir: 1, st: inside ? R.sc : R.smax }
+    : { se: R.smax, dir: -1, st: inside ? R.sc : R.smin };
+}
+function roofItemGeom(room) {
+  const R = roofOf(room),
+    items = (room.roof && room.roof.items) || [];
+  if (!R || !items.length) return [];
+  const us = room.pts.map(p => p.x * R.u.x + p.y * R.u.y),
+    umin = Math.min(...us),
+    umax = Math.max(...us),
+    nS = R.type === 'zadel' ? 2 : 1;
+  const W = (s, u) => ({ x: R.v.x * s + R.u.x * u, y: R.v.y * s + R.u.y * u });
+  const out = [];
+  for (let n = 0; n < nS; n++) {
+    const F = slopeFrame(R, n),
+      span = Math.abs(F.st - F.se),
+      mine = items.filter(it => Math.min(nS - 1, it.slope | 0) === n);
+    mine.forEach((it, k) => {
+      const uc = Number.isFinite(it.u) ? umin + it.u : umin + ((k + 0.5) * (umax - umin)) / mine.length,
+        u0 = uc - it.w / 2,
+        u1 = uc + it.w / 2,
+        g = { it, uc: uc - umin, polys: [], plan: [] };
+      if (it.kind === 'raam') {
+        const len = span / R.cosA,
+          d = Number.isFinite(it.d) ? it.d : Math.max(0, (len - it.h) / 2),
+          sa = F.se + F.dir * d * R.cosA,
+          sb = F.se + F.dir * (d + it.h) * R.cosA;
+        g.d = d;
+        const q = [W(sa, u0), W(sa, u1), W(sb, u1), W(sb, u0)];
+        g.polys.push({ kind: 'glass', pts: q.map((p, i) => ({ ...p, z: R.z(i < 2 ? sa : sb) })) });
+        g.plan = q;
+      } else {
+        const D = Math.max(0, it.hf) / R.k,
+          f = Number.isFinite(it.d) ? it.d : Math.max(0.1, (span - D) * 0.35),
+          sf = F.se + F.dir * f,
+          sb = sf + F.dir * D,
+          zb = R.z(sf),
+          zt = zb + it.hf;
+        g.d = f;
+        const P0 = W(sf, u0),
+          P1 = W(sf, u1),
+          B0 = W(sb, u0),
+          B1 = W(sb, u1);
+        g.polys.push({
+          kind: 'wall',
+          pts: [
+            { ...P0, z: zb },
+            { ...P1, z: zb },
+            { ...P1, z: zt },
+            { ...P0, z: zt }
+          ]
+        });
+        const ww = Math.min(it.winw, it.w - 0.1),
+          wh = Math.min(it.winh, it.hf - 0.1);
+        if (ww > 0 && wh > 0) {
+          const a = uc - ww / 2,
+            b = uc + ww / 2,
+            z0 = zb + (it.hf - wh) / 2;
+          g.polys.push({
+            kind: 'glass',
+            pts: [
+              { ...W(sf, a), z: z0 },
+              { ...W(sf, b), z: z0 },
+              { ...W(sf, b), z: z0 + wh },
+              { ...W(sf, a), z: z0 + wh }
+            ]
+          });
+        }
+        g.polys.push({
+          kind: 'wall',
+          pts: [
+            { ...P0, z: zb },
+            { ...P0, z: zt },
+            { ...B0, z: zt }
+          ]
+        });
+        g.polys.push({
+          kind: 'wall',
+          pts: [
+            { ...P1, z: zb },
+            { ...P1, z: zt },
+            { ...B1, z: zt }
+          ]
+        });
+        g.polys.push({
+          kind: 'roof',
+          pts: [
+            { ...P0, z: zt },
+            { ...P1, z: zt },
+            { ...B1, z: zt },
+            { ...B0, z: zt }
+          ]
+        });
+        g.plan = [P0, P1, B1, B0];
+      }
+      out.push(g);
+    });
+  }
+  return out;
+}
 function roomVolume(room) {
   const rp = roofParts(room);
   const Af = Math.abs(polyArea(room.pts));

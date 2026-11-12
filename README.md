@@ -100,11 +100,13 @@ Bij een ruimte met een schuin dak staat onder het dakvlak **Dakramen en dakkapel
 - **+ Dakraam**: breedte, lengte langs de helling, constructie (bijvoorbeeld de Uw van het dakraam) en op welk dakvlak. Het oppervlak gaat van het dakvlak af.
 - **+ Dakkapel**: breedte, hoogte van de voorkant en het dakvlak, met constructies voor de wanden en het platte dak, en een raam in de voorkant. De app rekent de voorkant, de twee driehoekige zijwangen en het platte dak uit. De diepte volgt uit de hoogte en de dakhelling. Het stuk schuin dak waar de dakkapel staat, gaat eraf, en de inhoud van de ruimte wordt groter.
 
-Dakramen en dakkapellen hebben nog geen plek in de plattegrond. Ze tellen alleen mee in de berekening.
+Waar ze zitten, geef je aan met **Midden langs de nok** en **vanaf de goot**: langs de helling tot de onderkant van een dakraam, of horizontaal tot de voorkant van een dakkapel. Laat je die leeg, dan verdeelt de app ze gelijkmatig over het dakvlak. In de plattegrond staan ze als stippellijn. In de 2,5D-weergave zie je de dakramen in het schuine dakvlak, en de dakkapellen met voorkant, raam, zijwangen en plat dak. De plek telt niet mee in de berekening.
 
 ### Kruipruimte en kelder
 
 Onder **Project → Verdiepingen** voeg je met **+ Kruipruimte** of **+ Kelder** een verdieping toe onder de laagste. Ruimtes die je daar tekent, zijn **onverwarmd**: ze tellen niet mee in het warmteverlies. Hun temperatuur (standaard 10 °C voor een kruipruimte en 12 °C voor een kelder) geldt voor de vloer erboven, als die op *Automatisch* staat. Waar niets getekend is, rekent de vloer met de grond. Je kunt er ook leidingen, de warmtepomp of het boilervat tekenen, met stijgleidingen naar boven.
+
+Een verdieping verwijder je onder **Project → Verdiepingen** met ✕. Alles wat erop staat (ruimtes, leidingen en eventueel de warmtepomp) gaat mee, en ongedaan maken kan. Liep een trappenhuis of vide door tot die verdieping, dan stopt hij een verdieping lager.
 
 Elke ruimte kun je met het vinkje **Verwarmde ruimte** ook zelf op onverwarmd zetten, bijvoorbeeld een berging of garage.
 
