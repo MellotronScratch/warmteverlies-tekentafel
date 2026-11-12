@@ -89,7 +89,22 @@ Een knieschot is een laag schot onder de schuine kap, bijvoorbeeld op een kwart 
 
 Het knieschot is een aanvulling op de tekening en telt niet mee in de berekening: de bergruimte erachter ligt binnen de geïsoleerde schil. De ruimte rekent dus gewoon als één geheel tot aan de gevels.
 
-Wil je de zolder opdelen in kamers, trek dan met **Wand** een lijn van knieschot naar knieschot. De lijn klikt vast op de stippellijnen, en de app laat de wand doorlopen tot de gevels. Elke kamer houdt zo zijn eigen stuk knieschot.
+Wil je de zolder opdelen in kamers, trek dan met **Wand** een lijn van knieschot naar knieschot. De lijn klikt vast op de stippellijnen. De wand staat alleen tussen de knieschotten. Daarachter, in de bergruimte, deelt een open verbinding (stippellijn, geen wand) de zolder verder op tot de gevel.
+
+### Dakramen en dakkapellen
+
+Bij een ruimte met een schuin dak staat onder het dakvlak **Dakramen en dakkapellen**:
+
+- **+ Dakraam**: breedte, lengte langs de helling, constructie (bijvoorbeeld de Uw van het dakraam) en op welk dakvlak. Het oppervlak gaat van het dakvlak af.
+- **+ Dakkapel**: breedte, hoogte van de voorkant en het dakvlak, met constructies voor de wanden en het platte dak, en een raam in de voorkant. De app rekent de voorkant, de twee driehoekige zijwangen en het platte dak uit. De diepte volgt uit de hoogte en de dakhelling. Het stuk schuin dak waar de dakkapel staat, gaat eraf, en de inhoud van de ruimte wordt groter.
+
+Dakramen en dakkapellen hebben nog geen plek in de plattegrond. Ze tellen alleen mee in de berekening.
+
+### Kruipruimte en kelder
+
+Onder **Project → Verdiepingen** voeg je met **+ Kruipruimte** of **+ Kelder** een verdieping toe onder de laagste. Ruimtes die je daar tekent, zijn **onverwarmd**: ze tellen niet mee in het warmteverlies. Hun temperatuur (standaard 10 °C voor een kruipruimte en 12 °C voor een kelder) geldt voor de vloer erboven, als die op *Automatisch* staat. Waar niets getekend is, rekent de vloer met de grond. Je kunt er ook leidingen, de warmtepomp of het boilervat tekenen, met stijgleidingen naar boven.
+
+Elke ruimte kun je met het vinkje **Verwarmde ruimte** ook zelf op onverwarmd zetten, bijvoorbeeld een berging of garage.
 
 ### Binnenmaat of buitenmaat?
 

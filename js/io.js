@@ -233,7 +233,7 @@ function toHeatlossjs() {
       });
     });
     transLines(r)
-      .lines.filter(l => l.group === 'floor' || l.group === 'ceil' || l.group === 'roof')
+      .lines.filter(l => l.group === 'floor' || l.group === 'ceil' || l.group === 'roof' || l.ri)
       .forEach(l => {
         const s = r[l.group];
         if (!s || l.A < 1e-4) return;

@@ -193,7 +193,8 @@ function viewSet() {
       })
       .reverse()
       .join('')}
-    <div class="row"><button class="btn small" data-act="addfloor">+ Verdieping</button></div></div>
+    <div class="row"><button class="btn small" data-act="addfloor">+ Verdieping</button>${P.floors[0] && P.floors[0].below ? '' : '<button class="btn small" data-act="addbelow" data-k="kruip">+ Kruipruimte</button><button class="btn small" data-act="addbelow" data-k="kelder">+ Kelder</button>'}</div>
+    <p class="note">Een kruipruimte of kelder komt onder de laagste verdieping. Ruimtes daar zijn onverwarmd: ze tellen niet mee in het warmteverlies, maar de vloer erboven rekent met hun temperatuur. Je kunt er ook leidingen, de warmtepomp of een boilervat tekenen.</p></div>
   <div class="sec"><h3>Rekenwaarden</h3><div class="fields">
     ${numField('f-s-te', 'set.te', 'Buitentemperatuur θe', '°C', S.te, 1)}${numField('f-s-tg', 'set.tGround', 'Grond / kruipruimte', '°C', S.tGround, 1)}
     ${numField('f-s-tu', 'set.tUnheated', 'Onverwarmde ruimte', '°C', S.tUnheated, 1)}${numField('f-s-tn', 'set.tNeighbour', 'Buurwoning', '°C', S.tNeighbour, 1)}
@@ -374,6 +375,9 @@ function applyField(el, final) {
       if (k === 'name') {
         room.name = v;
         changed = true;
+      } else if (k === 'heated') {
+        room.heated = el.checked;
+        changed = true;
       } else if (k === 'roofFrom') {
         room.roofFrom = v && getRoom(v) && v !== room.id ? v : '';
         changed = true;
@@ -388,6 +392,21 @@ function applyField(el, final) {
         room[k] = n;
         changed = true;
       }
+      break;
+    }
+    case 'ri': {
+      const it = room && (room.roof.items || []).find(x => x.id === parts[1]);
+      if (!it) return;
+      const k = parts[2];
+      if (k === 'name' || k === 'cid' || k === 'cidW' || k === 'cidR' || k === 'wincid') it[k] = v;
+      else if (k === 'slope') it.slope = parseInt(v, 10) || 0;
+      else {
+        const n = num(v);
+        if (n == null || n < 0 || n > 30) return;
+        if ((k === 'w' || k === 'h' || k === 'hf') && n <= 0) return;
+        it[k] = n;
+      }
+      changed = true;
       break;
     }
     case 'pipe': {
@@ -921,8 +940,47 @@ function act(a, b) {
       );
       break;
     }
+    case 'addri': {
+      if (!room) return;
+      pushUndo();
+      const raam = b.dataset.k === 'raam',
+        wall = (P.constructions.find(c => c.kind === 'wand' && !c.inner) || {}).id || defaultCid('wand');
+      room.roof.items = room.roof.items || [];
+      const n = room.roof.items.filter(x => x.kind === (raam ? 'raam' : 'kapel')).length + 1;
+      room.roof.items.push(
+        raam
+          ? { id: rid(), kind: 'raam', name: 'Dakraam ' + n, slope: 0, w: 0.78, h: 1.4, cid: defaultCid('raam') }
+          : {
+              id: rid(),
+              kind: 'kapel',
+              name: 'Dakkapel ' + n,
+              slope: 0,
+              w: 2.4,
+              hf: 1.5,
+              cidW: wall,
+              cidR: room.roof.cid || defaultCid('dak'),
+              winw: 1.8,
+              winh: 1.0,
+              wincid: defaultCid('raam')
+            }
+      );
+      markDirty();
+      renderAll();
+      break;
+    }
+    case 'delri': {
+      if (!room) return;
+      pushUndo();
+      room.roof.items = (room.roof.items || []).filter(x => x.id !== b.dataset.i);
+      markDirty();
+      renderAll();
+      break;
+    }
     case 'addfloor':
       addFloor();
+      break;
+    case 'addbelow':
+      addBelow(b.dataset.k);
       break;
     case 'vvfill': {
       const r = getRoom(b.dataset.r);

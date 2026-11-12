@@ -262,11 +262,20 @@ const kneeSegs = room => {
   const K = kneeLines(room);
   return K.cs.map(k => lineAcross(room, K.R, k.c)).filter(Boolean);
 };
+// horizontal depth of a dormer: from its front to where its flat roof meets the slope
+const dormerDepth = (room, it) => {
+  const R = roofOf(room);
+  return R ? Math.max(0, it.hf) / R.k : 0;
+};
 function roomVolume(room) {
   const rp = roofParts(room);
   const Af = Math.abs(polyArea(room.pts));
   if (!rp) return Af * room.height;
-  return rp.parts.reduce((a, p) => a + p.A * p.z, 0);
+  // dormers add a wedge of ½ · w · D · hf
+  const extra = (room.roof.items || [])
+    .filter(it => it.kind === 'kapel')
+    .reduce((a, it) => a + 0.5 * it.w * dormerDepth(room, it) * it.hf, 0);
+  return rp.parts.reduce((a, p) => a + p.A * p.z, 0) + extra;
 }
 // wall pieces of one segment: per neighbouring room (auto) and the rest, each with length and real area
 function wallParts(room, i, s0, s1, nb, R) {
@@ -349,7 +358,8 @@ function transLines(room) {
       group: o.group,
       cid: c ? c.id : '',
       nb: o.nb || null,
-      t: o.t
+      t: o.t,
+      ri: o.ri || false
     });
   };
   room.pts.forEach((_, i) => {
@@ -446,7 +456,9 @@ function transLines(room) {
       // what lies below / above follows from the drawing of the storey below / above
       const nb = surfNeighbours(room, k, poly || room.pts);
       // with nothing drawn: ground under the lowest storey, the unheated space under the ridge above a flat ceiling under a sloped roof, otherwise outside
-      const rest = k === 'floor' ? (nb ? 'buiten' : 'grond') : poly ? 'onverwarmd' : 'buiten',
+      // under the lowest storey, or above a crawl space / basement where nothing is drawn: the ground
+      const belowF = P.floors[levelsOf(room)[0] - 1],
+        rest = k === 'floor' ? (nb && !(belowF && belowF.below) ? 'buiten' : 'grond') : poly ? 'onverwarmd' : 'buiten',
         restLab =
           ADJ[rest].toLowerCase() +
           (nb && k === 'floor' ? ' (niets eronder)' : nb && rest === 'buiten' ? ' (niets erboven)' : '');
@@ -526,14 +538,63 @@ function transLines(room) {
   else {
     const slopes = rp.parts.filter(p => p.kind === 'slope'),
       cap = rp.parts.filter(p => p.kind === 'cap').reduce((a, p) => a + p.A, 0);
-    slopes.forEach((p, n) =>
+    // roof windows and dormers take their area out of the slope they sit in
+    const rf = room.roof,
+      tR = adjTemp(rf.adj, rf.t),
+      items = rf.items || [];
+    slopes.forEach((p, n) => {
+      const lab = slopes.length > 1 ? `Dakvlak ${n + 1}` : 'Dakvlak',
+        mine = items.filter(it => Math.min(slopes.length - 1, it.slope | 0) === n);
+      let off = 0;
+      mine.forEach(it => {
+        if (it.kind === 'raam') {
+          const A = Math.max(0, it.w * it.h),
+            con = conById(it.cid);
+          off += A;
+          push({
+            label: lab + ' · ' + (it.name || 'Dakraam'),
+            sub: ((con || {}).name || 'geen constructie') + ' → ' + ADJ[rf.adj].toLowerCase(),
+            A,
+            con,
+            t: tR,
+            type: rf.adj,
+            group: 'open',
+            ri: true
+          });
+        } else {
+          // dormer: front wall w × hf with a window, two triangular cheeks, a flat roof w × D; D follows from the pitch
+          const D = dormerDepth(room, it),
+            win = Math.max(0, Math.min(it.winw * it.winh, it.w * it.hf)),
+            cw = conById(it.cidW),
+            cr = conById(it.cidR),
+            cg = conById(it.wincid),
+            nm = (it.name || 'Dakkapel') + ' · ';
+          off += (it.w * D) / rp.R.cosA;
+          const ln = (part, A, con, group) =>
+            A > 1e-4 &&
+            push({
+              label: lab + ' · ' + nm + part,
+              sub: ((con || {}).name || 'geen constructie') + ' → ' + ADJ[rf.adj].toLowerCase(),
+              A,
+              con,
+              t: tR,
+              type: rf.adj,
+              group,
+              ri: true
+            });
+          ln('voorkant', it.w * it.hf - win, cw, 'roof');
+          ln('raam', win, cg, 'open');
+          ln('zijwangen', D * it.hf, cw, 'roof');
+          ln('plat dak', it.w * D, cr, 'roof');
+        }
+      });
       topLine(
         'roof',
-        slopes.length > 1 ? `Dakvlak ${n + 1}` : 'Dakvlak',
-        p.A / rp.R.cosA,
-        ` · ${fmt(p.A, 1)} m² horizontaal, helling ${nv(room.roof.pitch, 0)}°`
-      )
-    );
+        lab,
+        Math.max(0, p.A / rp.R.cosA - off),
+        ` · ${fmt(p.A, 1)} m² horizontaal, helling ${nv(rf.pitch, 0)}°${off > 0 ? `, min ${fmt(off, 1)} m² voor dakramen en dakkapellen` : ''}`
+      );
+    });
     const capPolys = rp.parts.filter(p => p.kind === 'cap');
     capPolys.forEach(p => topLine('ceil', 'Vlak plafond', p.A, '', p.poly));
   }
@@ -546,12 +607,35 @@ function supplyTemp() {
 }
 function infTotal() {
   const S = P.settings;
-  const Ag = P.rooms.reduce((a, r) => a + Math.abs(polyArea(r.pts)), 0);
+  const Ag = P.rooms.filter(r => r.heated !== false).reduce((a, r) => a + Math.abs(polyArea(r.pts)), 0);
   return { Ag, q: 0.46 * S.qv10 * Ag * S.fInf * 3.6 };
 } // m³/h
 function calcRoom(room) {
   const S = P.settings,
     ti = room.temp;
+  if (room.heated === false) {
+    // unheated (crawl space, basement): not part of the heat demand; neighbours use its temperature
+    const Af = Math.abs(polyArea(room.pts));
+    return {
+      lines: [],
+      trans: 0,
+      vent: 0,
+      inf: 0,
+      total: 0,
+      Af,
+      V: roomVolume(room),
+      missing: 0,
+      env: 0,
+      qi: 0,
+      ts: supplyTemp(),
+      qo: 0,
+      phiS: 0,
+      phiO: 0,
+      tin: [],
+      air: airBalance(room),
+      unheated: true
+    };
+  }
   const t = transLines(room);
   const { lines, missing, Af } = t;
   const V = roomVolume(room);
@@ -569,7 +653,7 @@ function calcRoom(room) {
   let qi;
   if (S.infMode === 'qv10') {
     const tot = infTotal();
-    const envAll = P.rooms.reduce((a, r) => a + (r === room ? env : envOf(transLines(r))), 0);
+    const envAll = P.rooms.reduce((a, r) => a + (r === room ? env : r.heated === false ? 0 : envOf(transLines(r))), 0);
     qi = envAll > 0 ? (tot.q * env) / envAll : tot.Ag > 0 ? (tot.q * Af) / tot.Ag : 0;
   } else qi = (S.nInf || 0) * V;
   const inf = RHOC * qi * (ti - S.te),

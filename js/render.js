@@ -426,7 +426,7 @@ function render3d() {
         if (top) {
           const cc = P3(labelPt(r.pts), z0);
           labels.push(
-            `<text x="${cc.X}" y="${cc.Y - 4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y + 13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${fmt(k.total / 1000, 2)} kW</text>`
+            `<text x="${cc.X}" y="${cc.Y - 4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y + 13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${k.unheated ? 'onverwarmd' : fmt(k.total / 1000, 2) + ' kW'}</text>`
           );
         }
         // knee walls: a low partition under the slope (dashed outline)
@@ -976,7 +976,9 @@ function renderCanvas() {
       hpx = (y1 - y0) * view.s;
     const full = wpx >= 110 && hpx >= 96;
     out += `<text x="${c.x}" y="${c.y - 14}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}${spans(r) ? ' ↑' : ''}${full ? ' · ' + fmt(k.Af, 1) + ' m²' : ''}${k.missing ? ' ⚠' : ''}</text>`;
-    out += `<text x="${c.x}" y="${c.y + 6}" text-anchor="middle" class="rheat" font-size="${full ? 18 : 14}" pointer-events="none">${fmt(k.total / 1000, 2)} kW</text>`;
+    out += k.unheated
+      ? `<text x="${c.x}" y="${c.y + 6}" text-anchor="middle" class="rsub" font-size="12" pointer-events="none">onverwarmd · ${nv(r.temp, 1)} °C</text>`
+      : `<text x="${c.x}" y="${c.y + 6}" text-anchor="middle" class="rheat" font-size="${full ? 18 : 14}" pointer-events="none">${fmt(k.total / 1000, 2)} kW</text>`;
     if (full) {
       const bw = Math.min(84, wpx - 30),
         br = brk(k),

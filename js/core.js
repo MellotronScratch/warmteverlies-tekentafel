@@ -449,7 +449,10 @@ function normalizeProject(p) {
   p.rooms = Array.isArray(p.rooms) ? p.rooms.filter(r => r && Array.isArray(r.pts) && r.pts.length >= 3) : [];
   p.floors = Array.isArray(p.floors) && p.floors.length ? p.floors.filter(f => f && f.id) : [];
   if (!p.floors.length) p.floors = [{ id: 'f' + rid(), name: 'Begane grond' }];
-  p.floors.forEach(f => (f.name = String(f.name || 'Verdieping')));
+  p.floors.forEach(f => {
+    f.name = String(f.name || 'Verdieping');
+    f.below = f.below === 'kelder' || f.below === 'kruip' ? f.below : '';
+  });
   const rids = new Set(p.rooms.map(r => r.id));
   p.transfers = (Array.isArray(p.transfers) ? p.transfers : [])
     .map(t => ({ id: t.id || rid(), from: t.from, to: t.to, q: Math.max(0, +t.q || 0) }))
@@ -502,6 +505,8 @@ function normalizeProject(p) {
       };
     });
   p.rooms.forEach(r => {
+    // an unheated room (crawl space, basement, storage): no heat loss of its own, its temperature counts for its neighbours
+    r.heated = r.heated !== false;
     r.id = r.id || rid();
     r.name = String(r.name || 'Ruimte');
     r.temp = Number.isFinite(+r.temp) ? +r.temp : 20;
@@ -566,6 +571,24 @@ function normalizeProject(p) {
       r.roof || {}
     );
     // knee walls (knieschotten) under a sloped roof: on/off and height (drawing only)
+    // roof windows and dormers on a sloped roof
+    r.roof.items = (Array.isArray(r.roof.items) ? r.roof.items : [])
+      .filter(it => it && (it.kind === 'raam' || it.kind === 'kapel'))
+      .map(it => ({
+        id: it.id || rid(),
+        kind: it.kind,
+        name: String(it.name || (it.kind === 'raam' ? 'Dakraam' : 'Dakkapel')),
+        slope: it.slope | 0,
+        w: +it.w > 0 ? +it.w : 1,
+        h: +it.h > 0 ? +it.h : 1,
+        hf: +it.hf > 0 ? +it.hf : 1.5,
+        cid: it.cid || '',
+        cidW: it.cidW || '',
+        cidR: it.cidR || '',
+        winw: +it.winw >= 0 ? +it.winw : 1.6,
+        winh: +it.winh >= 0 ? +it.winh : 1,
+        wincid: it.wincid || ''
+      }));
     r.roof.kneeOn = !!r.roof.kneeOn;
     r.roof.kneeH = +r.roof.kneeH > 0 ? +r.roof.kneeH : 1;
     if (!ROOF_TYPES[r.roof.type]) r.roof.type = 'plat';
@@ -740,5 +763,20 @@ function addFloor() {
   showUnder = true;
   setFloor(f.id);
   toast(`${f.name} toegevoegd. De verdieping eronder staat lichtgrijs als ondergrond.`);
+}
+// a crawl space or basement: an extra storey under the lowest one; its rooms are unheated by default
+function addBelow(kind) {
+  pushUndo();
+  const f = {
+    id: 'f' + rid(),
+    name: kind === 'kelder' ? 'Kelder' : 'Kruipruimte',
+    below: kind === 'kelder' ? 'kelder' : 'kruip'
+  };
+  P.floors.unshift(f);
+  markDirty();
+  setFloor(f.id);
+  toast(
+    `${f.name} toegevoegd onder de laagste verdieping. Teken hier de ruimte; die is onverwarmd en telt niet mee in het warmteverlies.`
+  );
 }
 function fitIfEmptyView() {}

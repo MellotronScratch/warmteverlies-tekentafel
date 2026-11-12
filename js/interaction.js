@@ -96,10 +96,20 @@ function makeRoom(pts) {
   const wc = defaultCid('wand');
   const r = {
     id: rid(),
-    name: 'Ruimte ' + n,
+    name: (P.floors[floorIdx(curFloor)] || {}).below
+      ? P.floors[floorIdx(curFloor)].below === 'kelder'
+        ? 'Kelder'
+        : 'Kruipruimte'
+      : 'Ruimte ' + n,
     floorId: curFloor,
-    temp: 20,
-    height: P.settings.height,
+    temp: (P.floors[floorIdx(curFloor)] || {}).below ? (P.floors[floorIdx(curFloor)].below === 'kelder' ? 12 : 10) : 20,
+    heated: !(P.floors[floorIdx(curFloor)] || {}).below,
+    height:
+      (P.floors[floorIdx(curFloor)] || {}).below === 'kruip'
+        ? 0.6
+        : (P.floors[floorIdx(curFloor)] || {}).below === 'kelder'
+          ? 2.2
+          : P.settings.height,
     sup: 0,
     ext: 0,
     pts: pts.map(p => ({ x: r3(p.x), y: r3(p.y) })),
@@ -494,16 +504,26 @@ function extendToBoundary(line) {
     });
     return best == null ? null : { x: r3(p.x + d.x * best), y: r3(p.y + d.y * best) };
   };
-  const out = line.slice(),
-    n = out.length;
+  const out = line.slice();
+  // the wall stops at the knee wall: behind it the line only divides the room (an open connection, no wall)
+  let first = false,
+    last = false;
   if (onBoundary(room, out[0]) < 0 && onKneeLine(out[0])) {
     const q = hit(out[0], { x: out[0].x - out[1].x, y: out[0].y - out[1].y });
-    if (q) out[0] = q;
+    if (q) {
+      out.unshift(q);
+      first = true;
+    }
   }
-  if (onBoundary(room, out[n - 1]) < 0 && onKneeLine(out[n - 1])) {
-    const q = hit(out[n - 1], { x: out[n - 1].x - out[n - 2].x, y: out[n - 1].y - out[n - 2].y });
-    if (q) out[n - 1] = q;
+  const m = out.length;
+  if (onBoundary(room, out[m - 1]) < 0 && onKneeLine(out[m - 1])) {
+    const q = hit(out[m - 1], { x: out[m - 1].x - out[m - 2].x, y: out[m - 1].y - out[m - 2].y });
+    if (q) {
+      out.push(q);
+      last = true;
+    }
   }
+  out.openSegs = new Set([...(first ? [0] : []), ...(last ? [out.length - 2] : [])]);
   return out;
 }
 function crossesProper(p1, p2, q1, q2) {
@@ -571,8 +591,10 @@ function splitRoomParts(room, line, open) {
     a = R.pts.indexOf(va),
     b = R.pts.indexOf(vb),
     inner = line.slice(1, -1).map(p => ({ x: r3(p.x), y: r3(p.y) }));
+  // line.openSegs: parts of the line behind a knee wall, where the new wall does not continue (an open connection)
   const ic = innerWallCid(),
-    nw = () => ({ cuts: [], segs: [seg(ic, open ? 'open' : 'auto')], _o: -1 });
+    so = line.openSegs || new Set(),
+    nw = k => ({ cuts: [], segs: [seg(ic, open || so.has(k) ? 'open' : 'auto')], _o: -1 });
   const ring = (from, to) => {
     const pts = [],
       walls = [];
@@ -587,9 +609,10 @@ function splitRoomParts(room, line, open) {
     B = ring(b, a);
   A.pts.push(...inner.slice().reverse());
   B.pts.push(...inner);
+  // B runs along the line from start to end, A the other way round
   for (let k = 0; k <= inner.length; k++) {
-    A.walls.push(nw());
-    B.walls.push(nw());
+    A.walls.push(nw(inner.length - k));
+    B.walls.push(nw(k));
   }
   const a0 = Math.abs(polyArea(room.pts)),
     aA = Math.abs(polyArea(A.pts)),

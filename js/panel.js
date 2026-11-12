@@ -168,6 +168,33 @@ function videRoofHtml(room, vt) {
     <label class="f" for="f-ceil-cid">Constructie dak<select class="in" id="f-ceil-cid" data-f="ceil.cid">${conOptions(room.ceil.cid, 'dak')}</select></label>
     ${line ? `<div class="det">${fmt(line.A, 1)} m² plat dak → buiten</div>` : ''}</div>`;
 }
+// roof windows and dormers on the sloped roof of a room
+function roofItemsHtml(room) {
+  const R = roofOf(room),
+    items = room.roof.items || [],
+    nSlopes = R && R.type === 'zadel' ? 2 : 1,
+    lines = calcRoom(room).lines;
+  const slopeSel = it =>
+    nSlopes > 1
+      ? `<label class="f" for="f-ri-${it.id}-sl">Op<select class="in" id="f-ri-${it.id}-sl" data-f="ri.${it.id}.slope">${[0, 1].map(n => `<option value="${n}" ${(it.slope | 0) === n ? 'selected' : ''}>Dakvlak ${n + 1}</option>`).join('')}</select></label>`
+      : '';
+  const card = it => {
+    const sum = lines.filter(l => l.ri && l.label.includes(' · ' + it.name)).reduce((a, l) => a + l.phi, 0);
+    const head = `<div class="row"><input class="in grow" id="f-ri-${it.id}-n" data-f="ri.${it.id}.name" value="${esc(it.name)}" aria-label="Naam"><button class="btn small" data-act="delri" data-i="${it.id}" aria-label="Verwijder ${esc(it.name)}">✕</button></div>`;
+    if (it.kind === 'raam')
+      return `<div class="card">${head}<div class="fields">${numField('f-ri-' + it.id + '-w', 'ri.' + it.id + '.w', 'Breedte', 'm', it.w, 2)}${numField('f-ri-' + it.id + '-h', 'ri.' + it.id + '.h', 'Lengte langs de helling', 'm', it.h, 2)}${slopeSel(it)}</div>
+        <label class="f" for="f-ri-${it.id}-c">Constructie<select class="in" id="f-ri-${it.id}-c" data-f="ri.${it.id}.cid">${conOptions(it.cid, 'raam')}</select></label>
+        <div class="det">${fmt(it.w * it.h, 2)} m² dakraam · ${fmtW(sum)} W. Dit oppervlak gaat van het dakvlak af.</div></div>`;
+    const D = dormerDepth(room, it);
+    return `<div class="card">${head}<div class="fields">${numField('f-ri-' + it.id + '-w', 'ri.' + it.id + '.w', 'Breedte', 'm', it.w, 2)}${numField('f-ri-' + it.id + '-hf', 'ri.' + it.id + '.hf', 'Hoogte voorkant', 'm', it.hf, 2)}${slopeSel(it)}</div>
+      <div class="fields"><label class="f" for="f-ri-${it.id}-cw">Wanden (voorkant en zijwangen)<select class="in" id="f-ri-${it.id}-cw" data-f="ri.${it.id}.cidW">${conOptions(it.cidW, 'wand')}</select></label><label class="f" for="f-ri-${it.id}-cr">Plat dak<select class="in" id="f-ri-${it.id}-cr" data-f="ri.${it.id}.cidR">${conOptions(it.cidR, 'dak')}</select></label></div>
+      <div class="fields">${numField('f-ri-' + it.id + '-ww', 'ri.' + it.id + '.winw', 'Raam breedte', 'm', it.winw, 2)}${numField('f-ri-' + it.id + '-wh', 'ri.' + it.id + '.winh', 'Raam hoogte', 'm', it.winh, 2)}<label class="f" for="f-ri-${it.id}-wc">Raam<select class="in" id="f-ri-${it.id}-wc" data-f="ri.${it.id}.wincid">${conOptions(it.wincid, 'raam')}</select></label></div>
+      <div class="det">Diepte ${fmt(D, 2)} m (volgt uit de hoogte en de dakhelling)<br>Voorkant ${fmt(it.w * it.hf, 1)} m² (waarvan raam ${fmt(Math.min(it.winw * it.winh, it.w * it.hf), 1)} m²) · zijwangen ${fmt(D * it.hf, 1)} m² · plat dak ${fmt(it.w * D, 1)} m²<br>Gaat van het dakvlak af: ${fmt((it.w * D) / R.cosA, 1)} m² · samen ${fmtW(sum)} W</div></div>`;
+  };
+  return `<div class="sec"><h3>Dakramen en dakkapellen</h3>${items.map(card).join('') || '<p class="note">Nog geen dakramen of dakkapellen in dit dakvlak.</p>'}
+    <div class="row"><button class="btn small" data-act="addri" data-k="raam">+ Dakraam</button><button class="btn small" data-act="addri" data-k="kapel">+ Dakkapel</button></div>
+    <p class="note">Een dakraam (bijvoorbeeld een Velux) gaat met zijn oppervlak van het schuine dakvlak af. Een dakkapel heeft een voorkant met raam, twee driehoekige zijwangen en een plat dak. Zijn diepte volgt uit de hoogte van de voorkant en de dakhelling, en het stuk schuin dak eronder gaat eraf.</p></div>`;
+}
 function roofEditor(room, surfCard) {
   const r = room.roof,
     R = roofOf(room),
@@ -205,16 +232,19 @@ function roofEditor(room, surfCard) {
     <div class="det">${R.type === 'zadel' ? 'Nokhoogte' : 'Hoogste punt'} ${fmt(R.nok)} m${!r.flat ? ' · open tot in de nok' : R.nok > R.cap ? ` · vlak plafond op ${fmt(R.cap)} m` : ' · plafond ligt boven de nok, dus open tot in de nok'}<br>Dakvlak ${fmt(slopeA / R.cosA, 1)} m² (${fmt(slopeA, 1)} m² horizontaal)${capA > 0 ? ` · vlak plafond ${fmt(capA, 1)} m²` : ''}<br>Inhoud ${fmt(roomVolume(room), 1)} m³</div>
     <p class="note"><b>Hoogte muurplaat</b> is de hoogte boven de vloer waar het schuine dak begint, meestal de bovenkant van de gevelmuur. Teken je de ruimte tot een laag wandje op zolder, vul dan de hoogte van dat wandje in. De nokhoogte volgt uit de dakhelling, deze hoogte en de breedte van de ruimte. Zonder vlak plafond loopt het dak door tot in de nok. Met een vlak plafond wordt alleen het stuk boven de plafondhoogte afgevlakt. Ligt de nok lager dan het plafond, dan blijft het gewoon een punt.</p></div>
   ${isoSvg(room)}
-  ${surfCard('roof', 'Dakvlak', 'dak')}`;
+  ${surfCard('roof', 'Dakvlak', 'dak')}
+  ${roofItemsHtml(room)}`;
   if (capA > 0) h += surfCard('ceil', 'Vlak plafond', 'dak');
   return h;
 }
 function roomCard(x) {
-  return `<button class="roomcard" data-act="selroom" data-r="${x.room.id}"><span class="rn">${esc(x.room.name)}</span><span class="rk">${fmt(x.c.total / 1000, 2)} kW</span>${segHtml(x.c, false)}<span class="rs">${fmt(x.c.Af, 1)} m² · ${nv(x.room.temp, 1)} °C${x.c.missing ? ' · ⚠ constructie ontbreekt' : ''}</span></button>`;
+  return `<button class="roomcard" data-act="selroom" data-r="${x.room.id}"><span class="rn">${esc(x.room.name)}</span><span class="rk">${x.c.unheated ? 'onverwarmd' : fmt(x.c.total / 1000, 2) + ' kW'}</span>${segHtml(x.c, false)}<span class="rs">${fmt(x.c.Af, 1)} m² · ${nv(x.room.temp, 1)} °C${x.c.missing ? ' · ⚠ constructie ontbreekt' : ''}</span></button>`;
 }
 function roomCalcHtml(room) {
   const c = calcRoom(room);
   const S = P.settings;
+  if (c.unheated)
+    return `<div class="kcard"><div class="kh"><span>${esc(room.name)}</span><b>onverwarmd</b></div><span class="note">Deze ruimte telt niet mee in het warmteverlies. Ruimtes ernaast, erboven of eronder rekenen met de temperatuur hier (${nv(room.temp, 1)} °C). Typisch: kruipruimte 8 à 12 °C, kelder 10 à 15 °C, onverwarmde berging 5 à 10 °C.</span></div>`;
   return `<div class="kcard"><div class="kh"><span>${esc(room.name)}</span><b>${fmt(c.total / 1000, 2)} kW</b></div>${segHtml(c, true)}
     <div class="seglegend"><span style="--c:transparent">${fmtW(c.trans)} W transmissie</span><span style="--c:transparent">${fmtW(c.vent + c.inf)} W lucht</span><span style="--c:transparent">${c.Af > 0 ? fmtW(c.total / c.Af) : '–'} W/m²</span></div></div>
   ${c.missing ? `<div class="warnbox">${c.missing} onderdeel${c.missing > 1 ? 'en hebben' : ' heeft'} nog geen constructie. Die tellen nu als 0 W.</div>` : ''}
@@ -254,7 +284,8 @@ function viewNone() {
 }
 function viewRoom(room) {
   let h = `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-room-name" data-f="room.name" value="${esc(room.name)}" aria-label="Naam ruimte"></div>
-  <div class="fields">${numField('f-room-temp', 'room.temp', 'Ontwerptemperatuur θi', '°C', room.temp, 1)}${roofOf(room) && !spans(room) ? '' : numField('f-room-h', 'room.height', spans(room) ? 'Totale hoogte' : 'Hoogte', 'm', room.height, 2)}${numField('f-room-sup', 'room.sup', P.settings.ventSys === 'D' ? 'Inblaas' : 'Toevoer (roosters)', 'm³/h', room.sup, 0)}${numField('f-room-ext', 'room.ext', 'Afzuiging', 'm³/h', room.ext, 0)}</div>
+  <label class="chk"><input type="checkbox" id="f-room-heated" data-f="room.heated" ${room.heated === false ? '' : 'checked'}> Verwarmde ruimte</label>
+  <div class="fields">${numField('f-room-temp', 'room.temp', room.heated === false ? 'Temperatuur (aangenomen)' : 'Ontwerptemperatuur θi', '°C', room.temp, 1)}${roofOf(room) && !spans(room) ? '' : numField('f-room-h', 'room.height', spans(room) ? 'Totale hoogte' : 'Hoogte', 'm', room.height, 2)}${numField('f-room-sup', 'room.sup', P.settings.ventSys === 'D' ? 'Inblaas' : 'Toevoer (roosters)', 'm³/h', room.sup, 0)}${numField('f-room-ext', 'room.ext', 'Afzuiging', 'm³/h', room.ext, 0)}</div>
   <div class="fields"><label class="f" for="f-room-kind">Soort ruimte<select class="in" id="f-room-kind" data-f="room.kind">${[
     ['normaal', 'Normale ruimte'],
     ['trap', 'Trappenhuis'],
