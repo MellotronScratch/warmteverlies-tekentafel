@@ -133,6 +133,7 @@ function lossLine(c, save) {
     at: t => (tot <= 0 || tref <= S.te ? 0 : Math.max(0, (tot * (tref - t)) / (tref - S.te)) / 1000)
   };
 }
+const fmtT = t => (t > 0 ? '+' : t < 0 ? '−' : '') + nv(Math.abs(t), 0) + ' °C';
 function hpJudge(h, L) {
   const te = P.settings.te,
     need = L.at(te),
@@ -151,7 +152,16 @@ function hpJudge(h, L) {
       }
     }
   }
-  const score = covers ? max / need - 1 + (mod ? 0 : 1) : 10 + (need - max);
+  // cycling: from this outdoor temperature on, the minimum output is above the heat loss (on/off instead of modulating)
+  let cyc = null;
+  for (let t = te; t <= 20 + 1e-9; t += 0.1)
+    if (hpAt(h, t, 'min') > L.at(t) + 1e-9) {
+      cyc = Math.round(t * 10) / 10;
+      break;
+    }
+  // ranking: oversize at the design temperature plus, weighed the same, how far the minimum at +10 °C exceeds the loss
+  const pend = need10 > 0 ? Math.max(0, min10 / need10 - 1) : min10 > 0 ? 1 : 0;
+  const score = covers ? max / need - 1 + pend : 10 + (need - max);
   return {
     need,
     need10,
@@ -161,6 +171,8 @@ function hpJudge(h, L) {
     mod,
     biv,
     score,
+    cyc,
+    pend,
     over: need > 0 ? max / need - 1 : 0,
     ex10: hpExtra(h, 10)
   };
@@ -208,7 +220,7 @@ function hpSectionHtml(c) {
   if (!hpSel || !hpList.some(h => h.id === hpSel)) hpSel = rows.length ? rows[0].h.id : null;
   const cur = rows.find(r => r.h.id === hpSel);
   let h = `<div class="sec"><h3>Warmtepomp</h3>
-    <p class="note">${save > 0 ? `<b>Beoordeeld op het warmteverlies na de aangevinkte maatregelen.</b> ` : ''}Bij ${nv(L.te, 0)} °C is het warmteverlies ${fmt(L.at(L.te), 2)} kW; bij +10 °C nog ${fmt(L.at(10), 2)} kW. Een geschikte warmtepomp levert bij ${nv(L.te, 0)} °C minstens dat vermogen, en kan bij +10 °C terugregelen tot onder het warmteverlies, zodat hij niet steeds aan- en afslaat.</p>`;
+    <p class="note">${save > 0 ? `<b>Beoordeeld op het warmteverlies na de aangevinkte maatregelen.</b> ` : ''}Bij ${nv(L.te, 0)} °C is het warmteverlies ${fmt(L.at(L.te), 2)} kW; bij +10 °C nog ${fmt(L.at(10), 2)} kW. Een geschikte warmtepomp levert bij ${nv(L.te, 0)} °C minstens dat vermogen, en kan bij +10 °C terugregelen tot onder het warmteverlies, zodat hij niet steeds aan- en afslaat (pendelen). Bij <i>pendelt boven</i> staat vanaf welke buitentemperatuur het minimale vermogen groter is dan het warmteverlies. Hoe hoger die temperatuur, hoe minder uren hij pendelt. De lijst is gesorteerd op beide: hoeveel te groot bij de ontwerptemperatuur, en hoeveel het minimum bij +10 °C boven het verlies ligt.</p>`;
   if (hpErr) h += `<div class="warnbox">${esc(hpErr)}</div>`;
   if (cur) h += hpChartHtml(cur.h, cur.j, L, L0);
   h += rows
@@ -220,7 +232,7 @@ function hpSectionHtml(c) {
       <span class="hn">${esc(hp.merk)} ${esc(hp.model)}<small>${hp.aanvoer ? 'aanvoer ' + nv(hp.aanvoer, 0) + ' °C · ' : ''}${esc(hp.bron)}</small></span>
       <span class="hk">${fmt(j.max, 1)} kW</span>
       <span class="hs">${j.covers ? `<span class="chip ok">✓ dekt ${nv(L.te, 0)} °C${j.over > 0.005 ? ` (+${fmtW(j.over * 100)}%)` : ''}</span>` : `<span class="chip bad">⚠ tekort ${fmt(j.need - j.max, 1)} kW${j.biv != null ? ` · bijverwarming nodig onder ${fmt(j.biv, 1)} °C` : ''}</span>`}
-      ${j.mod ? `<span class="chip ok">✓ min. ${fmt(j.min10, 1)} kW bij +10 °C</span>` : `<span class="chip bad">⚠ min. ${fmt(j.min10, 1)} kW bij +10 °C: slaat vaak aan en af</span>`}${j.ex10 ? '<span class="chip">+10 °C doorgerekend</span>' : ''}</span></button>`
+      ${j.mod ? `<span class="chip ok">✓ min. ${fmt(j.min10, 1)} kW bij +10 °C${j.cyc != null ? ` · pendelt boven ${fmtT(j.cyc)}` : ''}</span>` : `<span class="chip bad">⚠ min. ${fmt(j.min10, 1)} kW bij +10 °C (${fmtW(j.pend * 100 + 100)}% van het verlies): pendelt al boven ${fmtT(j.cyc)}</span>`}${j.ex10 ? '<span class="chip">+10 °C doorgerekend</span>' : ''}</span></button>`
     )
     .join('');
   h += `<div class="row"><button class="btn small" data-act="hpexport">Lijst downloaden (.json)</button><button class="btn small" data-act="hpimport">Eigen lijst importeren</button>${hpSource === 'eigen' ? '<button class="btn small" data-act="hpreset">Standaardlijst terugzetten</button>' : ''}</div>
