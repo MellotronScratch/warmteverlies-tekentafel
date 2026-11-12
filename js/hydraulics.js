@@ -237,6 +237,14 @@ function network() {
 }
 
 /* ---------- panels ---------- */
+function viewHp() {
+  const N = network();
+  return `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><h2>Warmtepomp</h2>
+    <p class="note">Het beginpunt van het leidingnet: de warmtepomp of de plek waar de leidingen van het buitendeel binnenkomen. Sleep het blokje om het te verplaatsen.</p></div>
+  <div class="fields">${floorSelect('f-hp-fl', 'hp.floorId', P.hpPos.floorId)}</div>
+  <div class="det">${N.root ? `Aangesloten op het leidingnet · ${fmtW(N.total)} l/h${N.index ? ` · indexcircuit ${fmt(N.index.dpTot, 1)} kPa` : ''}` : 'Nog niet aangesloten: laat een leiding hier beginnen.'}</div>
+  <div class="row"><button class="btn danger" data-act="delhp">Warmtepomp weghalen</button></div>`;
+}
 function vState(v) {
   return v > V_MAX ? 'bad' : v > V_OK ? 'warn' : 'ok';
 }

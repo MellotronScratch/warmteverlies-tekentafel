@@ -820,7 +820,14 @@ function renderCanvas() {
     const q = S(p);
     return `<g pointer-events="none" ${ghost ? 'opacity=".5"' : ''}><rect x="${q.x - 15}" y="${q.y - 11}" width="30" height="22" rx="4" fill="var(--surface)" stroke="#DC2626" stroke-width="2"/><text x="${q.x}" y="${q.y + 4}" text-anchor="middle" font-size="10" font-weight="700" fill="#DC2626" stroke="none">WP</text></g>`;
   };
-  if (layerOn('pipes') && P.hpPos && P.hpPos.floorId === curFloor) out += hpMark(P.hpPos, false);
+  if (layerOn('pipes') && P.hpPos && P.hpPos.floorId === curFloor) {
+    out += hpMark(P.hpPos, false);
+    const q = S(P.hpPos);
+    if (sel && sel.t === 'hp')
+      out += `<rect x="${q.x - 19}" y="${q.y - 15}" width="38" height="30" rx="6" fill="none" stroke="var(--heat)" stroke-width="2" pointer-events="none"/>`;
+    if (tool === 'select')
+      out += `<rect data-k="hp" x="${q.x - 16}" y="${q.y - 12}" width="32" height="24" fill="transparent" style="cursor:grab"><title>Warmtepomp: klik om te bewerken, sleep om te verplaatsen</title></rect>`;
+  }
   if (tool === 'hp' && hover) out += hpMark(hover, true);
   if (tool === 'pipe' && hover && !drag) {
     const q = S(hover),

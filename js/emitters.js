@@ -67,6 +67,7 @@ function viewPipe(pp) {
     need = calcAll().total / 1000,
     S = P.settings;
   return `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-pipe-name" data-f="pipe.name" value="${esc(pp.name)}" aria-label="Naam leiding"></div>
+  <div class="fields">${floorSelect('f-pipe-fl', 'pipe.floorId', pp.floorId)}</div>
   <div class="fields"><label class="f" for="f-pipe-mat">Materiaal<select class="in" id="f-pipe-mat" data-f="pipe.mat">${Object.entries(
     PIPES
   )

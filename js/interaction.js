@@ -71,6 +71,10 @@ function validateSel() {
     if (!(P.pipes || []).some(x => x.id === sel.p && x.floorId === curFloor)) sel = null;
     return;
   }
+  if (sel.t === 'hp') {
+    if (!P.hpPos || P.hpPos.floorId !== curFloor) sel = null;
+    return;
+  }
   const r = getRoom(sel.r);
   if (!r || !presentOn(r, curFloor)) {
     sel = null;
@@ -338,6 +342,15 @@ function insertVertex(room, i, t) {
 }
 function deleteSelection() {
   if (!sel) return;
+  if (sel.t === 'hp') {
+    pushUndo();
+    P.hpPos = null;
+    sel = null;
+    markDirty();
+    renderAll();
+    toast('Warmtepomp weggehaald.', true);
+    return;
+  }
   if (sel.t === 'pipe') {
     pushUndo();
     P.pipes = P.pipes.filter(x => x.id !== sel.p);
@@ -1037,6 +1050,14 @@ svg.addEventListener('pointerdown', e => {
       capture(e);
       return;
     }
+    if (k === 'hp') {
+      sel = { t: 'hp' };
+      tab = 'sel';
+      drag = { type: 'hp', moved: false };
+      capture(e);
+      renderAll();
+      return;
+    }
     if (k === 'pipe') {
       sel = { t: 'pipe', p: tgt.dataset.p };
       tab = 'sel';
@@ -1363,6 +1384,17 @@ svg.addEventListener('pointermove', e => {
       }
       o.at = t;
       syncLinkedAt(o, r, drag.w);
+      renderCanvas();
+      return;
+    }
+    if (drag.type === 'hp') {
+      const p = pipeSnap(wp, { alt: e.altKey });
+      if (P.hpPos.x === p.x && P.hpPos.y === p.y) return;
+      if (!drag.moved) {
+        pushUndo();
+        drag.moved = true;
+      }
+      P.hpPos = { floorId: P.hpPos.floorId, x: p.x, y: p.y };
       renderCanvas();
       return;
     }

@@ -222,6 +222,8 @@ function renderPanel() {
   let h = '';
   if (tab === 'sel' && sel && sel.t === 'pipe' && (validateSel(), sel)) {
     h = viewPipe(P.pipes.find(x => x.id === sel.p));
+  } else if (tab === 'sel' && sel && sel.t === 'hp' && (validateSel(), sel)) {
+    h = viewHp();
   } else if (tab === 'sel') {
     validateSel();
     const room = sel && getRoom(sel.r);
@@ -375,6 +377,15 @@ function applyField(el, final) {
       if (k === 'name') {
         room.name = v;
         changed = true;
+      } else if (k === 'floorId') {
+        if (!P.floors.some(f => f.id === v) || v === room.floorId) return;
+        room.floorId = v;
+        if (room.spanTo && floorIdx(room.spanTo) <= floorIdx(v)) room.spanTo = null;
+        setFloor(v, true);
+        markDirty();
+        renderAll();
+        toast(`${room.name} staat nu op ${P.floors[floorIdx(v)].name}.`, true);
+        return;
       } else if (k === 'heated') {
         room.heated = el.checked;
         changed = true;
@@ -409,10 +420,29 @@ function applyField(el, final) {
       changed = true;
       break;
     }
+    case 'hp': {
+      if (!P.hpPos || parts[1] !== 'floorId' || !P.floors.some(f => f.id === v)) return;
+      P.hpPos = { ...P.hpPos, floorId: v };
+      setFloor(v, true);
+      markDirty();
+      renderAll();
+      toast(`De warmtepomp staat nu op ${P.floors[floorIdx(v)].name}.`, true);
+      return;
+    }
     case 'pipe': {
       const pp = sel && sel.t === 'pipe' && P.pipes.find(x => x.id === sel.p);
       if (!pp) return;
       const k = parts[1];
+      if (k === 'floorId') {
+        // to another floor: the drawing follows, so the pipe stays selected
+        if (!P.floors.some(f => f.id === v) || v === pp.floorId) return;
+        pp.floorId = v;
+        setFloor(v, true);
+        markDirty();
+        renderAll();
+        toast(`${pp.name} staat nu op ${P.floors[floorIdx(v)].name}.`, true);
+        return;
+      }
       if (k === 'name') pp.name = v;
       else if (k === 'mat') {
         if (!PIPES[v]) return;
@@ -629,7 +659,8 @@ function applyField(el, final) {
         tUnheated: [-20, 30],
         tNeighbour: [0, 30],
         twSup: [20, 90],
-        twRet: [15, 85]
+        twRet: [15, 85],
+        tMax: [30, 80]
       };
       if (RANGE[k] && (n < RANGE[k][0] || n > RANGE[k][1])) {
         toast(`Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} °C en is niet overgenomen.`);
@@ -976,6 +1007,9 @@ function act(a, b) {
       renderAll();
       break;
     }
+    case 'delhp':
+      deleteSelection();
+      break;
     case 'addfloor':
       addFloor();
       break;

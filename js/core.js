@@ -82,6 +82,7 @@ const DEFAULT_SETTINGS = {
   fitPct: 30,
   bufVol: 0,
   minVolL: 15,
+  tMax: 55,
   ventSys: 'D',
   eta: 0.85,
   tRet: 20,
@@ -778,5 +779,12 @@ function addBelow(kind) {
   toast(
     `${f.name} toegevoegd onder de laagste verdieping. Teken hier de ruimte; die is onverwarmd en telt niet mee in het warmteverlies.`
   );
+}
+// <select> to move an element to another floor
+function floorSelect(id, f, cur, label) {
+  return `<label class="f" for="${id}">${label || 'Verdieping'}<select class="in" id="${id}" data-f="${f}">${P.floors
+    .map(fl => `<option value="${fl.id}" ${fl.id === cur ? 'selected' : ''}>${esc(fl.name)}</option>`)
+    .reverse()
+    .join('')}</select></label>`;
 }
 function fitIfEmptyView() {}

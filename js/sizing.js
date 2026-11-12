@@ -8,13 +8,15 @@ const CURVE_TOP = 15; // °C buiten: het voetpunt van de stooklijn
 function heatingCurve() {
   const S = P.settings,
     c = calcAll(),
+    dT = Math.max(0.5, S.twSup - S.twRet),
+    tMax = Math.max(30, +S.tMax || 55), // a heat pump cannot go higher than this
     rooms = c.per.filter(x => x.c.total > 0);
   const pts = [];
   let missing = rooms.filter(x => !(x.room.emitters || []).length).map(x => x.room);
   for (let t = Math.floor(S.te); t <= CURVE_TOP; t++) {
     let best = null,
-      lim = null,
-      inf = false;
+      lim = null;
+    const short = [];
     rooms.forEach(x => {
       const r = x.room;
       if (!(r.emitters || []).length || r.temp <= S.te) return;
@@ -22,21 +24,21 @@ function heatingCurve() {
       if (need <= 0) return;
       const ns = neededSupply(r, need);
       if (ns == null) return;
-      if (ns === Infinity) {
-        inf = true;
-        lim = r;
+      // above the maximum of the heat pump: this room stays too cold, by this much
+      if (ns === Infinity || ns > tMax + 1e-6) {
+        short.push({ room: r, W: need - roomEmit(r, tMax, tMax - dT) });
         return;
       }
-      if (!inf && (best == null || ns > best)) {
+      if (best == null || ns > best) {
         best = ns;
         lim = r;
       }
     });
-    pts.push({ t, ts: inf ? Infinity : best, room: lim });
+    pts.push({ t, ts: short.length ? tMax : best, room: short.length ? null : lim, short });
   }
   const design = pts[0],
     foot = pts[pts.length - 1];
-  return { pts, design, foot, missing, dT: Math.max(0.5, S.twSup - S.twRet) };
+  return { pts, design, foot, missing, dT, tMax };
 }
 
 function curveHtml() {
@@ -49,12 +51,7 @@ function curveHtml() {
       h +
       `<p class="note">Teken eerst radiatoren of vloerverwarming in de ruimtes. Daarna rekent de app uit welke aanvoertemperatuur bij elke buitentemperatuur nodig is.</p></div>`
     );
-  if (D.ts === Infinity)
-    return (
-      h +
-      `<p class="note" style="color:var(--warn)">⚠ In ${esc(D.room.name)} is de afgifte ook bij 90 °C aanvoer niet genoeg. Vergroot eerst de afgifte daar (zie het advies bij de ruimte).</p></div>`
-    );
-  const pts = K.pts.filter(p => p.ts != null && p.ts !== Infinity),
+  const pts = K.pts.filter(p => p.ts != null),
     F = pts[pts.length - 1] || D,
     slope = (D.ts - F.ts) / Math.max(1, F.t - D.t);
   // chart
@@ -91,14 +88,29 @@ function curveHtml() {
   h += `<div class="chartleg"><span><i style="background:var(--c-loss)"></i>nodig</span><span><i style="background:repeating-linear-gradient(90deg,var(--c-hp) 0 6px,transparent 6px 9px)"></i>stooklijn om in te stellen</span></div>
     <div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Stooklijn: aanvoertemperatuur tegen buitentemperatuur">${o}</svg></div>
     <div class="det">Eindpunt: bij ${nv(D.t, 0)} °C buiten ${fmt(D.ts, 1)} °C aanvoer<br>Voetpunt: bij +${CURVE_TOP} °C buiten ${fmt(F.ts, 1)} °C aanvoer<br>Helling: ${fmt(slope, 2)} K aanvoer per K buiten (ΔT aanvoer/retour ${nv(K.dT, 1)} K)</div>
-    <p class="note">Maatgevend: ${limits.map(esc).join(', ')}. Die ruimte heeft bij die buitentemperatuur de hoogste aanvoertemperatuur nodig. Vergroot je daar de afgifte, dan kan de hele stooklijn omlaag.</p>
+    ${limits.length ? `<p class="note">Maatgevend: ${limits.map(esc).join(', ')}. Die ruimte heeft bij die buitentemperatuur de hoogste aanvoertemperatuur nodig. Vergroot je daar de afgifte, dan kan de hele stooklijn omlaag.</p>` : ''}
     ${
-      diff > 1
+      D.short.length
+        ? `<div class="warnbox">Ook bij de maximale aanvoer van ${nv(K.tMax, 0)} °C blijft het bij ${nv(D.t, 0)} °C buiten te koud in: ${D.short
+            .slice()
+            .sort((a, b) => b.W - a.W)
+            .map(
+              x =>
+                `<button class="crumb" data-act="selroom" data-r="${x.room.id}">${esc(x.room.name)}</button> (tekort ${fmtW(x.W)} W)`
+            )
+            .join(
+              ', '
+            )}. Daar is meer afgifte nodig; bij de ruimte staat welke radiator erbij of in de plaats kan. De stooklijn hierboven gaat niet hoger dan ${nv(K.tMax, 0)} °C.</div>`
+        : ''
+    }
+    ${
+      !D.short.length && diff > 1
         ? `<p class="note">De aanvoertemperatuur in het project staat op ${nv(S.twSup, 0)} °C, maar ${fmt(D.ts, 1)} °C is bij ${nv(D.t, 0)} °C genoeg. Een warmtepomp werkt grofweg 2 à 3 % zuiniger per graad lagere aanvoer.</p>`
-        : diff < -1
+        : !D.short.length && diff < -1 && D.room
           ? `<p class="note" style="color:var(--warn)">⚠ Bij de ingestelde ${nv(S.twSup, 0)} °C aanvoer is de afgifte in ${esc(D.room.name)} niet genoeg: daar is ${fmt(D.ts, 1)} °C nodig.</p>`
           : ''
     }
+    <div class="fields">${numField('f-s-tmax', 'set.tMax', 'Maximale aanvoer warmtepomp', '°C', K.tMax, 0)}</div>
     ${K.missing.length ? `<p class="note" style="color:var(--warn)">⚠ Zonder afgifte, dus niet meegenomen: ${K.missing.map(r => esc(r.name)).join(', ')}.</p>` : ''}
     <p class="note">Stel op de warmtepomp de rechte lijn in: het eindpunt bij de laagste buitentemperatuur en het voetpunt bij +${CURVE_TOP} °C. Fabrikanten noemen dat ook wel stooklijn, weerafhankelijke regeling of heating curve. Daarna regel je de lijn in de praktijk bij: is het overal net warm genoeg, zet hem dan stapjes lager. De berekening gaat uit van één aanvoertemperatuur voor het hele huis. Vloerverwarming met een eigen mengregeling heeft een eigen, lagere lijn.</p></div>`;
   return h;
