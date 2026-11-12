@@ -136,7 +136,8 @@ function buildNetwork() {
   const root = hp ? nearest(hp.floorId, nd => dist(nd, hp)) : null;
   // walk the tree from the heat pump
   let loops = 0;
-  const order = [];
+  const order = [],
+    loopEdges = [];
   if (root) {
     root.parent = null;
     root.depth = 0;
@@ -152,6 +153,7 @@ function buildNetwork() {
         const m = e.a === n ? e.b : e.a;
         if (seen.has(m)) {
           loops++;
+          loopEdges.push(e);
           return;
         }
         seen.add(m);
@@ -208,6 +210,7 @@ function buildNetwork() {
     edges,
     ems,
     loops,
+    loopEdges,
     index,
     indexEdges,
     total: reached.reduce((a, o) => a + o.lh, 0),
@@ -243,7 +246,7 @@ function viewHp() {
     <p class="note">Het beginpunt van het leidingnet: de warmtepomp of de plek waar de leidingen van het buitendeel binnenkomen. Sleep het blokje om het te verplaatsen.</p></div>
   <div class="fields">${floorSelect('f-hp-fl', 'hp.floorId', P.hpPos.floorId)}</div>
   <div class="det">${N.root ? `Aangesloten op het leidingnet · ${fmtW(N.total)} l/h${N.index ? ` · indexcircuit ${fmt(N.index.dpTot, 1)} kPa` : ''}` : 'Nog niet aangesloten: laat een leiding hier beginnen.'}</div>
-  <div class="row"><button class="btn danger" data-act="delhp">Warmtepomp weghalen</button></div>`;
+  <div class="row">${N.root ? '<button class="btn" data-act="schema">Schema van het leidingnet</button>' : ''}<button class="btn danger" data-act="delhp">Warmtepomp weghalen</button></div>`;
 }
 function vState(v) {
   return v > V_MAX ? 'bad' : v > V_OK ? 'warn' : 'ok';
@@ -301,6 +304,7 @@ function networkHtml() {
     loose = N.ems.filter(o => !o.reach),
     fast = N.edges.filter(e => e.inTree && e.v > V_OK);
   h += `<div class="kcard"><div class="kh"><span>Indexcircuit</span><b>${N.index ? fmt(N.index.dpTot, 1) + ' kPa' : '–'}</b></div>
+    <div class="row"><button class="btn small" data-act="schema">Schema van het leidingnet</button></div>
     <span class="note">${N.index ? `Naar ${esc(N.index.em.name)} in ${esc(N.index.room.name)}: leidingen ${fmt(N.index.dpPath, 1)} kPa + element ${fmt(N.index.dpEm, 1)} kPa. Dit is het drukverlies dat de pomp moet overwinnen bij ${fmtW(N.total)} l/h (ΔT ${nv(N.dT, 1)} K).` : 'Nog geen aangesloten afgifte met een warmteverlies.'}</span>
     ${(() => {
       const hp = hpList && hpList.find(x => x.id === hpSel);

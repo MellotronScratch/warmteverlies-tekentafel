@@ -903,6 +903,7 @@ function act(a, b) {
       }
       sel = { t: 'em', r: r.id, e: b.dataset.e };
       tab = 'sel';
+      closeSchema();
       renderAll();
       break;
     }
@@ -1009,6 +1010,19 @@ function act(a, b) {
     }
     case 'delhp':
       deleteSelection();
+      break;
+    case 'selpipe': {
+      const pp = (P.pipes || []).find(x => x.id === b.dataset.p);
+      if (!pp) return;
+      curFloor = pp.floorId;
+      sel = { t: 'pipe', p: pp.id };
+      tab = 'sel';
+      closeSchema();
+      renderAll();
+      break;
+    }
+    case 'schema':
+      openSchema();
       break;
     case 'addfloor':
       addFloor();

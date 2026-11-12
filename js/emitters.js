@@ -143,22 +143,40 @@ function emOutput(em, room, ts, tr) {
   const boost = em.boost && (em.kind === 'rad' || em.kind === 'conv') ? 1 + (em.boostPct || 0) / 100 : 1;
   return Math.max(0, em.p) * Math.pow(dt / lmtd(nom[0], nom[1], nom[2]), em.n || EM_N[em.kind] || 1.3) * boost;
 }
-function pipeCheck(em, W) {
+// the pipe an emitter hangs on, taken from the drawn network (null: not connected)
+function emPipe(em, N) {
+  if (!(P.pipes || []).length) return null;
+  N = N || network();
+  const o = N.ems.find(x => x.em === em);
+  if (!o || !o.node) return null;
+  const e =
+    (o.reach && o.node.parent) ||
+    o.node.adj
+      .filter(x => x.pp)
+      .sort((a, b) => (PIPES[a.pp.mat]?.d[a.pp.dn] || 99) - (PIPES[b.pp.mat]?.d[b.pp.dn] || 99))[0];
+  return e && e.pp ? e.pp : null;
+}
+// water flow and velocity in the connecting pipe; state 'los' when no pipe is drawn to the emitter
+function pipeCheck(em, W, N) {
   const S = P.settings,
     dT = Math.max(0.5, S.twSup - S.twRet);
-  const mat = PIPES[em.pipe.mat] || PIPES.koper;
-  const di = (mat.d[em.pipe.dn] || 13) / 1000,
+  const Q = W / (4190 * dT) / 1000, // m³/s
+    pp = emPipe(em, N);
+  if (!pp) return { lh: Q * 3.6e6, v: 0, pmax: 0, di: 0, state: 'los', pp: null };
+  const mat = PIPES[pp.mat] || PIPES.koper;
+  const di = (mat.d[pp.dn] || 13) / 1000,
     Ar = (Math.PI * di * di) / 4;
-  const Q = W / (4190 * dT) / 1000; // m³/s
   const v = Q / Ar;
   return {
     lh: Q * 3.6e6,
     v,
     pmax: V_OK * Ar * 1000 * 4190 * dT,
     di: di * 1000,
+    pp,
     state: v <= V_OK ? 'ok' : v <= V_MAX ? 'krap' : 'te klein'
   };
 }
+const pipeBad = pc => pc.state === 'krap' || pc.state === 'te klein';
 function roomEmit(room, ts, tr) {
   return (room.emitters || []).reduce((a, e) => a + emOutput(e, room, ts, tr), 0);
 }
@@ -275,7 +293,7 @@ function roomEmitHtml(room, c) {
       .map(em => {
         const o = emOutput(em, room),
           pc = pipeCheck(em, o);
-        return `<button class="linkrow" data-act="selem" data-r="${room.id}" data-e="${em.id}"><span>${esc(em.name)} <span class="note">· ${EM_KINDS[em.kind]}${em.boost ? ' met boosters' : ''}${pc.state !== 'ok' ? ' · ⚠ leiding ' + pc.state : ''}</span></span><span>${fmt(o / 1000, 2)} kW</span></button>`;
+        return `<button class="linkrow" data-act="selem" data-r="${room.id}" data-e="${em.id}"><span>${esc(em.name)} <span class="note">· ${EM_KINDS[em.kind]}${em.boost ? ' met boosters' : ''}${pipeBad(pc) ? ' · ⚠ leiding ' + pc.state : pc.state === 'los' && (P.pipes || []).length ? ' · niet aangesloten' : ''}</span></span><span>${fmt(o / 1000, 2)} kW</span></button>`;
       })
       .join('')}
     ${radAdviceHtml(room, need)}${fillBtn}${twFieldsHtml()}`;
@@ -343,28 +361,20 @@ function viewEm(room, em) {
       .join('')}</select></label></div>
     <p class="note">Oppervlak ${fmt(emArea(em), 1)} m² · ${fmtW(emArea(em) > 0 ? out / emArea(em) : 0)} W/m² · leiding ca. ${fmtW(vvLoop(em))} m${vvLoop(em) > 100 ? ' <b style="color:var(--warn)">⚠ meer dan 100 m: verdeel over twee groepen</b>' : ''}. Indicatieve afgifte volgens EN 1264 (dekvloer ca. 45 mm), begrensd op een vloertemperatuur van 29 °C.</p>
     <p class="note">Vorm aanpassen: sleep een hoekpunt, klik op een + halverwege een zijde om een hoekpunt toe te voegen, en dubbelklik op een hoekpunt om het weg te halen.</p>`;
-  const mat = em.pipe.mat;
-  h += `<div class="sec"><h3>Aansluitleiding</h3><div class="fields"><label class="f" for="f-em-pm">Materiaal<select class="in" id="f-em-pm" data-f="em.pipe.mat">${Object.entries(
-    PIPES
-  )
-    .map(([k, v]) => `<option value="${k}" ${mat === k ? 'selected' : ''}>${v.label}</option>`)
-    .join('')}</select></label>
-    <label class="f" for="f-em-pd">Diameter<select class="in" id="f-em-pd" data-f="em.pipe.dn">${Object.keys(
-      PIPES[mat].d
-    )
-      .map(
-        d =>
-          `<option value="${esc(d)}" ${em.pipe.dn === d ? 'selected' : ''}>${esc(dnLabel(mat, d))} (inwendig ${nv(PIPES[mat].d[d], 1)} mm)</option>`
-      )
-      .join('')}</select></label></div>
+  h += `<div class="sec"><h3>Aansluitleiding</h3>${
+    pc.pp
+      ? `<button class="linkrow" data-act="selpipe" data-p="${pc.pp.id}"><span>${esc(pc.pp.name)} <span class="note">· ${esc((PIPES[pc.pp.mat] || PIPES.koper).label)} ${esc(dnLabel(pc.pp.mat, pc.pp.dn))}</span></span><span>›</span></button>
     <div class="row">${pipeChip(pc)}</div>
-    <p class="note">Waterdebiet ${fmtW(pc.lh)} l/h bij ΔT ${nv(S.twSup - S.twRet, 1)} K. Deze leiding transporteert bij ${nv(V_OK, 1)} m/s ongeveer ${fmt(pc.pmax / 1000, 2)} kW. Boven ${nv(V_OK, 1)} m/s nemen geluid en drukval toe; boven ${nv(V_MAX, 1)} m/s is de leiding te klein.</p></div>
+    <p class="note">De aansluitleiding is de getekende leiding waar dit element aan hangt. Waterdebiet ${fmtW(pc.lh)} l/h bij ΔT ${nv(S.twSup - S.twRet, 1)} K. Deze leiding transporteert bij ${nv(V_OK, 1)} m/s ongeveer ${fmt(pc.pmax / 1000, 2)} kW. Boven ${nv(V_OK, 1)} m/s nemen geluid en drukval toe; boven ${nv(V_MAX, 1)} m/s is de leiding te klein. Een andere maat kies je bij de leiding zelf.</p>`
+      : `<p class="note">Nog geen leiding aangesloten. Teken met <b>Leiding</b> (L) een leiding die eindigt bij dit element (binnen ${nv(ATTACH * 100, 0)} cm). Daarna kiest de app de aansluitleiding zelf en rekent hij debiet, snelheid en drukverlies uit. Waterdebiet nu: ${fmtW(pc.lh)} l/h.</p>`
+  }</div>
   ${twFieldsHtml()}
   <div class="row"><button class="btn danger" data-act="delem">Verwijderen</button></div>`;
   return h;
 }
 function emitOverviewHtml(c) {
-  const S = P.settings;
+  const S = P.settings,
+    N = (P.pipes || []).length ? network() : null;
   let maxNs = 0,
     any = false,
     pipes = 0;
@@ -380,7 +390,7 @@ function emitOverviewHtml(c) {
       if (ns === Infinity) maxNs = Infinity;
       else if (ns != null) maxNs = Math.max(maxNs, ns);
       ems.forEach(em => {
-        if (pipeCheck(em, emOutput(em, r)).state !== 'ok') pipes++;
+        if (pipeBad(pipeCheck(em, emOutput(em, r), N))) pipes++;
       });
       const ok = e >= x.c.total - 1;
       return `<tr class="${ok ? '' : 'miss'}"><td><button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button></td><td>${fmt(x.c.total / 1000, 2)}</td><td>${fmt(e / 1000, 2)}</td><td>${ok ? '✓' : '⚠ ' + fmt((x.c.total - e) / 1000, 2)}</td><td>${ns == null ? '–' : ns === Infinity ? '> 90' : fmt(ns, 0)}</td></tr>`;

@@ -10,7 +10,7 @@ const HINTS = {
   wall: 'Klik op de rand van een ruimte, zet eventueel knikpunten binnen de ruimte en eindig op een andere rand. Daarna kun je de ruimte langs die lijn in tweeën splitsen. Backspace haalt het laatste punt weg, Esc annuleert.',
   split:
     'Klik op een wand om hem op die plek in twee delen te splitsen. Elk deel krijgt een eigen constructie en isolatiewaarde.',
-  emit: 'Sleep een lijn binnen een ruimte voor een radiator, convector of fancoil. Daarna kies je de soort en vul je het vermogen en de aansluitleiding in.',
+  emit: 'Sleep een lijn binnen een ruimte voor een radiator, convector of fancoil. Daarna kies je de soort en vul je het vermogen in. De aansluitleiding volgt uit de leiding die je naar het element tekent.',
   vv: 'Klik de hoekpunten van de vloerverwarming (bijvoorbeeld een L-vorm) en sluit op het eerste punt, met dubbelklik of Enter. Slepen geeft een rechthoek. Een hele ruimte vullen kan ook met de knop bij de ruimte.',
   pipe: 'Klik de punten van een leiding, bijvoorbeeld van de warmtepomp naar de verdeler of de radiatoren. Eén lijn is aanvoer en retour samen. Rond af met dubbelklik of Enter.'
 };

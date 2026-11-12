@@ -791,11 +791,12 @@ function renderCanvas() {
     out += `<circle cx="${mids[0].x}" cy="${mids[0].y}" r="2.5" fill="var(--muted)" pointer-events="none"/>`;
   });
   // heat emitters: radiators etc. as thick blue bars, underfloor heating as a hatched area
+  const netN = (P.pipes || []).length ? network() : null;
   curRooms().forEach(r =>
     (layerOn('emit') ? r.emitters || [] : []).forEach(em => {
       const isSel = sel && sel.t === 'em' && sel.e === em.id;
       const o = emOutput(em, r),
-        pc = pipeCheck(em, o);
+        pc = pipeCheck(em, o, netN);
       if (em.kind === 'vv') {
         const pts = em.pts
           .map(S)
@@ -812,7 +813,7 @@ function renderCanvas() {
           });
         }
         const q = S(em.pts[0]);
-        out += `<text x="${q.x + 6}" y="${q.y + 14}" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${pc.state !== 'ok' ? '⚠ ' : ''}VV ${fmt(o / 1000, 2)} kW</text>`;
+        out += `<text x="${q.x + 6}" y="${q.y + 14}" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${pipeBad(pc) ? '⚠ ' : ''}VV ${fmt(o / 1000, 2)} kW</text>`;
       } else {
         const a = S(em.a),
           b = S(em.b);
@@ -839,7 +840,7 @@ function renderCanvas() {
           dx = c.x - m.x,
           dy = c.y - m.y,
           dd = Math.hypot(dx, dy) || 1;
-        out += `<text x="${m.x + (dx / dd) * 16}" y="${m.y + (dy / dd) * 16 + 3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${pc.state !== 'ok' ? '⚠ ' : ''}${fmt(o / 1000, 2)} kW${em.boost ? ' ⟳' : ''}</text>`;
+        out += `<text x="${m.x + (dx / dd) * 16}" y="${m.y + (dy / dd) * 16 + 3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${pipeBad(pc) ? '⚠ ' : ''}${fmt(o / 1000, 2)} kW${em.boost ? ' ⟳' : ''}</text>`;
       }
     })
   );
