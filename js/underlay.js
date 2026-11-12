@@ -75,6 +75,7 @@ function loadBgFile(file) {
       const w = 10,
         tl = { x: -view.tx / view.s + 1, y: -view.ty / view.s + 1 };
       f.bg = { img: id, x: r3(tl.x), y: r3(tl.y), w, h: r3((w * cv.height) / cv.width), op: 0.5 };
+      track('onderlegger');
       if (!layerOn('bg')) setLayer('bg', true);
       if (tab === 'set') renderPanel();
       markDirty();

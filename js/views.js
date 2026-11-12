@@ -210,7 +210,13 @@ function viewSet() {
     <div class="row"><button class="btn small" data-act="export-hljs">Exporteren naar heatlossjs</button></div>
     <p class="note">Het heatlossjs-bestand open je in <a href="https://github.com/trystanLea/heatlossjs" target="_blank" rel="noopener">heatlossjs</a> met Open. Daar kun je radiatoren, vloerverwarming en de warmtepomp doorrekenen. De tekening zit in het bestand: importeer je het hier weer, dan komt alles terug en worden in heatlossjs gewijzigde temperaturen en U-waarden overgenomen. Een heatlossjs-bestand zonder tekening levert alleen de constructietypen op.</p>
     <div class="row">${confirmDel ? `<span class="note">“${esc(P.name)}” definitief verwijderen?</span><button class="btn small danger" data-act="delproj-yes">Ja, verwijderen</button><button class="btn small" data-act="delproj-no">Annuleren</button>` : `<button class="btn small danger" data-act="delproj" ${list.length < 2 ? 'disabled title="Er moet minstens één project blijven"' : ''}>Project verwijderen</button>`}</div>
-    <p class="note" id="store-note">${storeNote()}</p></div>`;
+    <p class="note" id="store-note">${storeNote()}</p></div>
+  ${
+    GOATCOUNTER_CODE
+      ? `<div class="sec"><h3>Statistiek</h3><label class="chk"><input type="checkbox" id="f-stats" data-f="stats.on" ${statsOptOut() ? '' : 'checked'}> Anoniem meetellen in de bezoekersstatistiek</label>
+    <p class="note">De app telt anoniem hoe vaak hij wordt bezocht en welke functies (zoals het rapport of exporteren) worden gebruikt, met <a href="https://www.goatcounter.com" target="_blank" rel="noopener">GoatCounter</a>: zonder cookies en zonder persoonsgegevens. Je projecten en tekeningen blijven altijd in je eigen browser en worden nooit verstuurd. Met "Do Not Track" in je browser wordt er ook niets geteld.</p></div>`
+      : ''
+  }`;
 }
 let conFocus = null;
 let panelKey = '';
@@ -316,6 +322,15 @@ function selSeg() {
 function applyField(el, final) {
   const f = el.dataset.f;
   if (!f) return;
+  if (f === 'stats.on') {
+    setStatsOptOut(!el.checked);
+    toast(
+      el.checked
+        ? 'Bedankt! Bezoeken worden weer anoniem geteld.'
+        : 'Je bezoeken worden niet meer geteld (in deze browser).'
+    );
+    return;
+  }
   const parts = f.split('.');
   const v = el.value;
   const room = selRoom();
@@ -1034,6 +1049,7 @@ function act(a, b) {
       break;
     }
     case 'schema':
+      track('schema');
       openSchema();
       break;
     case 'bgpick':
@@ -1050,6 +1066,7 @@ function act(a, b) {
       removeBg();
       break;
     case 'report':
+      track('rapport');
       openReport();
       break;
     case 'addfloor':
@@ -1363,6 +1380,7 @@ function act(a, b) {
       break;
     }
     case 'csv':
+      track('csv');
       exportCsv();
       break;
     case 'newproj': {
@@ -1415,9 +1433,11 @@ function act(a, b) {
       $('file-in').click();
       break;
     case 'export':
+      track('export-json');
       exportJson();
       break;
     case 'export-hljs':
+      track('export-heatlossjs');
       exportHeatlossjs();
       break;
     case 'advrules':

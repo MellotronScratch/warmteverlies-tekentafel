@@ -364,6 +364,7 @@ Geen build-stap en geen afhankelijkheden: gewone JavaScript-bestanden die `index
 index.html        de pagina
 css/app.css       opmaak
 data/*.json       gegevens (zie hierboven)
+js/analytics.js   anonieme bezoekersstatistiek (GoatCounter), alleen als er een code is ingevuld
 js/data.js        laadt data/*.json
 js/core.js        constanten, voorbeeldproject, normalizeProject (oude projecten bijwerken)
 js/geometry.js    wanden, buurruimtes, gedeelde wanden, ramen, vloeren en plafonds
@@ -385,6 +386,20 @@ js/main.js        opstarten
 ```
 
 De code is opgemaakt met [Prettier](https://prettier.io) (instellingen in `.prettierrc.json`), bijvoorbeeld met `npx prettier --write "js/*.js" css/app.css index.html "data/*.json"`.
+
+## Privacy en statistiek
+
+Je projecten, tekeningen en onderleggers blijven in je eigen browser. De app stuurt ze nergens naartoe.
+
+De site op GitHub Pages telt anoniem bezoeken met [GoatCounter](https://www.goatcounter.com): zonder cookies en zonder persoonsgegevens. Daarnaast telt hij hoe vaak een paar functies worden gebruikt: het rapport, het schema van het leidingnet, exporteren (JSON, CSV, heatlossjs) en het plaatsen van een onderlegger. Daarbij gaat alleen de naam van de functie mee, nooit de inhoud van een project. Er wordt niets geteld als je de app lokaal draait, als je browser "Do Not Track" aan heeft staan, of als je onder **Project → Statistiek** het vinkje uitzet.
+
+### Statistiek instellen (voor wie de app zelf host)
+
+1. Maak een gratis account aan op [goatcounter.com](https://www.goatcounter.com) en kies een code, bijvoorbeeld `mijntekentafel`. Je statistiek staat dan op `https://mijntekentafel.goatcounter.com`.
+2. Vul die code in bovenaan `js/analytics.js`: `const GOATCOUNTER_CODE = 'mijntekentafel';`
+3. Commit en push. Na een paar minuten verschijnen de eerste bezoeken in het dashboard. Gebruik van functies staat er als *actie/rapport*, *actie/export-json*, enzovoort.
+
+Laat je de code leeg, dan laadt de app geen enkel extern script behalve Google Fonts.
 
 ## Licentie
 
