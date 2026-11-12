@@ -273,6 +273,65 @@ const roofCandidates = room => {
   const top = P.floors[levelsOf(room)[1]];
   return top ? P.rooms.filter(o => o !== room && presentOn(o, top.id) && roofOf(o)) : [];
 };
+// wall parts whose construction is marked 'both sides inside' but that count against the outside air:
+// usually a party wall to the neighbours where nothing is drawn on the other side
+function innerOutside(onlyRoom) {
+  const res = [];
+  (onlyRoom ? [onlyRoom] : P.rooms).forEach(r =>
+    calcRoom(r).lines.forEach(l => {
+      if (l.group !== 'wall' || l.type !== 'buiten' || !(l.A > 0.01)) return;
+      const c = conById(l.cid);
+      if (!c || !c.inner) return;
+      const o = res.find(x => x.room === r && x.w === l.w && x.s === l.s);
+      if (o) {
+        o.A += l.A;
+        o.phi += l.phi;
+      } else res.push({ room: r, w: l.w, s: l.s, con: c, A: l.A, phi: l.phi });
+    })
+  );
+  return res;
+}
+// set those parts to 'buurwoning'; a part that is partly against a room is split on the border first
+function innerToNeighbour(list) {
+  let n = 0;
+  list.forEach(x => {
+    const r = x.room,
+      i = x.w,
+      w = r.walls[i];
+    if (!w || !w.segs[x.s]) return;
+    const b0 = bounds(r, i),
+      s0 = b0[x.s],
+      s1 = b0[x.s + 1],
+      sg = w.segs[x.s];
+    if (sg.adj === 'buiten') {
+      sg.adj = 'buurwoning';
+      n++;
+      return;
+    }
+    if (sg.adj !== 'auto') return;
+    sharedParts(r, i, s0, s1).forEach(p => {
+      cutAt(r, i, p.t0);
+      cutAt(r, i, p.t1);
+    });
+    const b = bounds(r, i);
+    r.walls[i].segs.forEach((g, j) => {
+      if (b[j] < s0 - 1e-6 || b[j + 1] > s1 + 1e-6 || g.adj !== 'auto' || g.cid !== sg.cid) return;
+      if (!sharedParts(r, i, b[j], b[j + 1]).length) {
+        g.adj = 'buurwoning';
+        n++;
+      }
+    });
+  });
+  return n;
+}
+function innerOutsideHtml(list, scope) {
+  if (!list.length) return '';
+  const W = list.reduce((a, x) => a + x.phi, 0),
+    names = [...new Set(list.map(x => x.con.name))];
+  return `<div class="warnbox">${scope === 'seg' ? 'Dit wanddeel' : list.length === 1 ? '1 wanddeel' : list.length + ' wanddelen'} met ${names.map(esc).join(', ')} (aan beide kanten binnen) ${scope === 'seg' || list.length === 1 ? 'rekent' : 'rekenen'} toch naar buiten: ${fmtW(W)} W. Is dit een muur naar de buren? Dan hoort <i>Grenst aan</i> op <b>Buurwoning</b>.
+    ${scope === 'all' ? `<br>${list.map(x => `<button class="crumb" data-act="selseg" data-r="${x.room.id}" data-w="${x.w}" data-s="${x.s}">${esc(x.room.name)} · wand ${x.w + 1}</button>`).join(', ')}` : ''}
+    <div class="row"><button class="btn small" data-act="fixinner" ${scope === 'room' || scope === 'seg' ? `data-r="${list[0].room.id}"` : ''} ${scope === 'seg' ? `data-w="${list[0].w}" data-s="${list[0].s}"` : ''}>${scope === 'seg' ? 'Zet op Buurwoning' : 'Zet ' + (list.length > 1 ? 'ze' : 'hem') + ' op Buurwoning'}</button></div></div>`;
+}
 function triangulate(pts) {
   // ear clipping for a simple polygon (also L and U shapes)
   const cross = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x),

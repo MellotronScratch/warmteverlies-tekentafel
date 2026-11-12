@@ -15,7 +15,10 @@ function sanityHtml(c) {
     w.push(
       `Negatief warmteverlies in ${neg.map(x => `<button class="crumb" data-act="selroom" data-r="${x.room.id}">${esc(x.room.name)}</button>`).join(', ')}. Dat wijst op een invoerfout, bijvoorbeeld een te hoge temperatuur van een buurruimte of van de ventilatielucht.`
     );
-  return w.length ? `<div class="sec">${w.map(t => `<div class="warnbox">${t}</div>`).join('')}</div>` : '';
+  const io = innerOutside();
+  return w.length || io.length
+    ? `<div class="sec">${w.map(t => `<div class="warnbox">${t}</div>`).join('')}${innerOutsideHtml(io, 'all')}</div>`
+    : '';
 }
 function viewRes() {
   const c = calcAll();
@@ -901,6 +904,21 @@ function act(a, b) {
       sel = a === 'selroom' ? { t: 'room', r: r.id } : { t: 'seg', r: r.id, w: +b.dataset.w, s: +b.dataset.s };
       tab = 'sel';
       renderAll();
+      break;
+    }
+    case 'fixinner': {
+      const r = b.dataset.r && getRoom(b.dataset.r);
+      let list = innerOutside(r || null);
+      if (b.dataset.w != null) list = list.filter(x => x.w === +b.dataset.w && x.s === +b.dataset.s);
+      pushUndo();
+      const n = innerToNeighbour(list);
+      validateSel();
+      markDirty();
+      renderAll();
+      toast(
+        n ? `${n} ${n > 1 ? 'wanddelen staan' : 'wanddeel staat'} nu op Buurwoning.` : 'Er is niets veranderd.',
+        !!n
+      );
       break;
     }
     case 'addfloor':

@@ -373,10 +373,10 @@ function render3d() {
         top = fi === ci;
       const items = [];
       // staircases leading to this storey, and the pipes (with risers) on this floor
-      items.push(...(stairItems[fi] || []));
+      if (layerOn('stairs')) items.push(...(stairItems[fi] || []));
       if (P.floors[fi]) {
         const fid = P.floors[fi].id;
-        (P.pipes || [])
+        (layerOn('pipes') ? P.pipes || [] : [])
           .filter(pp => pp.floorId === fid)
           .forEach(pp => {
             const z = el[pp.floorId] + 0.12,
@@ -389,7 +389,7 @@ function render3d() {
               svg: `<polyline points="${pl}" fill="none" stroke="#2563EB" stroke-width="5" stroke-linejoin="round" pointer-events="none"/><polyline points="${pl}" fill="none" stroke="#DC2626" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`
             });
           });
-        if ((P.pipes || []).length)
+        if (layerOn('pipes') && (P.pipes || []).length)
           network()
             .edges.filter(e => e.vert && e.a.f === fid && floorIdx(e.b.f) <= ci)
             .forEach(e => {
@@ -408,7 +408,7 @@ function render3d() {
         const k = calcRoom(r);
         out += `<polygon points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="var(--paper)" stroke="var(--line)" stroke-width="1" ${top ? '' : 'pointer-events="none"'}/>`;
         out += `<polygon ${top ? `data-k3="room" data-r="${r.id}"` : 'pointer-events="none"'} points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="${isSel ? 'var(--accent-soft-2)' : 'var(--room)'}" stroke="none" style="cursor:pointer"/>`;
-        (r.emitters || []).forEach(em => {
+        (layerOn('emit') ? r.emitters || [] : []).forEach(em => {
           if (em.kind === 'vv') {
             out += `<polygon points="${em.pts.map(p => pt(P3(p, z0 + 0.01))).join(' ')}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="1" stroke-dasharray="5 4" pointer-events="none"/>`;
           } else {
@@ -665,7 +665,7 @@ function renderCanvas() {
       });
   }
   // pipe network: index circuit (orange glow) and risers
-  const NET = (P.pipes || []).length || P.hpPos ? network() : null;
+  const NET = layerOn('pipes') && ((P.pipes || []).length || P.hpPos) ? network() : null;
   if (NET) {
     NET.edges.forEach(e => {
       if (e.vert) {
@@ -683,7 +683,7 @@ function renderCanvas() {
     });
   }
   // pipe network: one line = supply (red) and return (blue)
-  (P.pipes || [])
+  (layerOn('pipes') ? P.pipes || [] : [])
     .filter(pp => pp.floorId === curFloor)
     .forEach(pp => {
       const pts = pp.pts
@@ -724,7 +724,7 @@ function renderCanvas() {
     });
   // staircases: treads and an arrow pointing up
   curRooms().forEach(r => {
-    if (r.kind !== 'trap' || !spans(r)) return;
+    if (r.kind !== 'trap' || !spans(r) || !layerOn('stairs')) return;
     const el = floorElev(),
       l = levelsOf(r),
       sg = stairTreads(r, el[P.floors[l[0] + 1].id] - el[r.floorId]);
@@ -746,7 +746,7 @@ function renderCanvas() {
   });
   // heat emitters: radiators etc. as thick blue bars, underfloor heating as a hatched area
   curRooms().forEach(r =>
-    (r.emitters || []).forEach(em => {
+    (layerOn('emit') ? r.emitters || [] : []).forEach(em => {
       const isSel = sel && sel.t === 'em' && sel.e === em.id;
       const o = emOutput(em, r),
         pc = pipeCheck(em, o);
@@ -820,7 +820,7 @@ function renderCanvas() {
     const q = S(p);
     return `<g pointer-events="none" ${ghost ? 'opacity=".5"' : ''}><rect x="${q.x - 15}" y="${q.y - 11}" width="30" height="22" rx="4" fill="var(--surface)" stroke="#DC2626" stroke-width="2"/><text x="${q.x}" y="${q.y + 4}" text-anchor="middle" font-size="10" font-weight="700" fill="#DC2626" stroke="none">WP</text></g>`;
   };
-  if (P.hpPos && P.hpPos.floorId === curFloor) out += hpMark(P.hpPos, false);
+  if (layerOn('pipes') && P.hpPos && P.hpPos.floorId === curFloor) out += hpMark(P.hpPos, false);
   if (tool === 'hp' && hover) out += hpMark(hover, true);
   if (tool === 'pipe' && hover && !drag) {
     const q = S(hover),
@@ -876,7 +876,7 @@ function renderCanvas() {
   });
   // air flows between rooms: moving arrows, in the Ventilatie tab for all rooms, otherwise for the selected room.
   // Texts are placed so they do not cover the room labels or each other.
-  if ((tab === 'vent' || (sel && sel.t === 'room')) && P.rooms.length > 1) {
+  if (layerOn('air') && (tab === 'vent' || (sel && sel.t === 'room')) && P.rooms.length > 1) {
     const boxes = [],
       hits = b => boxes.some(o => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h);
     // room labels (name, kW, bar, temperature) are obstacles

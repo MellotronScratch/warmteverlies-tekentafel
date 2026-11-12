@@ -669,12 +669,46 @@ function setFloor(id, keepSel) {
   } catch (_) {}
   renderAll();
 }
+// layers in the drawing that can be switched off (per viewer)
+let layers = { pipes: true, emit: true, air: true, stairs: true };
+try {
+  Object.assign(layers, JSON.parse(localStorage.getItem('wvt.layers') || '{}'));
+} catch (_) {}
+let layersOpen = false;
+const layerOn = k => layers[k] !== false;
+const LAYERS = [
+  ['pipes', 'Leidingen en warmtepomp'],
+  ['emit', 'Radiatoren en vloerverwarming'],
+  ['air', 'Luchtstromen (ventilatie)'],
+  ['stairs', 'Trappen']
+];
+function setLayer(k, on) {
+  if (layerOn(k) === on) return;
+  layers[k] = on;
+  try {
+    localStorage.setItem('wvt.layers', JSON.stringify(layers));
+  } catch (_) {}
+  renderFloorbar();
+  renderCanvas();
+}
 function renderFloorbar() {
   const uf = underFloor();
   $('floorbar').innerHTML =
     `<div class="floors" role="group" aria-label="Verdieping">${P.floors.map(f => `<button data-floor="${f.id}" aria-pressed="${f.id === curFloor}">${esc(f.name)} <span style="opacity:.7">${P.rooms.filter(r => r.floorId === f.id).length}</span></button>`).join('')}<button data-floor="__add" title="Verdieping toevoegen" aria-label="Verdieping toevoegen">+</button></div>
-  <button class="btn small undbtn" id="btn-under" aria-pressed="${!!(showUnder && uf)}" ${uf ? '' : 'disabled'} title="${uf ? 'Toon ' + esc(uf.name) + ' lichtgrijs als ondergrond (O)' : 'Er is geen verdieping onder deze'}">Ondergrond${uf ? ': ' + esc(uf.name) : ''}</button>`;
+  <button class="btn small undbtn" id="btn-under" aria-pressed="${!!(showUnder && uf)}" ${uf ? '' : 'disabled'} title="${uf ? 'Toon ' + esc(uf.name) + ' lichtgrijs als ondergrond (O)' : 'Er is geen verdieping onder deze'}">Ondergrond${uf ? ': ' + esc(uf.name) : ''}</button>
+  <details class="layersmenu" ${layersOpen ? 'open' : ''}><summary class="btn small" title="Lagen in de tekening aan of uit zetten">Lagen${LAYERS.some(([k]) => !layerOn(k)) ? ' ·' + LAYERS.filter(([k]) => !layerOn(k)).length + ' uit' : ''}</summary><div class="lmenu">${LAYERS.map(([k, l]) => `<label class="chk"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div></details>`;
 }
+$('floorbar').addEventListener('change', e => {
+  const c = e.target.closest('[data-layer]');
+  if (c) setLayer(c.dataset.layer, c.checked);
+});
+$('floorbar').addEventListener(
+  'toggle',
+  e => {
+    if (e.target.classList && e.target.classList.contains('layersmenu')) layersOpen = e.target.open;
+  },
+  true
+);
 $('floorbar').addEventListener('click', e => {
   const b = e.target.closest('button');
   if (!b || b.disabled) return;

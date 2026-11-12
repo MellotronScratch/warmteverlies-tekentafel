@@ -15,6 +15,8 @@ const HINTS = {
   pipe: 'Klik de punten van een leiding, bijvoorbeeld van de warmtepomp naar de verdeler of de radiatoren. Eén lijn is aanvoer en retour samen. Rond af met dubbelklik of Enter.'
 };
 function setTool(t) {
+  if ((t === 'pipe' || t === 'hp') && !layerOn('pipes')) setLayer('pipes', true);
+  if ((t === 'emit' || t === 'vv') && !layerOn('emit')) setLayer('emit', true);
   if (pendSplit) closeAsk();
   if (view3d && t !== 'select') {
     view3d = false;

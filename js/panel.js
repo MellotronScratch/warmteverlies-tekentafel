@@ -218,6 +218,7 @@ function roomCalcHtml(room) {
   return `<div class="kcard"><div class="kh"><span>${esc(room.name)}</span><b>${fmt(c.total / 1000, 2)} kW</b></div>${segHtml(c, true)}
     <div class="seglegend"><span style="--c:transparent">${fmtW(c.trans)} W transmissie</span><span style="--c:transparent">${fmtW(c.vent + c.inf)} W lucht</span><span style="--c:transparent">${c.Af > 0 ? fmtW(c.total / c.Af) : '–'} W/m²</span></div></div>
   ${c.missing ? `<div class="warnbox">${c.missing} onderdeel${c.missing > 1 ? 'en hebben' : ' heeft'} nog geen constructie. Die tellen nu als 0 W.</div>` : ''}
+  ${innerOutsideHtml(innerOutside(room), 'room')}
   ${calcTable(c.lines, [
     [
       'Ventilatie toevoer',
@@ -361,6 +362,10 @@ function viewSeg(room, i, j) {
   <div class="sec" ${sg.adj === 'open' ? 'style="display:none"' : ''}><h3>Constructie</h3><select class="in" id="f-seg-cid" data-f="seg.cid">${conOptions(sg.cid, 'wand')}</select>
     ${con ? `<p class="note">U = ${nv(con.U, 3)} W/m²K${DU_TYPES.has(sg.adj === 'auto' ? 'buiten' : sg.adj) ? ` + ΔU koudebrug ${nv(P.settings.dU, 3)}` : ''}. Wijzig de waarde onder <button class="crumb" data-act="gocon" data-c="${con.id}">Constructies</button>.</p>` : `<p class="note">Nog geen constructie. Maak er een aan onder <button class="crumb" data-act="gocon">Constructies</button> met de U-waarde uit ubakus.de.</p>`}</div>
   <div class="sec"><h3>Grenst aan</h3><div class="row"><select class="in grow" id="f-seg-adj" data-f="seg.adj">${adjOptions(sg.adj, true)}</select>${sg.adj === 'temp' ? `<label class="f" style="width:110px" for="f-seg-t">Temp. <span class="u">°C</span><input class="in num" id="f-seg-t" data-f="seg.adjT" inputmode="decimal" value="${nv(sg.adjT, 1)}"></label>` : ''}</div>`;
+  h += innerOutsideHtml(
+    innerOutside(room).filter(x => x.w === i && x.s === j),
+    'seg'
+  );
   if (sg.adj === 'open') {
     const ps = partnersOf(room, i, j);
     const dT = ps.filter(p => Math.abs(p.o.temp - room.temp) > 0.05);

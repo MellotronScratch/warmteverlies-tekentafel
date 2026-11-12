@@ -31,6 +31,8 @@ Open daarna http://localhost:8000. In VS Code kan het ook met de extensie *Live 
 
 De kolom rechts met de eigenschappen maak je breder of smaller door de rand aan de linkerkant te verslepen. Dubbelklik op die rand zet hem terug op de standaardbreedte. Je browser onthoudt de breedte.
 
+Met **Lagen** boven de tekening zet je leidingen en warmtepomp, radiatoren en vloerverwarming, luchtstromen en trappen aan of uit. Zo werk je rustiger aan de ruimtes en wanden. Kies je een gereedschap voor iets wat uit staat, zoals *Leiding*, dan komt die laag vanzelf terug.
+
 Projecten worden in je browser opgeslagen (localStorage). Exporteer regelmatig een `.json` als reservekopie, want bij het wissen van browsergegevens ben je ze kwijt.
 
 ## Wanden intekenen
@@ -121,6 +123,10 @@ Per stuk rekent de app met de temperatuur van die ruimte.
 **Twee constructies.** Ligt een deel van een plafond onder een ruimte en een ander deel onder buiten, zoals bij een uitbouw, dan kies je bij het plafond ook een **Constructie waar niets boven ligt (dak)**. Het deel onder de zolder rekent dan bijvoorbeeld met een betonvloer, en het platte dak van de uitbouw met houtskeletbouw. Bij de vloer van een verdieping werkt het net zo, voor een stuk waar niets onder ligt (een overstek). Laat je het leeg, dan geldt de eerste constructie voor het hele vlak. Bij de vloer en het plafond zie je de verdeling, bijvoorbeeld *20,3 m² → Slaapkamer 1 (18 °C)*. Een nieuwe ruimte op een verdieping krijgt als vloerconstructie het plafond van de ruimte eronder.
 
 Bestaande projecten houden hun instellingen. Onder **Project → Vloeren en plafonds** zet je alles in één keer op automatisch (ongedaan maken kan).
+
+### Muren naar de buren
+
+Een woningscheidende muur grenst aan de buurwoning. Staat *Grenst aan* op *Automatisch* en is de buurwoning niet getekend, dan rekent de app die muur als buitenmuur. Dat kan het warmteverlies flink te hoog maken. Heeft de constructie *Aan beide kanten binnen* aangevinkt, zoals een binnenwand of woningscheidende muur, en rekent hij toch naar buiten, dan waarschuwt de app: in het startpaneel, bij Resultaten, bij de ruimte en bij het wanddeel. Met **Zet op Buurwoning** zet je die wanddelen in één keer goed. Een wanddeel dat deels tegen een andere ruimte ligt, wordt eerst op de grens gesplitst, zodat alleen het stuk zonder buurruimte op *Buurwoning* komt.
 
 ### Gedeelde wanden
 
