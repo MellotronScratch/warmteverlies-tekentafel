@@ -5,22 +5,34 @@
     {
       "id": "weheat-flint",
       "merk": "WeHeat",
-      "model": "Flint",
+      "model": "Flint P40",
       "type": "lucht/water",
       "aanvoer": 35,
-      "bron": "weheat.com (maximum 4 kW bij −10 °C, 6 kW bij +7 °C); minima uit Warmteverlies 3.0.xlsx",
+      "bron": "Weheat, Productspecificatieblad Flint P40 (bereik vermogen bij A-10/W35 en A7/W35, koelen A35/W18) en installatiehandleiding (systeemvolume ca. 60 l, debiet 1 m³/h vereist)",
       "punten": [
         {
           "buiten": -10,
           "min": 1.4,
-          "max": 4.0
+          "max": 3.7
         },
         {
           "buiten": 7,
           "min": 2.5,
-          "max": 6.0
+          "max": 6.2
         }
-      ]
+      ],
+      "minInhoud": 60,
+      "minDebiet": 1000,
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 2.8,
+            "max": 5.4
+          }
+        ]
+      }
     },
     {
       "id": "itho-amber-65",
@@ -242,7 +254,7 @@
       "model": "Sparrow P60",
       "type": "lucht/water",
       "aanvoer": 35,
-      "bron": "Weheat: handleidingen Sparrow P60 (bereik 1,4–6 kW bij −10 °C, systeeminhoud 60 l) en weheat.com (9 kW bij +7 °C); minimum bij +7 °C uit Warmteverlies 3.0.xlsx",
+      "bron": "Weheat, Productspecificatieblad Sparrow P60 (070625: bereik 1,4–6 kW bij A-10/W35, 9 kW bij A7/W35) en installatiehandleiding (systeemvolume ca. 60 l, debiet 1 m³/h vereist); minimum bij +7 °C geschat met de verhouding van het maximum, zoals bij de Flint",
       "punten": [
         {
           "buiten": -10,
@@ -262,9 +274,8 @@
       "id": "itho-hp-s-55",
       "merk": "Itho Daalderop",
       "model": "HP-S 55",
-      "type": "lucht/water",
+      "type": "lucht/water (split, R410A)",
       "aanvoer": 35,
-      "bron": "Warmteverlies 3.0.xlsx",
       "punten": [
         {
           "buiten": -10,
@@ -273,50 +284,68 @@
         },
         {
           "buiten": 7,
-          "min": 1.569,
-          "max": 5.431
+          "min": 1.5,
+          "max": 5.5
         }
-      ]
+      ],
+      "bron": "Itho Daalderop, Installatiehandleiding HP-S 55-95-130 (01-02528-004), technische informatie: min./max. bij A7/W35 en A7/W45, min. debiet 0,26 l/s. Gegevens bij −10 °C staan niet in de handleiding; die komen uit een eerdere lijst.",
+      "minDebiet": 936,
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 4.6,
+            "max": 6.0
+          }
+        ]
+      }
     },
     {
       "id": "vaillant-vwl-35-6",
       "merk": "Vaillant",
-      "model": "VWL 35/6",
+      "model": "aroTHERM plus VWL 35/6 A 230V",
       "type": "lucht/water",
       "aanvoer": 35,
-      "bron": "Warmteverlies 3.0.xlsx",
       "punten": [
         {
-          "buiten": -10,
-          "min": 1.4,
-          "max": 4.1
-        },
-        {
-          "buiten": 7,
-          "min": 2.2,
-          "max": 6.3
-        }
-      ]
-    },
-    {
-      "id": "vaillant-vwl-55-6",
-      "merk": "Vaillant",
-      "model": "VWL 55/6",
-      "type": "lucht/water",
-      "aanvoer": 35,
-      "bron": "Warmteverlies 3.0.xlsx",
-      "punten": [
-        {
-          "buiten": -10,
-          "min": 1.4,
-          "max": 6.2
+          "buiten": -7,
+          "min": 2.1,
+          "max": 3.6
         },
         {
           "buiten": 7,
           "min": 2.1,
-          "max": 8.0
+          "max": 5.5
         }
-      ]
+      ],
+      "bron": "Vaillant, Installations- und Wartungsanleitung aroTHERM plus VWL 35/6 … 75/6 A 230V (0020299004_09), technische Daten; max bij −7 °C = Heizleistung A-7/W35 (EN 14511); minimum bij −7 °C gelijk aan dat bij +7 °C (geschat)",
+      "minDebiet": 400,
+      "restopvoerhoogte": 56,
+      "minInhoud": 40
+    },
+    {
+      "id": "vaillant-vwl-55-6",
+      "merk": "Vaillant",
+      "model": "aroTHERM plus VWL 55/6 A 230V",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 2.1,
+          "max": 5.4
+        },
+        {
+          "buiten": 7,
+          "min": 2.1,
+          "max": 6.9
+        }
+      ],
+      "bron": "Vaillant, Installations- und Wartungsanleitung aroTHERM plus VWL 35/6 … 75/6 A 230V (0020299004_09), technische Daten; max bij −7 °C = Heizleistung A-7/W35 (EN 14511); minimum bij −7 °C gelijk aan dat bij +7 °C (geschat)",
+      "minDebiet": 400,
+      "restopvoerhoogte": 56,
+      "minInhoud": 40
     },
     {
       "id": "vaillant-vwl-35-8-1",
