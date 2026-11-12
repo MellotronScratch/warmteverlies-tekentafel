@@ -183,7 +183,7 @@ function viewSet() {
   const S = P.settings;
   const list = Object.values(all).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   return `<div class="sec"><h2>Project</h2><label class="f" for="f-proj-name">Projectnaam<input class="in" id="f-proj-name" data-f="proj.name" value="${esc(P.name)}"></label></div>
-  <div class="sec"><h3>Verdiepingen</h3><p class="note">Van onder naar boven. De verdieping direct eronder kun je als lichtgrijze ondergrond tonen.</p>
+  <div class="sec"><h3>Verdiepingen</h3><p class="note">Van onder naar boven. Boven de tekening kies je welke verdieping lichtgrijs als ondergrond staat; standaard is dat de verdieping eronder.</p>
     ${P.floors
       .map((f, i) => {
         const n = P.rooms.filter(r => r.floorId === f.id).length;

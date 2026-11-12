@@ -597,7 +597,7 @@ function renderCanvas() {
     if (tab !== 'vent')
       out += `<text x="${c.x}" y="${c.y + 40}" text-anchor="middle" font-size="11" fill="var(--under)" stroke="none" pointer-events="none">${esc(r.name)}</text>`;
   });
-  // pipes on the floor below (with the underlay) and, while drawing pipes, on the floor above: light grey, points as dots
+  // pipes on the underlay floor and, while drawing pipes, on the floor above: light grey, points as dots
   if (layerOn('pipes')) {
     const ghost = (fl, dashed) =>
       (P.pipes || [])
@@ -610,8 +610,10 @@ function renderCanvas() {
             out += `<circle cx="${p.x}" cy="${p.y}" r="${end ? 4.5 : 3}" fill="${end ? 'var(--under)' : 'var(--paper)'}" stroke="var(--under)" stroke-width="1.5" pointer-events="none"/>`;
           });
         });
-    if (showUnder) ghost(underFloor(), false);
-    if (tool === 'pipe') ghost(P.floors[floorIdx(curFloor) + 1], true);
+    const uf = showUnder ? underFloor() : null,
+      above = P.floors[floorIdx(curFloor) + 1];
+    if (uf) ghost(uf, false);
+    if (tool === 'pipe' && above && above !== uf) ghost(above, true);
   }
   // rooms from a lower floor that continue through this one
   videRooms().forEach(r => {

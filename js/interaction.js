@@ -1638,8 +1638,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (k === 'o') {
-    const b = $('btn-under');
-    if (b && !b.disabled) b.click();
+    toggleUnder();
     return;
   }
   if (k === 'v') setTool('select');

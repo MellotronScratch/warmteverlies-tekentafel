@@ -652,9 +652,35 @@ try {
 } catch (_) {}
 const floorIdx = id => P.floors.findIndex(f => f.id === id);
 const curRooms = () => P.rooms.filter(r => r.floorId === curFloor);
-function underFloor() {
-  const i = floorIdx(curFloor);
+// the underlay: by default the floor directly below; per floor another floor can be picked (per viewer)
+let underPick = {};
+try {
+  underPick = JSON.parse(localStorage.getItem('wvt.underpick') || '{}') || {};
+} catch (_) {}
+function defaultUnder(fid) {
+  const i = floorIdx(fid);
   return i > 0 ? P.floors[i - 1] : null;
+}
+function underFloor() {
+  const id = underPick[curFloor];
+  const f = id && id !== curFloor ? P.floors.find(x => x.id === id) : null;
+  return f || defaultUnder(curFloor);
+}
+function setUnder(id) {
+  if (id) {
+    showUnder = true;
+    if (defaultUnder(curFloor) && defaultUnder(curFloor).id === id) delete underPick[curFloor];
+    else underPick[curFloor] = id;
+  } else showUnder = false;
+  try {
+    localStorage.setItem('wvt.under', showUnder ? '1' : '0');
+    localStorage.setItem('wvt.underpick', JSON.stringify(underPick));
+  } catch (_) {}
+  renderFloorbar();
+  renderCanvas();
+}
+function toggleUnder() {
+  if (underFloor()) setUnder(showUnder ? '' : underFloor().id);
 }
 const underRooms = () => {
   const f = underFloor();
@@ -700,7 +726,8 @@ let layers = { pipes: true, emit: true, air: true, stairs: true };
 try {
   Object.assign(layers, JSON.parse(localStorage.getItem('wvt.layers') || '{}'));
 } catch (_) {}
-let layersOpen = false;
+let layersOpen = false,
+  underOpen = false;
 const layerOn = k => layers[k] !== false;
 const LAYERS = [
   ['pipes', 'Leidingen en warmtepomp'],
@@ -718,35 +745,39 @@ function setLayer(k, on) {
   renderCanvas();
 }
 function renderFloorbar() {
-  const uf = underFloor();
+  const uf = underFloor(),
+    df = defaultUnder(curFloor),
+    others = P.floors.filter(f => f.id !== curFloor).reverse();
   $('floorbar').innerHTML =
     `<div class="floors" role="group" aria-label="Verdieping">${P.floors.map(f => `<button data-floor="${f.id}" aria-pressed="${f.id === curFloor}">${esc(f.name)} <span style="opacity:.7">${P.rooms.filter(r => r.floorId === f.id).length}</span></button>`).join('')}<button data-floor="__add" title="Verdieping toevoegen" aria-label="Verdieping toevoegen">+</button></div>
-  <button class="btn small undbtn" id="btn-under" aria-pressed="${!!(showUnder && uf)}" ${uf ? '' : 'disabled'} title="${uf ? 'Toon ' + esc(uf.name) + ' lichtgrijs als ondergrond (O)' : 'Er is geen verdieping onder deze'}">Ondergrond${uf ? ': ' + esc(uf.name) : ''}</button>
+  <details class="layersmenu undmenu" ${underOpen && others.length ? 'open' : ''}><summary class="btn small undbtn" id="btn-under" aria-pressed="${!!(showUnder && uf)}" ${others.length ? '' : 'aria-disabled="true"'} title="${others.length ? 'Kies welke verdieping lichtgrijs als ondergrond staat (O zet hem aan of uit)' : 'Er is geen andere verdieping'}">Ondergrond: ${showUnder && uf ? esc(uf.name) : 'uit'}</summary><div class="lmenu"><label class="chk"><input type="radio" name="under" data-under="" ${showUnder && uf ? '' : 'checked'}> Uit</label>${others.map(f => `<label class="chk"><input type="radio" name="under" data-under="${f.id}" ${showUnder && uf && uf.id === f.id ? 'checked' : ''}> ${esc(f.name)}${df && df.id === f.id ? ' <span style="opacity:.6">(eronder)</span>' : ''}</label>`).join('')}</div></details>
   <details class="layersmenu" ${layersOpen ? 'open' : ''}><summary class="btn small" title="Lagen in de tekening aan of uit zetten">Lagen${LAYERS.some(([k]) => !layerOn(k)) ? ' ·' + LAYERS.filter(([k]) => !layerOn(k)).length + ' uit' : ''}</summary><div class="lmenu">${LAYERS.map(([k, l]) => `<label class="chk"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div></details>`;
 }
 $('floorbar').addEventListener('change', e => {
   const c = e.target.closest('[data-layer]');
   if (c) setLayer(c.dataset.layer, c.checked);
+  const u = e.target.closest('[data-under]');
+  if (u && u.checked) {
+    underOpen = false;
+    setUnder(u.dataset.under);
+  }
 });
 $('floorbar').addEventListener(
   'toggle',
   e => {
-    if (e.target.classList && e.target.classList.contains('layersmenu')) layersOpen = e.target.open;
+    const cl = e.target.classList;
+    if (cl && cl.contains('undmenu')) underOpen = e.target.open;
+    else if (cl && cl.contains('layersmenu')) layersOpen = e.target.open;
   },
   true
 );
 $('floorbar').addEventListener('click', e => {
-  const b = e.target.closest('button');
-  if (!b || b.disabled) return;
-  if (b.id === 'btn-under') {
-    showUnder = !showUnder;
-    try {
-      localStorage.setItem('wvt.under', showUnder ? '1' : '0');
-    } catch (_) {}
-    renderFloorbar();
-    renderCanvas();
+  if (e.target.closest('summary[aria-disabled="true"]')) {
+    e.preventDefault();
     return;
   }
+  const b = e.target.closest('button');
+  if (!b || b.disabled) return;
   if (b.dataset.floor === '__add') {
     addFloor();
     return;
