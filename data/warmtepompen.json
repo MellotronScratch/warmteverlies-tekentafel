@@ -318,6 +318,276 @@
       ]
     },
     {
+      "id": "vaillant-vwl-35-8-1",
+      "merk": "Vaillant",
+      "model": "aroTHERM plus VWL 35/8.1 A 230V",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Vaillant, Installations- und Wartungsanleitung aroTHERM plus VWL 35/8.1 A … 75/8.1 A (8000041775_01), technische gegevens; minimum bij −7 °C geschat met de verhouding min/max bij +2 °C",
+      "minInhoud": 20,
+      "restopvoerhoogte": 60,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 1.72,
+          "max": 5.01
+        },
+        {
+          "buiten": 2,
+          "min": 1.89,
+          "max": 5.52
+        },
+        {
+          "buiten": 7,
+          "min": 1.39,
+          "max": 6.78
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -7,
+          "min": 1.37,
+          "max": 4.81
+        },
+        {
+          "buiten": 2,
+          "min": 1.57,
+          "max": 5.5
+        },
+        {
+          "buiten": 7,
+          "min": 0.96,
+          "max": 7.06
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 2.67,
+            "max": 7.94
+          }
+        ]
+      }
+    },
+    {
+      "id": "vaillant-vwl-55-8-1",
+      "merk": "Vaillant",
+      "model": "aroTHERM plus VWL 55/8.1 A 230V",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Vaillant, Installations- und Wartungsanleitung aroTHERM plus VWL 35/8.1 A … 75/8.1 A (8000041775_01), technische gegevens; minimum bij −7 °C geschat met de verhouding min/max bij +2 °C",
+      "minInhoud": 20,
+      "restopvoerhoogte": 60,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 1.77,
+          "max": 5.88
+        },
+        {
+          "buiten": 2,
+          "min": 1.89,
+          "max": 6.28
+        },
+        {
+          "buiten": 7,
+          "min": 1.39,
+          "max": 7.2
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -7,
+          "min": 1.43,
+          "max": 5.67
+        },
+        {
+          "buiten": 2,
+          "min": 1.57,
+          "max": 6.24
+        },
+        {
+          "buiten": 7,
+          "min": 0.96,
+          "max": 7.93
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 2.67,
+            "max": 7.94
+          }
+        ]
+      }
+    },
+    {
+      "id": "vaillant-vwl-75-8-1",
+      "merk": "Vaillant",
+      "model": "aroTHERM plus VWL 75/8.1 A 230V",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Vaillant, Installations- und Wartungsanleitung aroTHERM plus VWL 35/8.1 A … 75/8.1 A (8000041775_01), technische gegevens; minimum bij −7 °C geschat met de verhouding min/max bij +2 °C",
+      "minInhoud": 30,
+      "restopvoerhoogte": 45,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 2.3,
+          "max": 7.25
+        },
+        {
+          "buiten": 2,
+          "min": 2.55,
+          "max": 8.03
+        },
+        {
+          "buiten": 7,
+          "min": 1.93,
+          "max": 9.51
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -7,
+          "min": 2.07,
+          "max": 7.09
+        },
+        {
+          "buiten": 2,
+          "min": 2.11,
+          "max": 7.21
+        },
+        {
+          "buiten": 7,
+          "min": 1.49,
+          "max": 9.39
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 3.74,
+            "max": 9.5
+          }
+        ]
+      }
+    },
+    {
+      "id": "vaillant-vwl-105-8-1",
+      "merk": "Vaillant",
+      "model": "aroTHERM plus VWL 105/8.1 A 400V",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Vaillant, Installatie- en onderhoudshandleiding aroTHERM plus VWL 105/8.1 A, 125/8.1 A 400V (8000050743_01), technische gegevens; minimum bij −7 °C geschat met de verhouding min/max bij +2 °C",
+      "minInhoud": 70,
+      "restopvoerhoogte": 55,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 4.29,
+          "max": 11.25
+        },
+        {
+          "buiten": 2,
+          "min": 4.76,
+          "max": 12.48
+        },
+        {
+          "buiten": 7,
+          "min": 4.61,
+          "max": 14.4
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -7,
+          "min": 3.7,
+          "max": 10.96
+        },
+        {
+          "buiten": 2,
+          "min": 4.16,
+          "max": 12.32
+        },
+        {
+          "buiten": 7,
+          "min": 3.67,
+          "max": 13.05
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 6.75,
+            "max": 17.77
+          }
+        ]
+      }
+    },
+    {
+      "id": "vaillant-vwl-125-8-1",
+      "merk": "Vaillant",
+      "model": "aroTHERM plus VWL 125/8.1 A 400V",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Vaillant, Installatie- en onderhoudshandleiding aroTHERM plus VWL 105/8.1 A, 125/8.1 A 400V (8000050743_01), technische gegevens; minimum bij −7 °C geschat met de verhouding min/max bij +2 °C",
+      "minInhoud": 70,
+      "restopvoerhoogte": 55,
+      "punten": [
+        {
+          "buiten": -7,
+          "min": 4.33,
+          "max": 12.14
+        },
+        {
+          "buiten": 2,
+          "min": 4.76,
+          "max": 13.36
+        },
+        {
+          "buiten": 7,
+          "min": 4.61,
+          "max": 14.78
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -7,
+          "min": 3.83,
+          "max": 11.99
+        },
+        {
+          "buiten": 2,
+          "min": 4.16,
+          "max": 13.04
+        },
+        {
+          "buiten": 7,
+          "min": 3.67,
+          "max": 13.76
+        }
+      ],
+      "koelen": {
+        "aanvoer": 18,
+        "punten": [
+          {
+            "buiten": 35,
+            "min": 6.75,
+            "max": 17.77
+          }
+        ]
+      }
+    },
+    {
       "id": "voorbeeld-4",
       "merk": "Voorbeeld",
       "model": "Compact 4 kW (fictief)",
