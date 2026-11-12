@@ -298,6 +298,18 @@ function roomEmitHtml(room, c) {
       .join('')}
     ${radAdviceHtml(room, need)}${fillBtn}${twFieldsHtml()}`;
 }
+// how the stated output (75/65/20, fancoil 35/30/20) is converted to the design temperatures
+function convHtml(em, room, out) {
+  const S = P.settings,
+    nom = EM_NOM[em.kind] || EM_NOM.rad,
+    n = em.n || EM_N[em.kind] || 1.3,
+    d0 = lmtd(nom[0], nom[1], nom[2]),
+    d1 = lmtd(S.twSup, S.twRet, room.temp),
+    f = d0 > 0 ? Math.pow(d1 / d0, n) : 0,
+    boost = em.boost && (em.kind === 'rad' || em.kind === 'conv') ? 1 + (em.boostPct || 0) / 100 : 1;
+  return `<div class="det">Omrekening: ${fmtW(em.p)} W bij ${nom[0]}/${nom[1]}/${nom[2]} °C × (${fmt(d1, 1)} K / ${fmt(d0, 1)} K)^${nv(n, 2)}${boost !== 1 ? ` × ${nv(boost, 2)} (boosters)` : ''}<br><b>= ${fmtW(out)} W bij ${nv(S.twSup, 1)}/${nv(S.twRet, 1)}/${nv(room.temp, 1)} °C</b> (${fmtW(f * boost * 100)}% van het opgegeven vermogen)</div>
+  <p class="note">K is het gemiddelde temperatuurverschil tussen water en lucht (logaritmisch). Bij lage aanvoertemperaturen geeft een radiator maar een klein deel van zijn vermogen bij 75/65 °C af: bij 35/30 °C ongeveer een zesde.</p>`;
+}
 function viewEm(room, em) {
   const S = P.settings,
     out = emOutput(em, room),
@@ -309,6 +321,7 @@ function viewEm(room, em) {
   let h = `<div class="sec"><button class="crumb" data-act="selroom" data-r="${room.id}">← ${esc(room.name)}</button><input class="title" id="f-em-name" data-f="em.name" value="${esc(em.name)}" aria-label="Naam"></div>
   <div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup, 1)}/${nv(S.twRet, 1)} °C</span><b>${fmt(out / 1000, 2)} kW</b></div>
     <div class="seglegend"><span style="--c:transparent">${fmtW(pc.lh)} l/h water</span><span style="--c:transparent">inhoud ca. ${fmt(emVolume(em), 1)} l</span><span style="--c:transparent">ruimte ${nv(room.temp, 1)} °C</span></div></div>
+  ${isV ? '' : convHtml(em, room, out)}
   ${netEmHtml(em)}
   <div class="fields"><label class="f" for="f-em-kind">Soort<select class="in" id="f-em-kind" data-f="em.kind" ${isV ? 'disabled' : ''}>${kinds}</select></label>`;
   if (!isV) {
@@ -323,6 +336,7 @@ function viewEm(room, em) {
         .join('')}</select></label>`;
     if (byType)
       h += `<div class="fields">${numField('f-em-rh', 'em.rh', 'Hoogte', 'mm', em.rh, 0)}${numField('f-em-rl', 'em.rl', 'Lengte', 'mm', em.rl, 0)}</div>${Math.abs(em.rl - emLen(em) * 1000) > 5 ? `<p class="note">In de tekening is deze radiator ${fmt(emLen(em))} m lang. Vul de lengte opnieuw in of sleep een uiteinde om ze gelijk te maken.</p>` : ''}
+      ${em.rh < 250 ? `<div class="warnbox">Een hoogte van ${fmtW(em.rh)} mm is ongebruikelijk laag voor een paneelradiator (meestal 300 tot 900 mm). Klopt de hoogte, of zijn hoogte en lengte verwisseld?</div>` : ''}
       <div class="det">${esc(em.rt)}: ${fmtW(RAD_TYPES[em.rt][0])} W/m bij 600 mm hoog<br>× (${fmtW(em.rh)}/600)^0,9 × ${fmt(em.rl / 1000, 2)} m<br><b>= ${fmtW(em.p)} W bij 75/65/20 °C</b></div>
       <div class="fields">${numField('f-em-n', 'em.n', 'Exponent n', '–', em.n, 2)}</div>
       <p class="note">Indicatief voor stalen paneelradiatoren, ongeveer ±10 %. Weet je merk en model, kies dan <i>Zelf invullen</i> en neem de waarde uit de tabel van de fabrikant. Een andere lengte, ingevuld of door een uiteinde in de tekening te slepen, past het vermogen meteen aan.</p>`;

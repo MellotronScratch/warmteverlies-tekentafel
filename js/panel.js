@@ -247,16 +247,10 @@ function roofEditor(room, surfCard) {
 function roomCard(x) {
   return `<button class="roomcard" data-act="selroom" data-r="${x.room.id}"><span class="rn">${esc(x.room.name)}</span><span class="rk">${x.c.unheated ? 'onverwarmd' : fmt(x.c.total / 1000, 2) + ' kW'}</span>${segHtml(x.c, false)}<span class="rs">${fmt(x.c.Af, 1)} m² · ${nv(x.room.temp, 1)} °C${x.c.missing ? ' · ⚠ constructie ontbreekt' : ''}</span></button>`;
 }
-function roomCalcHtml(room) {
-  const c = calcRoom(room);
+// ventilation, transfer air and infiltration as extra rows below the transmission table
+function airRows(room, c) {
   const S = P.settings;
-  if (c.unheated)
-    return `<div class="kcard"><div class="kh"><span>${esc(room.name)}</span><b>onverwarmd</b></div><span class="note">Deze ruimte telt niet mee in het warmteverlies. Ruimtes ernaast, erboven of eronder rekenen met de temperatuur hier (${nv(room.temp, 1)} °C). Typisch: kruipruimte 8 à 12 °C, kelder 10 à 15 °C, onverwarmde berging 5 à 10 °C.</span></div>`;
-  return `<div class="kcard"><div class="kh"><span>${esc(room.name)}</span><b>${fmt(c.total / 1000, 2)} kW</b></div>${segHtml(c, true)}
-    <div class="seglegend"><span style="--c:transparent">${fmtW(c.trans)} W transmissie</span><span style="--c:transparent">${fmtW(c.vent + c.inf)} W lucht</span><span style="--c:transparent">${c.Af > 0 ? fmtW(c.total / c.Af) : '–'} W/m²</span></div></div>
-  ${c.missing ? `<div class="warnbox">${c.missing} onderdeel${c.missing > 1 ? 'en hebben' : ' heeft'} nog geen constructie. Die tellen nu als 0 W.</div>` : ''}
-  ${innerOutsideHtml(innerOutside(room), 'room')}
-  ${calcTable(c.lines, [
+  return [
     [
       'Ventilatie toevoer',
       `${nv(room.sup, 0)} m³/h van ${fmt(c.ts, 1)} °C${S.ventSys === 'D' ? ` (na WTW, η ${nv(S.eta, 2)})` : ' (buitenlucht)'}`,
@@ -279,7 +273,18 @@ function roomCalcHtml(room) {
         : `n = ${nv(S.nInf, 2)} /h × ${fmt(c.V, 1)} m³`,
       c.inf
     ]
-  ])}`;
+  ];
+}
+function roomCalcHtml(room) {
+  const c = calcRoom(room);
+  const S = P.settings;
+  if (c.unheated)
+    return `<div class="kcard"><div class="kh"><span>${esc(room.name)}</span><b>onverwarmd</b></div><span class="note">Deze ruimte telt niet mee in het warmteverlies. Ruimtes ernaast, erboven of eronder rekenen met de temperatuur hier (${nv(room.temp, 1)} °C). Typisch: kruipruimte 8 à 12 °C, kelder 10 à 15 °C, onverwarmde berging 5 à 10 °C.</span></div>`;
+  return `<div class="kcard"><div class="kh"><span>${esc(room.name)}</span><b>${fmt(c.total / 1000, 2)} kW</b></div>${segHtml(c, true)}
+    <div class="seglegend"><span style="--c:transparent">${fmtW(c.trans)} W transmissie</span><span style="--c:transparent">${fmtW(c.vent + c.inf)} W lucht</span><span style="--c:transparent">${c.Af > 0 ? fmtW(c.total / c.Af) : '–'} W/m²</span></div></div>
+  ${c.missing ? `<div class="warnbox">${c.missing} onderdeel${c.missing > 1 ? 'en hebben' : ' heeft'} nog geen constructie. Die tellen nu als 0 W.</div>` : ''}
+  ${innerOutsideHtml(innerOutside(room), 'room')}
+  ${calcTable(c.lines, airRows(room, c))}`;
 }
 function viewNone() {
   const c = calcAll();

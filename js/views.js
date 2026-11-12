@@ -27,7 +27,7 @@ function viewRes() {
     vent: c.per.reduce((a, x) => a + x.c.vent, 0),
     inf: c.per.reduce((a, x) => a + x.c.inf, 0)
   };
-  let h = `<div class="sec"><h2>Resultaten</h2><div class="kcard"><div class="kh"><span>Som van alle ruimtes</span><b>${fmt(c.total / 1000, 2)} kW</b></div>${segHtml(tb, true)}</div></div>
+  let h = `<div class="sec"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Resultaten</h2><button class="btn small" data-act="report">Rapport (PDF)</button></div><div class="kcard"><div class="kh"><span>Som van alle ruimtes</span><b>${fmt(c.total / 1000, 2)} kW</b></div>${segHtml(tb, true)}</div></div>
   ${sanityHtml(c)}
   ${P.floors
     .map(f => {
@@ -1023,6 +1023,9 @@ function act(a, b) {
     }
     case 'schema':
       openSchema();
+      break;
+    case 'report':
+      openReport();
       break;
     case 'addfloor':
       addFloor();

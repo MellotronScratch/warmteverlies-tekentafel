@@ -37,6 +37,8 @@ Met **Ondergrond** kies je welke verdieping lichtgrijs onder de tekening staat, 
 
 Staat iets op de verkeerde verdieping, zoals een leiding, een ruimte of de warmtepomp, kies dan in het paneel bij **Verdieping** de juiste. Radiatoren en vloerverwarming gaan met hun ruimte mee. De warmtepomp kun je ook aanklikken en verslepen.
 
+Met **Rapport (PDF)** bovenaan *Resultaten* maak je een rapport van het hele project. Het bevat de uitgangspunten, de plattegronden per verdieping, het warmteverlies per ruimte met de berekening, de constructies met hun laagopbouw, de afgifte en de stooklijn, het leidingnet met schema en inregeladvies, de verbeteradviezen en de warmtepomp. Bij de warmtepomp staan de gekozen warmtepomp en de geschikte alternatieven, zodat je daar later nog uit kunt kiezen. Kies **Afdrukken of bewaren als PDF** en daarna in het printvenster *Opslaan als PDF*.
+
 Projecten worden in je browser opgeslagen (localStorage). Exporteer regelmatig een `.json` als reservekopie, want bij het wissen van browsergegevens ben je ze kwijt.
 
 ## Wanden intekenen
@@ -353,6 +355,7 @@ js/schema.js      schema van het leidingnet (boom vanaf de warmtepomp)
 js/sizing.js      stooklijn en radiatoradvies
 js/heatpumps.js   warmtepompen en verbeteradviezen
 js/views.js       resultaten, ventilatie, project, invoer en knoppen
+js/report.js      printbaar rapport (PDF)
 js/io.js          export (JSON, CSV, heatlossjs)
 js/storage.js     opslaan
 js/main.js        opstarten
