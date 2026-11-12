@@ -63,6 +63,8 @@ De twee delen delen dezelfde lijn, net als bij hart-op-hart tekenen. Ongedaan ma
 
 Een vide of trappenhuis teken je op de laagste verdieping. Kies bij de ruimte *Soort ruimte: Vide* (of *Trappenhuis*) en bij **Loopt door tot** de hoogste verdieping. Op de verdiepingen erboven staat de vide dan gearceerd.
 
+**Bovenkant van een vide.** Ligt er geen ruimte meer boven de vide, omdat hij doorloopt tot onder het dak, dan heeft hij geen plafond maar het dak. De app neemt dan het dak over van de ruimte met een schuin dak ernaast (bijvoorbeeld de zolder): dezelfde constructie en helling, en een dakvlak van vloeroppervlak ÷ cos(helling). Grenzen er meer van zulke ruimtes aan, dan kies je welke. Staat er geen ruimte met een schuin dak naast, dan is het een plat dak en kies je de dakconstructie. Eindigt de vide onder een andere ruimte, dan heeft hij gewoon een plafond.
+
 Klik je op een hogere verdieping de vide aan, dan blijf je op die verdieping en zie je de ruimte in het paneel. Voor de wanden ga je naar de verdieping waar de vide begint.
 
 Teken je op zo'n hogere verdieping een ruimte die over de vide heen valt, dan knipt de app het stuk binnen de vide eruit. Andersom gaat het ook: laat je een bestaande ruimte later doorlopen, dan worden de ruimtes erboven op dezelfde manier geknipt.
@@ -164,7 +166,7 @@ Per ruimte geef je bij **Lucht stroomt over naar** aan waar de lucht heen gaat: 
 
 In het tabblad Ventilatie laat de plattegrond de luchtstromen zien als bewegende pijlen met m³/h, en per ruimte de inblaas en afzuiging. Selecteer je een ruimte, dan zie je de stromen van en naar die ruimte. Stroomt lucht naar een andere verdieping, dan staat dat bij de ruimte (↑ naar Overloop 50 m³/h).
 
-Stroomt lucht uit één ruimte naar meer dan één andere ruimte, met vaste hoeveelheden, dan gebruik je **Handmatige overstroom (geavanceerd)**.
+Gaat lucht uit één ruimte naar meer dan één andere ruimte, vul dan de vaste aftakking in bij **Handmatige overstroom (geavanceerd)**, bijvoorbeeld hal → toilet 20 m³/h. Kies daarnaast bij *Stroomt naar* de ruimte die de rest krijgt, bijvoorbeeld hal → woonkamer. Die rest rekent de app automatisch uit. Blijft er in een ruimte lucht over die nergens heen gaat, dan staat bij die ruimte hoeveel er binnenkomt en hoeveel eruit gaat.
 
 ## Stooklijn
 

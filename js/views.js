@@ -118,7 +118,15 @@ function roomAirHtml(room) {
   const outs = [`afzuiging ${nv(room.ext, 0)}`, ...a.tout.map(t => `naar ${esc(t.room.name)} ${nv(t.q, 0)}`)];
   return `<label class="f" for="f-room-flow">Lucht stroomt over naar<select class="in" id="f-room-flow" data-f="room.flowTo">${flowOptions(room, room.flowTo)}</select></label>
   <div class="det">Lucht in: ${ins.join(' + ')} = ${nv(a.inn + a.rest, 0)} m³/h<br>Lucht uit: ${outs.join(' + ')} = ${nv(a.out, 0)} m³/h</div>
-  ${a.surplus > 1 ? `<div class="warnbox">Er komt ${nv(a.surplus, 0)} m³/h meer binnen dan er weggaat. Kies hierboven naar welke ruimte die lucht overstroomt, bijvoorbeeld de overloop of de hal.</div>` : ''}
+  ${
+    a.surplus > 1
+      ? `<div class="warnbox">Er komt ${nv(a.surplus, 0)} m³/h meer binnen dan er weggaat (in: ${ins.join(' + ')}; uit: ${outs.join(' + ')}). ${
+          room.flowTo
+            ? 'Controleer de handmatige overstroom onder Ventilatie.'
+            : `Kies hierboven bij <i>Lucht stroomt over naar</i> waar de rest heen gaat${a.tout.length ? '. Dat werkt samen met de handmatige overstroom: die ruimte krijgt automatisch wat er overblijft' : ''}.`
+        }</div>`
+      : ''
+  }
   ${a.rest > 1 && (a.tin.length || room.sup > 0) ? `<div class="warnbox">Er gaat ${nv(a.rest, 0)} m³/h meer weg dan er binnenkomt. De app rekent het verschil als lucht uit de woning op ${nv(P.settings.tRet, 1)} °C.</div>` : ''}`;
 }
 function transferRow(t) {
@@ -152,7 +160,7 @@ function viewVent() {
         a = c.air;
       const st =
         a.surplus > 1
-          ? `<small style="color:var(--warn)">${nv(a.surplus, 0)} m³/h kan nergens heen</small>`
+          ? `<small style="color:var(--warn)">${nv(a.surplus, 0)} m³/h blijft over (in ${nv(r.sup + a.qin, 0)}, uit ${nv(r.ext + a.qout, 0)}): kies <i>Stroomt naar</i></small>`
           : a.rest > 1
             ? `<small>${nv(a.rest, 0)} m³/h aanvulling uit woning</small>`
             : '';
@@ -163,7 +171,7 @@ function viewVent() {
   });
   h += `</tbody></table></div></div>
   <div class="sec"><p class="note">Bij <i>Stroomt naar</i> kies je per ruimte waar de lucht heen gaat, via een spleet onder de deur, een overstroomrooster of een open verbinding (bijvoorbeeld slaapkamer → overloop → badkamer). Hoeveel het is, rekent de app zelf uit: wat er na de afzuiging in die ruimte overblijft, plus wat er uit andere ruimtes binnenkomt. De ontvangende ruimte rekent met de temperatuur van de ruimte waar de lucht vandaan komt. De pijlen in de tekening laten de luchtstromen zien.</p></div>
-  <div class="sec"><h3>Handmatige overstroom (geavanceerd)</h3><p class="note">Alleen nodig als lucht uit één ruimte naar meer dan één andere ruimte stroomt, met vaste hoeveelheden. Gaat er uit een ruimte meer lucht weg dan er binnenkomt, dan rekent de app het verschil als lucht uit de woning op ${nv(S.tRet, 1)} °C.</p>
+  <div class="sec"><h3>Handmatige overstroom (geavanceerd)</h3><p class="note">Voor een vaste aftakking, bijvoorbeeld als lucht uit de hal naar twee ruimtes gaat: vul hier de vaste hoeveelheid in (hal → toilet 20 m³/h) en kies bij <i>Stroomt naar</i> de ruimte die de rest krijgt (hal → woonkamer). Die krijgt dan automatisch wat er overblijft. Gaat er uit een ruimte meer lucht weg dan er binnenkomt, dan rekent de app het verschil als lucht uit de woning op ${nv(S.tRet, 1)} °C.</p>
   ${(P.transfers || []).map(transferRow).join('') || '<p class="note">Geen handmatige overstroom.</p>'}
   <div class="row"><button class="btn small" data-act="addtr" ${P.rooms.length < 2 ? 'disabled' : ''}>+ Handmatige overstroom</button></div></div>`;
   return h;
@@ -362,6 +370,9 @@ function applyField(el, final) {
       }
       if (k === 'name') {
         room.name = v;
+        changed = true;
+      } else if (k === 'roofFrom') {
+        room.roofFrom = v && getRoom(v) && v !== room.id ? v : '';
         changed = true;
       } else if (k === 'flowTo') {
         room.flowTo = v && getRoom(v) && v !== room.id ? v : '';

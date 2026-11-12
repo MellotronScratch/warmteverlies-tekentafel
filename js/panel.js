@@ -145,6 +145,29 @@ function isoSvg(room) {
   );
   return `<div class="xsec"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="3D-weergave van ${esc(room.name)}">${o}</svg></div>`;
 }
+// a vide or stairwell that runs up to the roof: it has no ceiling, but the roof
+function videRoofHtml(room, vt) {
+  const cands = roofCandidates(room),
+    top = P.floors[levelsOf(room)[1]];
+  const line = calcRoom(room).lines.find(l => l.group === 'roof' || (l.group === 'ceil' && l.label === 'Dak'));
+  if (vt.src) {
+    const sr = vt.src.roof,
+      con = conById(sr.cid);
+    return `<div class="card"><b>Dak boven de ${room.kind === 'trap' ? 'trap' : 'vide'}</b>
+      <p class="note">De ${room.kind === 'trap' ? 'trap' : 'vide'} loopt door tot onder het dak. Er zit dus geen plafond, maar het dak van <b>${esc(vt.src.name)}</b>: ${esc((con || {}).name || 'geen constructie')}, helling ${nv(sr.pitch, 0)}°.</p>
+      ${
+        cands.length > 1
+          ? `<label class="f" for="f-room-roofsrc">Zelfde dak als<select class="in" id="f-room-roofsrc" data-f="room.roofFrom"><option value="">automatisch (de ruimte ernaast)</option>${cands.map(o => `<option value="${o.id}" ${room.roofFrom === o.id ? 'selected' : ''}>${esc(o.name)}</option>`).join('')}</select></label>`
+          : ''
+      }
+      ${line ? `<div class="det">${fmt(line.A, 1)} m² dakvlak (${fmt(Math.abs(polyArea(room.pts)), 1)} m² horizontaal)</div>` : ''}
+      <div class="row"><button class="btn small" data-act="selroom" data-r="${vt.src.id}">Dak wijzigen bij ${esc(vt.src.name)}</button></div></div>`;
+  }
+  return `<div class="card"><b>Dak boven de ${room.kind === 'trap' ? 'trap' : 'vide'}</b>
+    <p class="note">De ${room.kind === 'trap' ? 'trap' : 'vide'} loopt door tot onder het dak${top ? ' van ' + esc(top.name) : ''}. Er ligt geen ruimte met een schuin dak naast, dus de app rekent met een plat dak.</p>
+    <label class="f" for="f-ceil-cid">Constructie dak<select class="in" id="f-ceil-cid" data-f="ceil.cid">${conOptions(room.ceil.cid, 'dak')}</select></label>
+    ${line ? `<div class="det">${fmt(line.A, 1)} m² plat dak → buiten</div>` : ''}</div>`;
+}
 function roofEditor(room, surfCard) {
   const r = room.roof,
     R = roofOf(room),
@@ -316,7 +339,10 @@ function viewRoom(room) {
     }</div>`;
   };
   h += `</div><div class="sec"><h3>Vloer</h3>${surfCard('floor', 'Vloer', 'vloer')}</div>`;
-  h += `<div class="sec"><h3>Dak en plafond</h3>${roofEditor(room, surfCard)}`;
+  const vt = videTop(room);
+  h += vt
+    ? `<div class="sec"><h3>Dak</h3>${videRoofHtml(room, vt)}`
+    : `<div class="sec"><h3>Dak en plafond</h3>${roofEditor(room, surfCard)}`;
   h += `</div><div class="row"><button class="btn danger" data-act="delroom">Ruimte verwijderen</button></div>`;
   return h;
 }

@@ -492,7 +492,37 @@ function transLines(room) {
   };
   topLine('floor', 'Vloer', Af);
   const rp = roofParts(room);
-  if (!rp) topLine('ceil', 'Plafond / dak', Af);
+  const vt = !rp ? videTop(room) : null;
+  if (vt && vt.src) {
+    // a vide up to the roof: the same roof as the sloped room next to it, so the surface is the floor area / cos(pitch)
+    const sr = vt.src.roof,
+      con = conById(sr.cid);
+    push({
+      label: 'Dak (zoals ' + vt.src.name + ')',
+      sub:
+        ((con || {}).name || 'geen constructie') +
+        ' → ' +
+        ADJ[sr.adj].toLowerCase() +
+        ` · ${fmt(Af, 1)} m² horizontaal, helling ${nv(sr.pitch, 0)}°`,
+      A: Af / vt.R.cosA,
+      con,
+      t: adjTemp(sr.adj, sr.t),
+      type: sr.adj,
+      group: 'roof'
+    });
+  } else if (vt) {
+    // a vide up to a flat roof
+    const con = conById(room.ceil.cid);
+    push({
+      label: 'Dak',
+      sub: ((con || {}).name || 'geen constructie') + ' → buiten (plat dak)',
+      A: Af,
+      con,
+      t: S.te,
+      type: 'buiten',
+      group: 'ceil'
+    });
+  } else if (!rp) topLine('ceil', 'Plafond / dak', Af);
   else {
     const slopes = rp.parts.filter(p => p.kind === 'slope'),
       cap = rp.parts.filter(p => p.kind === 'cap').reduce((a, p) => a + p.A, 0);

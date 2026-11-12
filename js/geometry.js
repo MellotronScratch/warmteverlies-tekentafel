@@ -245,6 +245,34 @@ function syncLinkedAt(o, room, i) {
 }
 
 /* ---------- floors and ceilings: the rooms directly below or above, found from the drawing ---------- */
+// The top of a vide or stairwell that runs up to the roof: no room above it. It then has the roof of the room with a
+// sloped roof next to it on that floor (or the one chosen in room.roofFrom); without such a room it is a flat roof.
+// Returns null when there is a room above (then it has an ordinary ceiling).
+function videTop(room) {
+  if (!spans(room)) return null;
+  const above = surfNeighbours(room, 'ceil', room.pts);
+  if (above && above.length) return null;
+  const pick = room.roofFrom && getRoom(room.roofFrom);
+  if (pick && pick !== room && roofOf(pick)) return { src: pick, R: roofOf(pick) };
+  let best = null,
+    bl = 0;
+  room.pts.forEach((_, i) =>
+    neighbourIntervals(room, i).forEach(n => {
+      if (!roofOf(n.room)) return;
+      const l = n.ivs.reduce((a, v) => a + v[1] - v[0], 0);
+      if (l > bl) {
+        bl = l;
+        best = n.room;
+      }
+    })
+  );
+  return best ? { src: best, R: roofOf(best) } : { src: null };
+}
+// rooms with a sloped roof that a vide could take its roof from: those on the floor where the vide ends
+const roofCandidates = room => {
+  const top = P.floors[levelsOf(room)[1]];
+  return top ? P.rooms.filter(o => o !== room && presentOn(o, top.id) && roofOf(o)) : [];
+};
 function triangulate(pts) {
   // ear clipping for a simple polygon (also L and U shapes)
   const cross = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x),

@@ -458,6 +458,10 @@ function normalizeProject(p) {
   p.rooms.forEach(
     r => (r.flowTo = typeof r.flowTo === 'string' && rids.has(r.flowTo) && r.flowTo !== r.id ? r.flowTo : '')
   );
+  // a vide up to the roof can take its roof from a chosen room (otherwise from the sloped room next to it)
+  p.rooms.forEach(
+    r => (r.roofFrom = typeof r.roofFrom === 'string' && rids.has(r.roofFrom) && r.roofFrom !== r.id ? r.roofFrom : '')
+  );
   // older projects: a room with exactly one manual transfer that carries exactly what is left becomes 'flows over to'
   p.rooms.forEach(r => {
     if (r.flowTo) return;
