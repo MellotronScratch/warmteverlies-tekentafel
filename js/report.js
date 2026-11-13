@@ -98,7 +98,10 @@ function reportHtml() {
       })()
     : null;
   let h = `<header class="rephead"><h1>${esc(P.name)}</h1><p>Warmteverliesberekening · ${esc(date)}</p>
-    <div class="repkpi"><div><span>Warmteverlies</span><b>${fmt(c.total / 1000, 2)} kW</b></div><div><span>Verwarmd oppervlak</span><b>${fmt(Af, 1)} m²</b></div><div><span>Per m²</span><b>${Af > 0 ? fmtW(c.total / Af) : '–'} W/m²</b></div><div><span>Ontwerp</span><b>${nv(S.te, 0)} °C buiten</b></div></div></header>`;
+    <div class="repkpi"><div><span>Warmteverlies</span><b>${fmt(c.total / 1000, 2)} kW</b></div><div><span>Verwarmd oppervlak</span><b>${fmt(Af, 1)} m²</b></div><div><span>Woonoppervlak</span><b>${fmt(
+      P.rooms.reduce((a, r) => a + livingArea(r), 0),
+      1
+    )} m²</b></div><div><span>Per m²</span><b>${Af > 0 ? fmtW(c.total / Af) : '–'} W/m²</b></div><div><span>Ontwerp</span><b>${nv(S.te, 0)} °C buiten</b></div></div></header>`;
   const warn = sanityHtml(c);
   if (warn) h += `<section class="rsec"><h2>Aandachtspunten</h2>${warn}</section>`;
   // uitgangspunten

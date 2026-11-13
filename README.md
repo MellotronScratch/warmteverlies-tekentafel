@@ -12,6 +12,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 - **Wanddelen**: splits een wand in delen met elk een eigen constructie. De app herkent aan welke ruimte een wand grenst. Een wand tussen twee ruimtes heeft aan beide kanten dezelfde constructie en deuren.
 - **2,5D-weergave**: bekijk de verdiepingen gestapeld en van opzij. Klik een vloer of wand aan om hem te bewerken.
 - **Warmtebeeld**: kleur elk vlak van groen tot rood naar zijn warmteverlies per m².
+- **Woonoppervlak**: zonder meterkast en technische ruimtes, en onder een schuin dak alleen het deel boven 1,5 m.
 - **Constructies**: opbouw in lagen (R = d / λ) met luchtspouwen, geventileerde spouwen en stijlen of regels volgens NEN-EN-ISO 6946, of direct een U-waarde.
 - **Schuine daken**: zadeldak en lessenaarsdak met muurplaathoogte en vlak plafond (hanenbalk), inclusief juiste wand- en dakoppervlakken en inhoud.
 - **Ventilatie en infiltratie**: systeem A, C of D met WTW, overstroom tussen ruimtes en infiltratie uit qv10.
@@ -222,6 +223,16 @@ Met de knop **2,5D** rechtsonder, of de toets `D`, zie je de woning schuin van b
 Met de knop **Warmtebeeld** boven de tekening kleurt elk vlak naar zijn warmteverlies per m² bij de ontwerptemperatuur: groen is weinig, rood is veel. Zo zie je in één oogopslag waar je het meeste verliest, bijvoorbeeld een slecht geïsoleerd dak of enkel glas. Het werkt in de plattegrond (wanden en ramen) en in de 2,5D-weergave (ook vloeren, daken en plafonds naar buiten of een onverwarmde ruimte). Grijs betekent geen verlies, bijvoorbeeld een wand tussen twee ruimtes van dezelfde temperatuur. Het verlies per m² is (U + ΔU) × het temperatuurverschil, dus een wand naar de buren (15 °C) kleurt groener dan dezelfde wand naar buiten. Nog een keer klikken zet de gewone kleuren per constructie terug.
 
 <img src="docs/img/warmtebeeld.png" width="600" alt="Warmtebeeld in de 2,5D-weergave">
+
+### Woonoppervlak
+
+Onder **Resultaten** staat het woonoppervlak van het huis, totaal en per verdieping. Dat is ongeveer de gebruiksoppervlakte uit NEN 2580, die je ook in een verkoopadvertentie of een energielabel ziet:
+
+- Alleen ruimtes waar je woont tellen mee. Een meterkast, technische ruimte, CV-ruimte, koof, kruipruimte of onverwarmde ruimte telt niet mee. De app herkent die aan de naam. Klopt dat niet, zet dan bij de ruimte **Telt mee voor woonoppervlak** aan of uit.
+- Onder een schuin dak telt alleen het deel waar het minstens 1,5 m hoog is. Bij de ruimte zie je hoeveel dat is, bijvoorbeeld *11,7 van 21,5 m²*.
+- Een vide of trappenhuis telt één keer mee, op de verdieping waar hij begint.
+
+Er wordt gemeten binnen de getekende wanden. Teken je op buitenmaat, dan komt het woonoppervlak dus wat hoger uit. Dakkapellen tellen niet extra mee.
 
 ## Ventilatie en luchtstromen
 

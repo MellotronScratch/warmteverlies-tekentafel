@@ -524,6 +524,8 @@ function normalizeProject(p) {
   p.rooms.forEach(r => {
     // an unheated room (crawl space, basement, storage): no heat loss of its own, its temperature counts for its neighbours
     r.heated = r.heated !== false;
+    // counts as living space (woonoppervlak): true/false when the user chose, otherwise guessed from name and heating
+    if (typeof r.go !== 'boolean') delete r.go;
     r.id = r.id || rid();
     r.name = String(r.name || 'Ruimte');
     r.temp = Number.isFinite(+r.temp) ? +r.temp : 20;

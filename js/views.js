@@ -20,6 +20,21 @@ function sanityHtml(c) {
     ? `<div class="sec">${w.map(t => `<div class="warnbox">${t}</div>`).join('')}${innerOutsideHtml(io, 'all')}</div>`
     : '';
 }
+// woonoppervlak: total and per floor, with the rooms that do not count
+function livingHtml() {
+  const rs = P.rooms.filter(r => !P.floors[floorIdx(r.floorId)] || !P.floors[floorIdx(r.floorId)].below || inLiving(r)),
+    tot = rs.reduce((a, r) => a + livingArea(r), 0);
+  if (!rs.length) return '';
+  const perF = P.floors
+      .map(f => ({ f, A: rs.filter(r => r.floorId === f.id).reduce((a, r) => a + livingArea(r), 0) }))
+      .filter(x => x.A > 0.05),
+    out = rs.filter(r => !inLiving(r)),
+    low = rs.filter(r => inLiving(r) && livingArea(r) < Math.abs(polyArea(r.pts)) - 0.05);
+  const list = a =>
+    a.map(r => `<button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button>`).join(', ');
+  return `<div class="sec"><div class="kcard"><div class="kh"><span>Woonoppervlak</span><b>${fmt(tot, 1)} m²</b></div>${perF.length > 1 ? `<div class="det">${perF.map(x => `${esc(x.f.name)} ${fmt(x.A, 1)} m²`).join(' · ')}</div>` : ''}</div>
+    <p class="note">De vloeroppervlakte van de ruimtes waar je woont, ongeveer zoals de gebruiksoppervlakte uit NEN 2580. Onder een schuin dak telt alleen het deel waar het minstens 1,5 m hoog is${low.length ? ` (${list(low)})` : ''}. ${out.length ? `Niet meegeteld: ${list(out)}.` : ''} Per ruimte zet je dit aan of uit met <b>Telt mee voor woonoppervlak</b>. Gemeten wordt binnen de getekende wanden; dakkapellen tellen niet extra mee.</p></div>`;
+}
 function viewRes() {
   const c = calcAll();
   const tb = {
@@ -29,6 +44,7 @@ function viewRes() {
   };
   let h = `<div class="sec"><div class="row" style="justify-content:space-between;align-items:center"><h2 style="margin:0">Resultaten</h2><button class="btn small" data-act="report">Rapport (PDF)</button></div><div class="kcard"><div class="kh"><span>Som van alle ruimtes</span><b>${fmt(c.total / 1000, 2)} kW</b></div>${segHtml(tb, true)}</div></div>
   ${sanityHtml(c)}
+  ${livingHtml()}
   ${P.floors
     .map(f => {
       const per = c.per.filter(x => x.room.floorId === f.id);
@@ -404,6 +420,9 @@ function applyField(el, final) {
         return;
       } else if (k === 'heated') {
         room.heated = el.checked;
+        changed = true;
+      } else if (k === 'go') {
+        room.go = el.checked;
         changed = true;
       } else if (k === 'roofFrom') {
         room.roofFrom = v && getRoom(v) && v !== room.id ? v : '';

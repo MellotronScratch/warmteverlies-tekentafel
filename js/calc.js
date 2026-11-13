@@ -205,6 +205,34 @@ function roofStrips(pts, R) {
   if (cur.length) out.push(cur);
   return out;
 }
+/* ---------- woonoppervlak (gebruiksoppervlakte wonen, simplified after NEN 2580) ----------
+   Only rooms that count as living space (not a meter cupboard, technical room or crawl space; room.go overrides the
+   guess), and under a sloped roof only the part where the room is at least 1.5 m high. */
+const GO_HMIN = 1.5;
+const GO_SKIP = /meter\s*kast|techni|install|cv[- ]?(ruimte|kast|hok|kamer)|stookhok|ketel|koof|schacht|kruip/i;
+const goGuess = room => room.heated !== false && !GO_SKIP.test(room.name || '');
+const inLiving = room => (typeof room.go === 'boolean' ? room.go : goGuess(room));
+// plan area where the height under the roof R is at least h (R's height is linear within each strip)
+function areaAbove(pts, R, h) {
+  return roofStrips(pts, R).reduce((a, q) => {
+    const ss = q.map(R.sOf),
+      s0 = Math.min(...ss),
+      s1 = Math.max(...ss),
+      z0 = R.z(s0),
+      z1 = R.z(s1);
+    if (Math.max(z0, z1) < h - 1e-9) return a;
+    let poly = q;
+    if (Math.min(z0, z1) < h && Math.abs(z1 - z0) > 1e-9)
+      poly = clipS(q, R.sOf, s0 + ((h - z0) * (s1 - s0)) / (z1 - z0), z1 < z0);
+    return a + (poly.length ? Math.abs(polyArea(poly)) : 0);
+  }, 0);
+}
+function livingArea(room) {
+  if (!inLiving(room)) return 0;
+  const R = wallRoof(room);
+  if (R) return areaAbove(room.pts, R, GO_HMIN);
+  return room.height >= GO_HMIN ? Math.abs(polyArea(room.pts)) : 0;
+}
 // wall area between t0 and t1 along edge e: exact for piecewise-linear heights
 function wallArea(room, e, t0, t1, R) {
   if (t1 <= t0) return 0;

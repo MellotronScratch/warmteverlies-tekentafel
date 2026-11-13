@@ -297,6 +297,13 @@ function viewNone() {
 function viewRoom(room) {
   let h = `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-room-name" data-f="room.name" value="${esc(room.name)}" aria-label="Naam ruimte"></div>
   <label class="chk"><input type="checkbox" id="f-room-heated" data-f="room.heated" ${room.heated === false ? '' : 'checked'}> Verwarmde ruimte</label>
+  <label class="chk" title="Meterkast, technische ruimtes en kruipruimtes tellen niet mee. Onder een schuin dak telt alleen het deel dat minstens 1,5 m hoog is."><input type="checkbox" id="f-room-go" data-f="room.go" ${inLiving(room) ? 'checked' : ''}> Telt mee voor woonoppervlak</label>${(() => {
+    const go = livingArea(room),
+      Af = Math.abs(polyArea(room.pts));
+    return inLiving(room) && go < Af - 0.05
+      ? `<p class="note" style="margin-top:2px">Woonoppervlak ${fmt(go, 1)} van ${fmt(Af, 1)} m²: de rest is lager dan 1,5 m.</p>`
+      : '';
+  })()}
   <div class="fields">${numField('f-room-temp', 'room.temp', room.heated === false ? 'Temperatuur (aangenomen)' : 'Ontwerptemperatuur θi', '°C', room.temp, 1)}${(roofOf(room) && !spans(room)) || videRoof(room) ? '' : numField('f-room-h', 'room.height', spans(room) ? 'Totale hoogte' : 'Hoogte', 'm', room.height, 2)}${numField('f-room-sup', 'room.sup', P.settings.ventSys === 'D' ? 'Inblaas' : 'Toevoer (roosters)', 'm³/h', room.sup, 0)}${numField('f-room-ext', 'room.ext', 'Afzuiging', 'm³/h', room.ext, 0)}</div>
   <div class="fields">${floorSelect('f-room-fl', 'room.floorId', room.floorId)}</div>
   <div class="fields"><label class="f" for="f-room-kind">Soort ruimte<select class="in" id="f-room-kind" data-f="room.kind">${[
