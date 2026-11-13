@@ -138,7 +138,7 @@ function toHeatlossjs() {
     return elements.length - 1;
   };
   P.rooms.forEach(r => {
-    const R = roofOf(r),
+    const R = wallRoof(r),
       Af = Math.abs(polyArea(r.pts)),
       V = roomVolume(r),
       nm = names[r.id],

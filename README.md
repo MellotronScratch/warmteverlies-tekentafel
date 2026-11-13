@@ -95,7 +95,7 @@ De twee delen delen dezelfde lijn, net als bij hart-op-hart tekenen. Ongedaan ma
 
 Een vide of trappenhuis teken je op de laagste verdieping. Kies bij de ruimte *Soort ruimte: Vide* (of *Trappenhuis*) en bij **Loopt door tot** de hoogste verdieping. Op de verdiepingen erboven staat de vide dan gearceerd.
 
-**Bovenkant van een vide.** Ligt er geen ruimte meer boven de vide, omdat hij doorloopt tot onder het dak, dan heeft hij geen plafond maar het dak. De app neemt dan het dak over van de ruimte met een schuin dak ernaast (bijvoorbeeld de zolder): dezelfde constructie en helling, en een dakvlak van vloeroppervlak ÷ cos(helling). Grenzen er meer van zulke ruimtes aan, dan kies je welke. Staat er geen ruimte met een schuin dak naast, dan is het een plat dak en kies je de dakconstructie. Eindigt de vide onder een andere ruimte, dan heeft hij gewoon een plafond.
+**Bovenkant van een vide.** Ligt er geen ruimte meer boven de vide, omdat hij doorloopt tot onder het dak, dan heeft hij geen plafond maar het dak. De app neemt dan het dak over van de ruimte met een schuin dak ernaast (bijvoorbeeld de zolder): dezelfde constructie en helling, en een dakvlak van vloeroppervlak ÷ cos(helling). De wanden van de vide lopen dan ook schuin mee tot onder dat dak, in de 2,5D-weergave en in de berekening. De hoogte van de vide doet er dan niet meer toe. Grenzen er meer van zulke ruimtes aan, dan kies je welke. Staat er geen ruimte met een schuin dak naast, dan is het een plat dak en kies je de dakconstructie. Eindigt de vide onder een andere ruimte, dan heeft hij gewoon een plafond.
 
 Klik je op een hogere verdieping de vide aan, dan blijf je op die verdieping en zie je de ruimte in het paneel. Voor de wanden ga je naar de verdieping waar de vide begint.
 
@@ -409,50 +409,11 @@ Verander de sleutels en id's van bestaande regels niet, want projecten verwijzen
 
 De warmtepomplijst kun je in de app ook downloaden, aanvullen en als eigen lijst weer importeren. Die eigen lijst staat dan alleen in je browser. Bijdragen met fabrieksgegevens zijn welkom; vermeld de bron.
 
-## Opbouw van de code
-
-Geen build-stap en geen afhankelijkheden: gewone JavaScript-bestanden die `index.html` op volgorde laadt.
-
-```
-index.html        de pagina
-css/app.css       opmaak
-data/*.json       gegevens (zie hierboven)
-js/analytics.js   anonieme bezoekersstatistiek (GoatCounter), alleen als er een code is ingevuld
-js/data.js        laadt data/*.json
-js/core.js        constanten, voorbeeldproject, normalizeProject (oude projecten bijwerken)
-js/geometry.js    wanden, buurruimtes, gedeelde wanden, ramen, vloeren en plafonds
-js/calc.js        laagopbouw, daken en de warmteverliesberekening
-js/render.js      plattegrond, trappen en de 2,5D-weergave
-js/interaction.js gereedschappen, bewerkingen, muis en toetsenbord
-js/underlay.js    onderlegger: afbeelding onder een verdieping, schaal en plaats
-js/panel.js       zijpaneel: ruimte, wanddeel, constructies
-js/emitters.js    afgifte, leidingen en systeeminhoud
-js/hydraulics.js  leidingnet: debiet, drukverlies, indexcircuit
-js/schema.js      schema van het leidingnet (boom vanaf de warmtepomp)
-js/sizing.js      stooklijn en radiatoradvies
-js/heatpumps.js   warmtepompen en verbeteradviezen
-js/views.js       resultaten, ventilatie, project, invoer en knoppen
-js/report.js      printbaar rapport (PDF)
-js/io.js          export (JSON, CSV, heatlossjs)
-js/storage.js     opslaan
-js/main.js        opstarten
-```
-
-De code is opgemaakt met [Prettier](https://prettier.io) (instellingen in `.prettierrc.json`), bijvoorbeeld met `npx prettier --write "js/*.js" css/app.css index.html "data/*.json"`.
-
 ## Privacy en statistiek
 
 Je projecten, tekeningen en onderleggers blijven in je eigen browser. De app stuurt ze nergens naartoe.
 
 De site op GitHub Pages telt anoniem bezoeken met [GoatCounter](https://www.goatcounter.com): zonder cookies en zonder persoonsgegevens. Daarnaast telt hij hoe vaak een paar functies worden gebruikt: het rapport, het schema van het leidingnet, exporteren (JSON, CSV, heatlossjs) en het plaatsen van een onderlegger. Daarbij gaat alleen de naam van de functie mee, nooit de inhoud van een project. Er wordt niets geteld als je de app lokaal draait, als je browser "Do Not Track" aan heeft staan, of als je onder **Project → Statistiek** het vinkje uitzet.
-
-### Statistiek instellen (voor wie de app zelf host)
-
-1. Maak een gratis account aan op [goatcounter.com](https://www.goatcounter.com) en kies een code, bijvoorbeeld `mijntekentafel`. Je statistiek staat dan op `https://mijntekentafel.goatcounter.com`.
-2. Vul die code in bovenaan `js/analytics.js`: `const GOATCOUNTER_CODE = 'mijntekentafel';`
-3. Commit en push. Na een paar minuten verschijnen de eerste bezoeken in het dashboard. Gebruik van functies staat er als *actie/rapport*, *actie/export-json*, enzovoort.
-
-Laat je de code leeg, dan laadt de app geen enkel extern script behalve Google Fonts.
 
 ## Licentie
 

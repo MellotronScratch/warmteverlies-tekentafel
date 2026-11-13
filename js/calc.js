@@ -178,10 +178,37 @@ function roofOf(room) {
     z: s => Math.max(0, Math.min(cap, lowMin ? knee + k * (s - smin) : knee + k * (smax - s)))
   };
 }
+// A vide or stairwell that runs up under a sloped roof (see videTop): the walls follow the roof of the room it takes
+// that roof from, measured from the vide's own floor. Same shape as roofOf, only shifted in height; null otherwise.
+function videRoof(room) {
+  const vt = videTop(room);
+  if (!vt || !vt.R) return null;
+  const el = floorElev(),
+    R = vt.R,
+    dz = (el[vt.src.floorId] || 0) - (el[room.floorId] || 0);
+  return { ...R, vide: true, nok: R.nok + dz, cap: R.cap + dz, z: s => dz + R.z(s) };
+}
+// the roof the walls of a room run up to: its own sloped roof, or that of a vide; null = flat at room.height
+const wallRoof = room => roofOf(room) || videRoof(room);
+// cut a polygon into strips at the kinks of a roof, so the height is linear within each strip
+function roofStrips(pts, R) {
+  const out = [];
+  let cur = pts;
+  [...R.crit]
+    .sort((a, b) => a - b)
+    .forEach(c => {
+      if (!cur.length) return;
+      const lo = clipS(cur, R.sOf, c, true);
+      if (lo.length) out.push(lo);
+      cur = clipS(cur, R.sOf, c, false);
+    });
+  if (cur.length) out.push(cur);
+  return out;
+}
 // wall area between t0 and t1 along edge e: exact for piecewise-linear heights
 function wallArea(room, e, t0, t1, R) {
   if (t1 <= t0) return 0;
-  if (R === undefined) R = roofOf(room);
+  if (R === undefined) R = wallRoof(room);
   if (!R) return (t1 - t0) * room.height;
   const sa = R.sOf(e.a),
     ds = e.ux * R.v.x + e.uy * R.v.y,
@@ -380,7 +407,13 @@ function roofItemGeom(room) {
 function roomVolume(room) {
   const rp = roofParts(room);
   const Af = Math.abs(polyArea(room.pts));
-  if (!rp) return Af * room.height;
+  if (!rp) {
+    const V = videRoof(room);
+    // a vide under a sloped roof: the height is linear within each strip, so area × height at its centre is exact
+    return V
+      ? roofStrips(room.pts, V).reduce((a, q) => a + Math.abs(polyArea(q)) * V.z(V.sOf(centroid(q))), 0)
+      : Af * room.height;
+  }
   // dormers add a wedge of ½ · w · D · hf
   const extra = (room.roof.items || [])
     .filter(it => it.kind === 'kapel')
@@ -444,7 +477,7 @@ function transLines(room) {
   const S = P.settings,
     ti = room.temp,
     lines = [],
-    R = roofOf(room);
+    R = wallRoof(room);
   let missing = 0;
   const push = o => {
     const c = o.con;

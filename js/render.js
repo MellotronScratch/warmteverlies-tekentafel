@@ -332,7 +332,7 @@ function heatLegendHtml() {
   return `<b>Warmteverlies per m² bij ${nv(S.te, 0)} °C</b><div class="hbar" style="background:linear-gradient(90deg,${grad})"></div><div class="hlab">${[0, 10, 20, 35, HEAT_MAX].map(v => `<span style="left:${pos(v)}">${v === HEAT_MAX ? v + '+' : v}</span>`).join('')}</div><div><span class="sw" style="background:${HEAT_NONE}"></span><span>geen verlies</span></div>`;
 }
 const roomTop = r => {
-  const R = roofOf(r);
+  const R = wallRoof(r);
   return R ? Math.min(R.cap, R.nok) : r.height;
 };
 // the point on the current floor level that lies under screen position (X,Y): the centre of rotation
@@ -513,7 +513,20 @@ function render3d() {
         }
         // sloped roof surfaces, see-through, so roof windows and dormers have something to sit on
         {
-          const rp = roofParts(r);
+          const rp = roofParts(r),
+            VR = !rp && videRoof(r);
+          // a vide under a sloped roof: the same roof surface over it
+          if (VR)
+            roofStrips(r.pts, VR).forEach(poly => {
+              const q = poly.map(v => P3(v, z0 + VR.z(VR.sOf(v))));
+              items.push({
+                near: true,
+                d: q.reduce((a, v) => a + v.d, 0) / q.length,
+                svg: heatView
+                  ? `<polygon points="${q.map(pt).join(' ')}" fill="${heatCol(surfLoss(r).roof)}" fill-opacity=".45" stroke="var(--wall)" stroke-opacity=".5" stroke-width="1" pointer-events="none"/>`
+                  : `<polygon points="${q.map(pt).join(' ')}" fill="var(--muted)" fill-opacity=".1" stroke="var(--muted)" stroke-opacity=".45" stroke-width="1" pointer-events="none"/>`
+              });
+            });
           if (rp)
             rp.parts
               .filter(p => p.kind === 'slope')
@@ -566,8 +579,8 @@ function render3d() {
             svg: `<polygon points="${q.map(pt).join(' ')}" fill="var(--surface)" fill-opacity=".35" stroke="var(--ink)" stroke-opacity=".7" stroke-width="1.4" stroke-dasharray="6 4" pointer-events="none"/>`
           });
         });
-        // walls, per wall part, with the top following a sloped roof
-        const R = roofOf(r);
+        // walls, per wall part, with the top following a sloped roof (also over a vide that runs up under one)
+        const R = wallRoof(r);
         r.pts.forEach((_, i) => {
           const e = edge(r, i);
           if (e.L < 1e-6) return;

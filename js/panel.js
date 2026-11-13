@@ -92,7 +92,7 @@ function roofLines(R) {
       : [];
 }
 function isoSvg(room) {
-  const R = roofOf(room),
+  const R = wallRoof(room),
     pts = room.pts,
     zAt = p => (R ? R.z(R.sOf(p)) : room.height);
   const pr = (p, z) => ({ X: (p.x - p.y) * 0.866, Y: (p.x + p.y) * 0.5 - z });
@@ -297,7 +297,7 @@ function viewNone() {
 function viewRoom(room) {
   let h = `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-room-name" data-f="room.name" value="${esc(room.name)}" aria-label="Naam ruimte"></div>
   <label class="chk"><input type="checkbox" id="f-room-heated" data-f="room.heated" ${room.heated === false ? '' : 'checked'}> Verwarmde ruimte</label>
-  <div class="fields">${numField('f-room-temp', 'room.temp', room.heated === false ? 'Temperatuur (aangenomen)' : 'Ontwerptemperatuur θi', '°C', room.temp, 1)}${roofOf(room) && !spans(room) ? '' : numField('f-room-h', 'room.height', spans(room) ? 'Totale hoogte' : 'Hoogte', 'm', room.height, 2)}${numField('f-room-sup', 'room.sup', P.settings.ventSys === 'D' ? 'Inblaas' : 'Toevoer (roosters)', 'm³/h', room.sup, 0)}${numField('f-room-ext', 'room.ext', 'Afzuiging', 'm³/h', room.ext, 0)}</div>
+  <div class="fields">${numField('f-room-temp', 'room.temp', room.heated === false ? 'Temperatuur (aangenomen)' : 'Ontwerptemperatuur θi', '°C', room.temp, 1)}${(roofOf(room) && !spans(room)) || videRoof(room) ? '' : numField('f-room-h', 'room.height', spans(room) ? 'Totale hoogte' : 'Hoogte', 'm', room.height, 2)}${numField('f-room-sup', 'room.sup', P.settings.ventSys === 'D' ? 'Inblaas' : 'Toevoer (roosters)', 'm³/h', room.sup, 0)}${numField('f-room-ext', 'room.ext', 'Afzuiging', 'm³/h', room.ext, 0)}</div>
   <div class="fields">${floorSelect('f-room-fl', 'room.floorId', room.floorId)}</div>
   <div class="fields"><label class="f" for="f-room-kind">Soort ruimte<select class="in" id="f-room-kind" data-f="room.kind">${[
     ['normaal', 'Normale ruimte'],
@@ -458,7 +458,7 @@ function viewSeg(room, i, j) {
     h += `<div class="card"><div class="opgrid"><label class="f" for="f-op-${o.id}-n">Naam<input class="in" id="f-op-${o.id}-n" data-f="op.${o.id}.name" value="${esc(o.name)}"></label>${numField('f-op-' + o.id + '-w', 'op.' + o.id + '.w', 'Breedte', 'm', o.w, 2)}${numField('f-op-' + o.id + '-h', 'op.' + o.id + '.h', 'Hoogte', 'm', o.h, 2)}<button class="btn small" data-act="delop" data-o="${o.id}" aria-label="Verwijder ${esc(o.name)}">✕</button></div>
     ${(() => {
       const it = opLayout(room, i, j).find(x => x.o === o),
-        R = roofOf(room),
+        R = wallRoof(room),
         mid = it ? (it.t0 + it.t1) / 2 : (s0 + s1) / 2,
         top = R ? R.z(R.sOf({ x: e.a.x + e.ux * mid, y: e.a.y + e.uy * mid })) : room.height,
         sl = opSill(o, top);
