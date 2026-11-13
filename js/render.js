@@ -249,6 +249,88 @@ function pr3(p, z, raw) {
   return { X: ox + k * xr, Y: oy + k * (yr * se - z * ce), d: yr * ce + z * se };
 }
 const zTop = (room, R, p) => (R ? R.z(R.sOf(p)) : room.height);
+
+// Warmtebeeld: every surface coloured by its heat loss per m² at the design temperature, from green (little) to red (a lot).
+// Grey: no loss, for example a wall between two rooms at the same temperature, or an unheated room.
+let heatView = false;
+try {
+  heatView = localStorage.getItem('wvt.heatview') === '1';
+} catch (_) {}
+function setHeatView(on) {
+  heatView = !!on;
+  try {
+    localStorage.setItem('wvt.heatview', heatView ? '1' : '0');
+  } catch (_) {}
+  if (heatView) track('warmtebeeld');
+  renderFloorbar();
+  renderCanvas();
+}
+const HEAT_MAX = 60, // W/m², everything above is full red
+  HEAT_NONE = '#A9B4B7',
+  HEAT_STOPS = [
+    [0, [26, 150, 65]],
+    [10, [140, 200, 70]],
+    [20, [240, 200, 40]],
+    [35, [242, 128, 32]],
+    [HEAT_MAX, [210, 35, 30]]
+  ];
+function heatCol(q) {
+  if (!(q > 0.5)) return HEAT_NONE;
+  const v = Math.min(q, HEAT_MAX);
+  let i = 1;
+  while (i < HEAT_STOPS.length - 1 && v > HEAT_STOPS[i][0]) i++;
+  const [v0, c0] = HEAT_STOPS[i - 1],
+    [v1, c1] = HEAT_STOPS[i],
+    t = (v - v0) / (v1 - v0);
+  return 'rgb(' + c0.map((c, k) => Math.round(c + (c1[k] - c) * t)).join(',') + ')';
+}
+// heat loss per m² of each surface of a room: wall parts, openings, floor, roof slopes and the ceiling towards outside
+let _lossMemo = null;
+function surfLoss(room) {
+  if (!_lossMemo) {
+    _lossMemo = new Map();
+    Promise.resolve().then(() => (_lossMemo = null));
+  }
+  let m = _lossMemo.get(room.id);
+  if (m) return m;
+  const agg = {},
+    open = {},
+    add = (k, l) => {
+      const a = agg[k] || (agg[k] = { phi: 0, A: 0 });
+      a.phi += l.phi;
+      a.A += l.A;
+    };
+  if (room.heated !== false)
+    transLines(room).lines.forEach(l => {
+      if (l.group === 'wall') add('w' + l.w + '.' + l.s, l);
+      else if (l.group === 'open')
+        (open[l.w + '.' + l.s] = open[l.w + '.' + l.s] || []).push(l.A > 1e-6 ? l.phi / l.A : 0);
+      else {
+        add(l.group, l);
+        if (l.group === 'ceil' && l.type !== 'ruimte') add('ceilOut', l);
+      }
+    });
+  const q = k => (agg[k] && agg[k].A > 1e-6 ? agg[k].phi / agg[k].A : null);
+  m = {
+    seg: (i, j) => q('w' + i + '.' + j),
+    open: (i, j, o) => {
+      const sg = room.walls[i] && room.walls[i].segs[j],
+        n = sg ? sg.openings.indexOf(o) : -1;
+      return n >= 0 ? (open[i + '.' + j] || [])[n] : null;
+    },
+    floor: q('floor'),
+    roof: q('roof'),
+    ceilOut: q('ceilOut')
+  };
+  _lossMemo.set(room.id, m);
+  return m;
+}
+function heatLegendHtml() {
+  const S = P.settings,
+    pos = v => ((v / HEAT_MAX) * 100).toFixed(1) + '%',
+    grad = HEAT_STOPS.map(([v, c]) => `rgb(${c.join(',')}) ${pos(v)}`).join(',');
+  return `<b>Warmteverlies per m² bij ${nv(S.te, 0)} °C</b><div class="hbar" style="background:linear-gradient(90deg,${grad})"></div><div class="hlab">${[0, 10, 20, 35, HEAT_MAX].map(v => `<span style="left:${pos(v)}">${v === HEAT_MAX ? v + '+' : v}</span>`).join('')}</div><div><span class="sw" style="background:${HEAT_NONE}"></span><span>geen verlies</span></div>`;
+}
 const roomTop = r => {
   const R = roofOf(r);
   return R ? Math.min(R.cap, R.nok) : r.height;
@@ -407,7 +489,7 @@ function render3d() {
         const isSel = top && sel && sel.r === r.id;
         const k = calcRoom(r);
         out += `<polygon points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="var(--paper)" stroke="var(--line)" stroke-width="1" ${top ? '' : 'pointer-events="none"'}/>`;
-        out += `<polygon ${top ? `data-k3="room" data-r="${r.id}"` : 'pointer-events="none"'} points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="${isSel ? 'var(--accent-soft-2)' : 'var(--room)'}" stroke="none" style="cursor:pointer"/>`;
+        out += `<polygon ${top ? `data-k3="room" data-r="${r.id}"` : 'pointer-events="none"'} points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="${isSel ? 'var(--accent-soft-2)' : heatView && surfLoss(r).floor > 0.5 ? heatCol(surfLoss(r).floor) : 'var(--room)'}" ${heatView && !isSel && surfLoss(r).floor > 0.5 ? 'fill-opacity=".6"' : ''} stroke="none" style="cursor:pointer"/>`;
         (layerOn('emit') ? r.emitters || [] : []).forEach(em => {
           if (em.kind === 'vv') {
             out += `<polygon points="${em.pts.map(p => pt(P3(p, z0 + 0.01))).join(' ')}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="1" stroke-dasharray="5 4" pointer-events="none"/>`;
@@ -440,9 +522,26 @@ function render3d() {
                 items.push({
                   near: true,
                   d: q.reduce((a, v) => a + v.d, 0) / q.length,
-                  svg: `<polygon points="${q.map(pt).join(' ')}" fill="var(--muted)" fill-opacity=".1" stroke="var(--muted)" stroke-opacity=".45" stroke-width="1" pointer-events="none"/>`
+                  svg: heatView
+                    ? `<polygon points="${q.map(pt).join(' ')}" fill="${heatCol(surfLoss(r).roof)}" fill-opacity=".45" stroke="var(--wall)" stroke-opacity=".5" stroke-width="1" pointer-events="none"/>`
+                    : `<polygon points="${q.map(pt).join(' ')}" fill="var(--muted)" fill-opacity=".1" stroke="var(--muted)" stroke-opacity=".45" stroke-width="1" pointer-events="none"/>`
                 });
               });
+          // Warmtebeeld: a flat ceiling or flat roof with outside or an unheated space above it
+          const qc = heatView ? surfLoss(r).ceilOut : null;
+          if (qc != null) {
+            const polys = rp
+              ? rp.parts.filter(p => p.kind === 'cap').map(p => ({ poly: p.poly, z: p.z }))
+              : [{ poly: r.pts, z: r.height }];
+            polys.forEach(({ poly, z }) => {
+              const q = poly.map(v => P3(v, z0 + z));
+              items.push({
+                near: true,
+                d: q.reduce((a, v) => a + v.d, 0) / q.length,
+                svg: `<polygon points="${q.map(pt).join(' ')}" fill="${heatCol(qc)}" fill-opacity=".4" stroke="var(--wall)" stroke-opacity=".5" stroke-width="1" pointer-events="none"/>`
+              });
+            });
+          }
         }
         // roof windows (glass in the slope) and dormers (front with window, cheeks, flat roof)
         roofItemGeom(r).forEach(g =>
@@ -496,7 +595,7 @@ function render3d() {
             const bot = ts.map(t => P3(at(t), z0)),
               tp = ts.map(t => P3(at(t), z0 + zTop(r, R, at(t))));
             const con = conById(sg.cid),
-              col = con ? con.color : 'var(--warn)',
+              col = heatView ? heatCol(surfLoss(r).seg(i, j)) : con ? con.color : 'var(--warn)',
               isSel = top && sel && sel.t === 'seg' && sel.r === r.id && sel.w === i && sel.s === j;
             const poly = bot.concat(tp.slice().reverse()).map(pt).join(' ');
             const d = bot.concat(tp).reduce((a, q) => a + q.d, 0) / (bot.length * 2);
@@ -529,7 +628,8 @@ function render3d() {
                   P3(at(t + ow), z0 + sill + hh),
                   P3(at(t), z0 + sill + hh)
                 ];
-                g += `<polygon points="${q.map(pt).join(' ')}" fill="var(--heat)" fill-opacity="${near ? 0.25 : 0.55}" stroke="var(--heat)" stroke-width="1.2" pointer-events="none"/>`;
+                const oc = heatView ? heatCol(surfLoss(r).open(i, j, o)) : 'var(--heat)';
+                g += `<polygon points="${q.map(pt).join(' ')}" fill="${oc}" fill-opacity="${heatView ? (near ? 0.45 : 0.85) : near ? 0.25 : 0.55}" stroke="${heatView ? 'var(--ink)' : 'var(--heat)'}" stroke-opacity="${heatView ? 0.6 : 1}" stroke-width="1.2" pointer-events="none"/>`;
               });
             const isHov = top && hoverSeg && hoverSeg.r === r.id && hoverSeg.w === i && hoverSeg.s === j;
             if (isSel || isHov)
@@ -670,14 +770,16 @@ function renderCanvas() {
         if (sg.adj === 'open')
           out += `<line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--paper)" stroke-width="7"/><line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--room)" stroke-width="7"/><line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="6 5"/>`;
         else
-          out += `<line x1="${a.x}" y1="${a.y}" x2="${bb.x}" y2="${bb.y}" stroke="${con ? con.color : 'var(--warn)'}" stroke-width="${isSel ? 4 : 3}" stroke-linecap="round" ${con ? '' : 'stroke-dasharray="3 3"'}/>`;
+          out += heatView
+            ? `<line x1="${a.x}" y1="${a.y}" x2="${bb.x}" y2="${bb.y}" stroke="${heatCol(surfLoss(r).seg(i, j))}" stroke-width="${isSel ? 6 : 5}" stroke-linecap="round"/>`
+            : `<line x1="${a.x}" y1="${a.y}" x2="${bb.x}" y2="${bb.y}" stroke="${con ? con.color : 'var(--warn)'}" stroke-width="${isSel ? 4 : 3}" stroke-linecap="round" ${con ? '' : 'stroke-dasharray="3 3"'}/>`;
         out += `<line class="hit" data-k="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke-width="18"/>`;
         // windows and doors: orange in the wall, each at its own place; drag them along the wall
         opLayout(r, i, j).forEach(({ o, t0, t1 }) => {
           const p0 = P2(e, t0 + 0.02, 0),
             p1 = P2(e, t1 - 0.02, 0),
             moving = drag && drag.type === 'op' && drag.o === o.id;
-          out += `<line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--heat)" stroke-width="${moving ? 9 : 7}"/><line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--paper)" stroke-width="1.2"/>`;
+          out += `<line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="${heatView ? heatCol(surfLoss(r).open(i, j, o)) : 'var(--heat)'}" stroke-width="${moving ? 9 : 7}"/><line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--paper)" stroke-width="1.2"/>`;
           if (tool === 'select')
             out += `<line class="hit" data-k="op" data-r="${r.id}" data-w="${i}" data-s="${j}" data-o="${o.id}" x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke-width="16" style="cursor:grab"><title>${esc(o.name)}: sleep om te verplaatsen</title></line>`;
           if (moving) {
@@ -1197,6 +1299,13 @@ function renderLegend() {
     )
   );
   const el = $('legend');
+  if (heatView) {
+    el.hidden = false;
+    el.classList.add('heat');
+    el.innerHTML = heatLegendHtml();
+    return;
+  }
+  el.classList.remove('heat');
   if (!used.size) {
     el.hidden = true;
     return;

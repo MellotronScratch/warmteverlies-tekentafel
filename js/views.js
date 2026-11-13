@@ -96,7 +96,7 @@ function ventSettingsHtml() {
       S.infMode === 'qv10'
         ? `<div class="fields">${numField('f-s-qv10', 'set.qv10', 'qv10 (specifiek)', 'dm³/s·m²', S.qv10, 2)}${numField('f-s-finf', 'set.fInf', 'Correctiefactor', '–', S.fInf, 2)}</div>
     <div class="det">qi = 0,46 × ${nv(S.qv10, 2)} × ${fmt(it.Ag, 1)} m² × ${nv(S.fInf, 2)} = ${fmt(it.q / 3.6, 1)} dm³/s (${fmtW(it.q)} m³/h)</div>
-    <p class="note">qv10 is de lekkage bij 10 Pa drukverschil, per m² vloeroppervlak. Bij gewone omstandigheden is het drukverschil kleiner; daarom rekent de norm met 0,46 × qv10 en correctiefactoren voor wind, gebouwtype en ventilatiesysteem. Die factoren staan in ISSO 51 en zijn niet openbaar; met 1 zit je aan de veilige kant. De infiltratie wordt over de ruimtes verdeeld naar hun oppervlak aan de buitenschil. Richtwaarden qv10: nieuwbouw na 2010 ca. 0,4–1,0, woning 1990–2010 ca. 1,0–1,5, ouder dan 1970 ca. 2–4.</p>`
+    <p class="note">qv10 is de lekkage bij 10 Pa drukverschil, per m² vloeroppervlak. Bij gewone omstandigheden is het drukverschil kleiner; daarom rekent de norm met 0,46 × qv10 en correctiefactoren voor wind, gebouwtype en ventilatiesysteem. Die factoren staan in ISSO 51 en zijn niet openbaar; met 1 zit je aan de veilige kant. De infiltratie wordt over de ruimtes verdeeld naar hun oppervlak aan de buitenschil. Richtwaarden qv10: nieuwbouw na 2010 ca. 0,4–1,0, woning 1990–2010 ca. 1,0–1,5, ouder dan 1970 ca. 2–4. Wil je het zeker weten, laat dan een blowerdoortest doen: die meet de echte qv10 van je huis.</p>`
         : `<div class="fields">${numField('f-s-n', 'set.nInf', 'Infiltratie n', '1/h', S.nInf, 2)}</div>`
     }</div>`;
 }

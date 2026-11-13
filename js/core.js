@@ -768,7 +768,8 @@ function renderFloorbar() {
   $('floorbar').innerHTML =
     `<div class="floors" role="group" aria-label="Verdieping">${P.floors.map(f => `<button data-floor="${f.id}" aria-pressed="${f.id === curFloor}">${esc(f.name)} <span style="opacity:.7">${P.rooms.filter(r => r.floorId === f.id).length}</span></button>`).join('')}<button data-floor="__add" title="Verdieping toevoegen" aria-label="Verdieping toevoegen">+</button></div>
   <details class="layersmenu undmenu" ${underOpen && others.length ? 'open' : ''}><summary class="btn small undbtn" id="btn-under" aria-pressed="${!!(showUnder && uf)}" ${others.length ? '' : 'aria-disabled="true"'} title="${others.length ? 'Kies welke verdieping lichtgrijs als ondergrond staat (O zet hem aan of uit)' : 'Er is geen andere verdieping'}">Ondergrond: ${showUnder && uf ? esc(uf.name) : 'uit'}</summary><div class="lmenu"><label class="chk"><input type="radio" name="under" data-under="" ${showUnder && uf ? '' : 'checked'}> Uit</label>${others.map(f => `<label class="chk"><input type="radio" name="under" data-under="${f.id}" ${showUnder && uf && uf.id === f.id ? 'checked' : ''}> ${esc(f.name)}${df && df.id === f.id ? ' <span style="opacity:.6">(eronder)</span>' : ''}</label>`).join('')}</div></details>
-  <details class="layersmenu" ${layersOpen ? 'open' : ''}><summary class="btn small" title="Lagen in de tekening aan of uit zetten">Lagen${LAYERS.some(([k]) => !layerOn(k)) ? ' ·' + LAYERS.filter(([k]) => !layerOn(k)).length + ' uit' : ''}</summary><div class="lmenu">${LAYERS.map(([k, l]) => `<label class="chk"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div></details>`;
+  <details class="layersmenu" ${layersOpen ? 'open' : ''}><summary class="btn small" title="Lagen in de tekening aan of uit zetten">Lagen${LAYERS.some(([k]) => !layerOn(k)) ? ' ·' + LAYERS.filter(([k]) => !layerOn(k)).length + ' uit' : ''}</summary><div class="lmenu">${LAYERS.map(([k, l]) => `<label class="chk"><input type="checkbox" data-layer="${k}" ${layerOn(k) ? 'checked' : ''}> ${l}</label>`).join('')}</div></details>
+  <button class="btn small" data-heatview aria-pressed="${heatView}" title="Kleur elk vlak naar zijn warmteverlies per m²: groen is weinig, rood is veel">Warmtebeeld</button>`;
 }
 $('floorbar').addEventListener('change', e => {
   const c = e.target.closest('[data-layer]');
@@ -795,6 +796,10 @@ $('floorbar').addEventListener('click', e => {
   }
   const b = e.target.closest('button');
   if (!b || b.disabled) return;
+  if (b.hasAttribute('data-heatview')) {
+    setHeatView(!heatView);
+    return;
+  }
   if (b.dataset.floor === '__add') {
     addFloor();
     return;

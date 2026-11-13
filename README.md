@@ -11,6 +11,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 - **Tekenen**: ruimtes als rechthoek of veelhoek, binnenwanden trekken die een ruimte in tweeën delen, meerdere verdiepingen met een andere verdieping als lichtgrijze ondergrond, trappenhuizen en vides die doorlopen.
 - **Wanddelen**: splits een wand in delen met elk een eigen constructie. De app herkent aan welke ruimte een wand grenst. Een wand tussen twee ruimtes heeft aan beide kanten dezelfde constructie en deuren.
 - **2,5D-weergave**: bekijk de verdiepingen gestapeld en van opzij. Klik een vloer of wand aan om hem te bewerken.
+- **Warmtebeeld**: kleur elk vlak van groen tot rood naar zijn warmteverlies per m².
 - **Constructies**: opbouw in lagen (R = d / λ) met luchtspouwen, geventileerde spouwen en stijlen of regels volgens NEN-EN-ISO 6946, of direct een U-waarde.
 - **Schuine daken**: zadeldak en lessenaarsdak met muurplaathoogte en vlak plafond (hanenbalk), inclusief juiste wand- en dakoppervlakken en inhoud.
 - **Ventilatie en infiltratie**: systeem A, C of D met WTW, overstroom tussen ruimtes en infiltratie uit qv10.
@@ -33,11 +34,17 @@ De kolom rechts met de eigenschappen maak je breder of smaller door de rand aan 
 
 Met **Lagen** boven de tekening zet je leidingen en warmtepomp, radiatoren en vloerverwarming, luchtstromen, trappen en de onderlegger aan of uit. Zo werk je rustiger aan de ruimtes en wanden. Kies je een gereedschap voor iets wat uit staat, zoals *Leiding*, dan komt die laag vanzelf terug.
 
+<img src="docs/img/lagen.png" width="600" alt="Het menu Lagen boven de tekening">
+
 Met **Ondergrond** kies je welke verdieping lichtgrijs onder de tekening staat, met de omtrek van de ruimtes en de leidingen. Standaard is dat de verdieping eronder, maar je kunt ook een andere kiezen, bijvoorbeeld de zolder terwijl je de 1e verdieping tekent. Je kunt ook de kruipruimte kiezen. De keuze geldt per verdieping en je browser onthoudt hem. Toets `O` zet de ondergrond aan of uit. Op de lijnen van de ondergrond kun je snappen.
+
+<img src="docs/img/ondergrond.png" width="600" alt="Het menu Ondergrond met de verdiepingen">
 
 Staat iets op de verkeerde verdieping, zoals een leiding, een ruimte of de warmtepomp, kies dan in het paneel bij **Verdieping** de juiste. Radiatoren en vloerverwarming gaan met hun ruimte mee. De warmtepomp kun je ook aanklikken en verslepen.
 
 Met **Rapport (PDF)** bovenaan *Resultaten* maak je een rapport van het hele project. Het bevat de uitgangspunten, de plattegronden per verdieping, het warmteverlies per ruimte met de berekening, de constructies met hun laagopbouw, de afgifte en de stooklijn, het leidingnet met schema en inregeladvies, de verbeteradviezen en de warmtepomp. Bij de warmtepomp staan de gekozen warmtepomp en de geschikte alternatieven, zodat je daar later nog uit kunt kiezen. Kies **Afdrukken of bewaren als PDF** en daarna in het printvenster *Opslaan als PDF*.
+
+<img src="docs/img/rapport.png" width="640" alt="Voorbeeld van het rapport">
 
 Projecten worden in je browser opgeslagen (localStorage). Exporteer regelmatig een `.json` als reservekopie, want bij het wissen van browsergegevens ben je ze kwijt.
 
@@ -52,7 +59,11 @@ Onder **Project → Onderlegger** leg je een afbeelding (jpg, png of webp) onder
 
 Daarna teken je de ruimtes er gewoon overheen. Elke verdieping kan een eigen onderlegger hebben. De afbeelding wordt verkleind opgeslagen in het project en gaat mee in de export. Houd ze klein: de opslag in de browser is beperkt (een paar MB voor alle projecten samen). Is die vol, dan meldt de app dat.
 
+<img src="docs/img/onderlegger.png" width="800" alt="Een bouwtekening als onderlegger, met de woonkamer al nagetekend">
+
 ## Wanden intekenen
+
+<img align="right" src="docs/img/gereedschap.png" width="56" alt="De gereedschapsbalk">
 
 Je tekent geen losse muren, maar **ruimtes**. Elke zijde van een ruimte is een wand.
 
@@ -77,6 +88,8 @@ Beide delen nemen over wat al bij de oorspronkelijke ruimte was ingesteld:
 - De **nieuwe wand** krijgt de eerste wandconstructie die *aan beide kanten binnen* is, en staat op *Automatisch*. Hij grenst dus aan de andere ruimte.
 
 De twee delen delen dezelfde lijn, net als bij hart-op-hart tekenen. Ongedaan maken kan met Ctrl+Z.
+
+<img src="docs/img/splitsen.png" width="560" alt="Het venster Ruimte splitsen">
 
 ### Vides en trappenhuizen
 
@@ -141,9 +154,13 @@ Op binnenmaat zit tussen twee ruimtes een gat ter dikte van de binnenwand. De ap
 
 Klik een ruimte aan. Onder **Wanden** staat dan elk wanddeel met zijn lengte, constructie en wat erachter ligt. Ga je met de muis over een regel, dan licht die wand op in de tekening. Klik je erop, dan bewerk je dat wanddeel. Dat werkt hetzelfde als wanneer je de wand in de tekening aanklikt.
 
+<img src="docs/img/ruimte.png" width="360" alt="De lijst met wanden van een ruimte">
+
 ### Wat ligt er achter de wand?
 
 Klik een wand aan om hem te bewerken. Onder **Grenst aan** staat standaard *Automatisch (uit tekening)*: de app kijkt dan in de tekening of er een andere ruimte tegenaan ligt en rekent met de temperatuur van die ruimte. Ligt er niets tegenaan, dan rekent hij met de buitentemperatuur. Je kunt het ook zelf kiezen: buiten, grond / kruipruimte, onverwarmde ruimte, buurwoning of een ruimte met een vaste temperatuur.
+
+<img src="docs/img/wanddeel.png" width="360" alt="Het paneel van een wanddeel met constructie en Grenst aan">
 
 ### Vloeren en plafonds
 
@@ -198,15 +215,31 @@ Trek je met **Wand** een nieuwe scheiding, dan kies je in het venster meteen of 
 
 Met de knop **2,5D** rechtsonder, of de toets `D`, zie je de woning schuin van boven. De verdiepingen tot en met de gekozen verdieping staan op elkaar. Wanden hebben de kleur van hun constructie, en ramen en deuren zijn oranje. Om te draaien en te kantelen sleep je met ingedrukt scrollwiel, of met Shift + slepen. De weergave draait dan om het punt waar je begon met slepen. Gewoon slepen schuift, en scrollen zoomt rond de muis. Klik een vloer of wand aan om hem in het paneel te bewerken. Tekenen doe je in de plattegrond: kies je een tekengereedschap, dan schakelt de app daar vanzelf naar terug.
 
+<img src="docs/img/3d.png" width="600" alt="De 2,5D-weergave van het voorbeeldproject">
+
+### Warmtebeeld: waar verlies je de meeste warmte?
+
+Met de knop **Warmtebeeld** boven de tekening kleurt elk vlak naar zijn warmteverlies per m² bij de ontwerptemperatuur: groen is weinig, rood is veel. Zo zie je in één oogopslag waar je het meeste verliest, bijvoorbeeld een slecht geïsoleerd dak of enkel glas. Het werkt in de plattegrond (wanden en ramen) en in de 2,5D-weergave (ook vloeren, daken en plafonds naar buiten of een onverwarmde ruimte). Grijs betekent geen verlies, bijvoorbeeld een wand tussen twee ruimtes van dezelfde temperatuur. Het verlies per m² is (U + ΔU) × het temperatuurverschil, dus een wand naar de buren (15 °C) kleurt groener dan dezelfde wand naar buiten. Nog een keer klikken zet de gewone kleuren per constructie terug.
+
+<img src="docs/img/warmtebeeld.png" width="600" alt="Warmtebeeld in de 2,5D-weergave">
+
 ## Ventilatie en luchtstromen
 
 Onder **Ventilatie** kies je het systeem (A, C of D met WTW) en vul je per ruimte de inblaas of toevoer en de afzuiging in m³/h in.
+
+<img src="docs/img/debieten.png" width="360" alt="De tabel Debieten per ruimte">
 
 Per ruimte geef je bij **Lucht stroomt over naar** aan waar de lucht heen gaat: via een spleet onder de deur, een overstroomrooster of een open verbinding. Bijvoorbeeld slaapkamer → overloop → badkamer. Je kiest dat bij de ruimte zelf, of in de tabel onder Ventilatie. Hoeveel lucht het is, rekent de app zelf uit: wat er na de afzuiging in die ruimte overblijft, plus wat er uit andere ruimtes binnenkomt. Zo telt een keten vanzelf op. De ontvangende ruimte rekent met de temperatuur van de ruimte waar de lucht vandaan komt.
 
 In het tabblad Ventilatie laat de plattegrond de luchtstromen zien als bewegende pijlen met m³/h, en per ruimte de inblaas en afzuiging. Selecteer je een ruimte, dan zie je de stromen van en naar die ruimte. Stroomt lucht naar een andere verdieping, dan staat dat bij de ruimte (↑ naar Overloop 50 m³/h).
 
 Gaat lucht uit één ruimte naar meer dan één andere ruimte, vul dan de vaste aftakking in bij **Handmatige overstroom (geavanceerd)**, bijvoorbeeld hal → toilet 20 m³/h. Kies daarnaast bij *Stroomt naar* de ruimte die de rest krijgt, bijvoorbeeld hal → woonkamer. Die rest rekent de app automatisch uit. Blijft er in een ruimte lucht over die nergens heen gaat, dan staat bij die ruimte hoeveel er binnenkomt en hoeveel eruit gaat.
+
+### Infiltratie
+
+Onder **Ventilatie → Infiltratie** reken je de luchtlekkage van de woning uit met de **qv10**: de lekkage bij 10 Pa drukverschil, in dm³/s per m² vloeroppervlak. De app rekent met 0,46 × qv10 × vloeroppervlak × correctiefactor, en verdeelt dat over de ruimtes naar hun oppervlak aan de buitenschil. Ken je de qv10 van je huis niet, gebruik dan de richtwaarden bij het veld. Wil je het zeker weten, laat dan een blowerdoortest doen: die meet de echte qv10.
+
+<img src="docs/img/infiltratie.png" width="360" alt="Het onderdeel Infiltratie onder Ventilatie">
 
 ## Stooklijn
 
@@ -219,6 +252,8 @@ Onder **Resultaten → Stooklijn** rekent de app voor elke buitentemperatuur van
 - de **maatgevende ruimte**: de ruimte die de hoogste aanvoer nodig heeft. Vergroot je daar de afgifte, dan kan de hele lijn omlaag.
 
 De berekening gaat uit van één aanvoertemperatuur voor het hele huis, met de ΔT tussen aanvoer en retour uit het project. Stel de lijn daarna in de praktijk bij.
+
+<img src="docs/img/stooklijn.png" width="360" alt="De stooklijn onder Resultaten">
 
 ## Radiatoradvies
 
@@ -245,12 +280,16 @@ De vorm pas je aan door de vloerverwarming te selecteren:
 
 Met **Leiding** (`L`) teken je een eenvoudig leidingnetwerk, bijvoorbeeld van de warmtepomp naar de verdeler en de radiatoren. Eén lijn staat voor aanvoer en retour samen. Klik de punten en rond af met dubbelklik of Enter. Per leiding kies je het materiaal (koper, (alu)pex of staal) en de diameter, bijvoorbeeld alupex 32×3 mm. Bij **Extra lengte** vul je stukken in die je niet tekent, zoals een stijgleiding naar een andere verdieping. Je ziet de inhoud van de leiding en hoeveel vermogen hij bij 0,5 m/s kan transporteren.
 
+<img src="docs/img/leidingen.png" width="600" alt="Leidingen op de 1e verdieping met de begane grond als ondergrond">
+
 Onder **Resultaten → Systeeminhoud** telt de app de waterinhoud op: getekende leidingen, radiatoren, convectoren, vloerverwarmingslussen, de warmtepomp en eventueel een schakelvat. Dat vergelijkt hij met wat de gekozen warmtepomp nodig heeft:
 
 - staat in de warmtepomplijst een `minInhoud` (liter), dan geldt die;
 - anders rekent de app met een vuistregel (standaard 15 liter per kW maximaal vermogen bij +7 °C, aan te passen).
 
 Is de inhoud te klein, dan adviseert de app een schakelvat: dat vergroot de systeeminhoud. Tel in gedachten alleen kringen mee die altijd open staan: thermostaatkranen en ruimteregeling verkleinen de werkelijke inhoud. Een buffervat tussen aanvoer en retour (hydraulische scheiding) is iets anders. Dat heb je nodig als de warmtepomp meer water moet rondpompen dan het afgiftesysteem aankan, of bij extra pompgroepen. Of dat nodig is, volgt uit het debiet (zie *Debiet van de warmtepomp*), niet uit de inhoud. De waterinhoud van radiatoren is een schatting per meter of per kW. Bij een convector loopt er meestal een lus koperbuis van 15 mm door de lamellen, over de lengte min ongeveer 15 cm. Een lus is twee buizen, en een dubbele convector heeft twee lussen (vier buizen). Kies het aantal lussen bij de convector. Bij elk afgifte-element zie je de geschatte inhoud.
+
+<img src="docs/img/systeeminhoud.png" width="360" alt="Systeeminhoud onder Resultaten">
 
 ### Leidingnet, debiet en indexcircuit
 
@@ -271,6 +310,8 @@ Het **indexcircuit** is de route naar het element met het grootste totale drukve
 
 Met **Schema van het leidingnet** (onder Resultaten of bij de warmtepomp) zie je het hele circuit als schema: van de warmtepomp naar alle aangesloten elementen. Rechte stukken zonder aftakking zijn samengevoegd. Per stuk zie je de maat, de lengte, het debiet, de snelheid en waar een stijgleiding naar een andere verdieping gaat. Per element zie je het vermogen, het debiet, het drukverlies en het inregeladvies. Het indexcircuit is oranje. Een leiding die nergens heen gaat, staat er als *loos eind* in. Klik op een element om het te openen, of druk het schema af.
 
+<img src="docs/img/schema.png" width="800" alt="Het schema van het leidingnet met het indexcircuit in oranje">
+
 In een gesloten cv-systeem hoeft de pomp het water niet omhoog te pompen. Hij moet alleen de weerstand overwinnen, en dat is het drukverlies van het indexcircuit. Zet je bij een warmtepomp in `data/warmtepompen.json` de `restopvoerhoogte` (kPa), dan vergelijkt de app die ermee.
 
 De weerstand van een element is indicatief: 3 kPa voor een radiator of convector met kraan, 10 kPa voor een fancoil. Vloerverwarming rekent de lussen van 16×2 mm, verdeeld over groepen van hoogstens 100 m, plus 2 kPa voor de verdeler.
@@ -284,6 +325,8 @@ Klik een radiator aan. De lengte verander je door een uiteinde in de tekening te
 
 Bij elk element staat hoe de app het vermogen omrekent naar jouw aanvoer- en retourtemperatuur: vermogen × (temperatuurverschil nu / temperatuurverschil bij 75/65/20 °C)^n. Bij 35/30 °C geeft een radiator ongeveer een zesde van zijn vermogen bij 75/65 °C.
 
+<img src="docs/img/radiator.png" width="360" alt="Het paneel van een radiator met de omrekening">
+
 ### Debiet van de warmtepomp
 
 Onder **Afgiftesysteem** (bij *Resultaten* of bij een radiator) vul je de aanvoertemperatuur in, en óf de retourtemperatuur, óf het **debiet** van de warmtepomp in l/h.
@@ -292,6 +335,14 @@ Onder **Afgiftesysteem** (bij *Resultaten* of bij een radiator) vul je de aanvoe
 - **Debiet ingevuld** (bijvoorbeeld 700 of 1000 l/h): dan volgt de ΔT uit het vermogen, en daaruit de retourtemperatuur. Een hoger debiet geeft een kleinere ΔT, een hogere gemiddelde watertemperatuur en dus meer afgifte van de radiatoren en convectoren. De stooklijn kan daardoor iets omlaag. Tegelijk stroomt er meer water door de leidingen, dus het drukverlies van het indexcircuit en de stroomsnelheid nemen toe.
 
 Staat bij de gekozen warmtepomp in `data/warmtepompen.json` een `minDebiet`, dan waarschuwt de app als het debiet daaronder ligt. Onder het minimale debiet gaat een warmtepomp pendelen of in storing. Kan het afgiftesysteem het minimale debiet niet aan, dan is een buffervat tussen aanvoer en retour nodig.
+
+<img src="docs/img/afgifte.png" width="360" alt="Afgiftesysteem met het debiet van de warmtepomp en de afgifte per ruimte">
+
+## Warmtepomp kiezen
+
+Onder **Resultaten → Warmtepomp** vergelijk je de warmtepompen uit `data/warmtepompen.json` met het warmteverlies van je huis. De grafiek toont het warmteverlies over de buitentemperatuur, met het maximale en minimale vermogen van de gekozen warmtepomp. Een geschikte warmtepomp dekt bij de ontwerptemperatuur het verlies, en kan bij +10 °C ver genoeg terugregelen zodat hij niet steeds aan- en afslaat (pendelen). Per warmtepomp zie je vanaf welke buitentemperatuur hij pendelt.
+
+<img src="docs/img/warmtepomp.png" width="360" alt="Warmtepompkeuze met grafiek van vermogen en warmteverlies">
 
 ## Isolatiewaarde bepalen
 
@@ -323,6 +374,8 @@ Een paar dingen om op te letten:
 - **Binnenwanden**: vink *Aan beide kanten binnen* aan. Dan geldt aan beide kanten de binnen-overgangsweerstand.
 
 De doorsnede bovenaan de kaart toont het temperatuurverloop door de wand bij de ontwerptemperatuur. Lagen die niet meetellen worden lichter weergegeven.
+
+<img src="docs/img/constructie.png" width="360" alt="Een constructie met opbouw in lagen en temperatuurverloop">
 
 ### 2. Constructie koppelen aan een wand
 

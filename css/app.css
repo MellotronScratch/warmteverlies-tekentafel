@@ -409,7 +409,8 @@ select:focus-visible,
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
-.undbtn[aria-pressed='true'] {
+.undbtn[aria-pressed='true'],
+.floorbar [data-heatview][aria-pressed='true'] {
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -482,6 +483,28 @@ select:focus-visible,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.legend.heat {
+  width: 230px;
+}
+.legend.heat .hbar {
+  display: block;
+  height: 9px;
+  border-radius: 5px;
+  margin-top: 3px;
+}
+.legend.heat .hlab {
+  display: block;
+  position: relative;
+  height: 14px;
+  margin: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+.legend.heat .hlab span {
+  position: absolute;
+  transform: translateX(-50%);
 }
 .sw {
   flex: none;
