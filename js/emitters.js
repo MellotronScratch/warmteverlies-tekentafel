@@ -8,8 +8,12 @@ const EM_NOM = { rad: [75, 65, 20], conv: [75, 65, 20], fan: [35, 30, 20] }; // 
    Without a set flow, the return temperature from the settings applies and the flow follows from it.
    With a set flow (l/h), the difference follows from the design heat load: ΔT = Φ / (1,163 × q). A higher flow gives a
    smaller ΔT, a higher return and mean water temperature and so more output from the emitters. */
+// heat loss of the rooms that are heated by an emitter, in the room itself or elsewhere in its heating zone
 const designLoad = () =>
-  calcAll().per.reduce((a, x) => a + ((x.room.emitters || []).length ? Math.max(0, x.c.total) : 0), 0);
+  calcAll().per.reduce((a, x) => {
+    const z = zoneOf(x.room);
+    return a + ((z ? z.ems.length : (x.room.emitters || []).length) ? Math.max(0, x.c.total) : 0);
+  }, 0);
 let _dtMemo = null;
 function sysDT() {
   const S = P.settings;
@@ -198,6 +202,82 @@ const pipeBad = pc => pc.state === 'krap' || pc.state === 'te klein';
 function roomEmit(room, ts, tr) {
   return (room.emitters || []).reduce((a, e) => a + emOutput(e, room, ts, tr), 0);
 }
+/* ---------- heating zones ----------
+   Heated rooms joined by an open connection (no wall, for example a kitchen open to the living room, or a hall open to the
+   stairwell) share their warmth. For the emitters they count as one zone: the heat loss of all rooms together against the
+   output of all radiators and floor heating in them. ISSO 51 also allows open-connected rooms to be taken as one room. */
+let _zoneKey = '',
+  _zones = null;
+function heatZones() {
+  const key = JSON.stringify(
+    P.rooms.map(r => [r.id, r.floorId, r.spanTo, r.heated, r.pts, r.walls.map(w => [w.cuts, w.segs.map(s => s.adj)])])
+  );
+  if (key === _zoneKey && _zones) return _zones;
+  const heated = P.rooms.filter(r => r.heated !== false),
+    up = {};
+  heated.forEach(r => (up[r.id] = r.id));
+  const find = id => (up[id] === id ? id : (up[id] = find(up[id])));
+  heated.forEach(r =>
+    r.walls.forEach((w, i) => {
+      if (!w.segs.some(s => s.adj === 'open')) return;
+      w.segs.forEach((s, j) => {
+        if (s.adj !== 'open') return;
+        // only when the other side is open as well: a stairwell running through several floors can touch rooms
+        // that have an ordinary wall there
+        partnersOf(r, i, j).forEach(p => {
+          const back = p.o.walls[p.k] && p.o.walls[p.k].segs[p.jj];
+          if (up[p.o.id] == null || !back || back.adj !== 'open') return; // an unheated room is not part of a zone
+          up[find(p.o.id)] = find(r.id);
+        });
+      });
+    })
+  );
+  const groups = {};
+  heated.forEach(r => (groups[find(r.id)] = groups[find(r.id)] || []).push(r));
+  const map = new Map();
+  Object.values(groups).forEach(rooms => {
+    const ems = rooms.flatMap(r => (r.emitters || []).map(em => ({ em, room: r })));
+    // the room with the most (nominal) output leads, its name first; without emitters the largest room.
+    // Nominal, not at the design temperatures: those depend on the flow, which depends on the zones.
+    const out = r => (r.emitters || []).reduce((a, e) => a + (e.kind === 'vv' ? emArea(e) * 60 : +e.p || 0), 0),
+      lead = rooms.slice().sort((a, b) => out(b) - out(a) || Math.abs(polyArea(b.pts)) - Math.abs(polyArea(a.pts)))[0];
+    const z = {
+      id: lead.id,
+      rooms,
+      ems,
+      lead,
+      multi: rooms.length > 1,
+      name: [lead, ...rooms.filter(r => r !== lead)].map(r => r.name).join(' + ')
+    };
+    rooms.forEach(r => map.set(r.id, z));
+  });
+  _zoneKey = key;
+  _zones = map;
+  return map;
+}
+const zoneOf = room => heatZones().get(room.id) || null;
+// all zones, in the order of their first room
+const zoneList = () => [...new Set(P.rooms.map(r => zoneOf(r)).filter(Boolean))];
+const zoneNeed = z => z.rooms.reduce((a, r) => a + Math.max(0, calcRoom(r).total), 0);
+const zoneEmit = (z, ts, tr) => z.ems.reduce((a, x) => a + emOutput(x.em, x.room, ts, tr), 0);
+// lowest supply temperature at which the emitters of a zone cover its heat loss
+function zoneNeededSupply(z, need, dT) {
+  dT = dT || sysDT();
+  if (!z.ems.length || need <= 0) return null;
+  let lo = Math.max(...z.rooms.map(r => r.temp)) + dT + 0.05,
+    hi = 90;
+  if (zoneEmit(z, hi, hi - dT) < need) return Infinity;
+  for (let k = 0; k < 40; k++) {
+    const m = (lo + hi) / 2;
+    if (zoneEmit(z, m, m - dT) >= need) hi = m;
+    else lo = m;
+  }
+  return hi;
+}
+// crumbs to the rooms of a zone
+const zoneLinks = z =>
+  z.rooms.map(r => `<button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button>`).join(' + ');
+
 // lowest supply temperature (same ΔT as the design) at which the room's emitters cover its heat loss
 function neededSupply(room, need, dT) {
   dT = dT || sysDT();
@@ -309,26 +389,37 @@ function pipeChip(pc) {
 function roomEmitHtml(room, c) {
   c = c || calcRoom(room);
   const S = P.settings,
-    ems = room.emitters || [];
+    ems = room.emitters || [],
+    z = zoneOf(room);
   const fillBtn = `<div class="row"><button class="btn small" data-act="vvfill" data-r="${room.id}">Vloerverwarming in de hele ruimte</button></div>`;
-  if (!ems.length)
-    return `<h3>Afgifte</h3><p class="note">Nog geen afgifte in deze ruimte. Teken een radiator met <b>Radiator</b> (A) of vloerverwarming met <b>Vloerverw.</b> (H).</p>${radAdviceHtml(room, c.total)}${fillBtn}`;
-  const emit = roomEmit(room),
-    need = c.total,
-    ns = neededSupply(room, need),
+  const multi = z && z.multi,
+    others = multi ? z.ems.filter(x => x.room !== room) : [];
+  if (!ems.length && !others.length)
+    return `<h3>Afgifte</h3><p class="note">Nog geen afgifte in deze ruimte. Teken een radiator met <b>Radiator</b> (A) of vloerverwarming met <b>Vloerverw.</b> (H).</p>${radAdviceHtml(room, multi ? zoneNeed(z) : c.total)}${fillBtn}`;
+  const emit = multi ? zoneEmit(z) : roomEmit(room),
+    need = multi ? zoneNeed(z) : c.total,
+    ns = multi ? zoneNeededSupply(z, need) : neededSupply(room, need),
     ok = emit >= need - 1;
-  return `<h3>Afgifte</h3><div class="kcard"><div class="kh"><span>Afgifte bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)} °C</span><b>${fmt(emit / 1000, 2)} kW</b></div>
-    <div class="seglegend"><span style="--c:transparent">warmteverlies ${fmt(need / 1000, 2)} kW</span></div>
+  const row = (em, r) => {
+    const o = emOutput(em, r),
+      pc = pipeCheck(em, o);
+    return `<button class="linkrow" data-act="selem" data-r="${r.id}" data-e="${em.id}"><span>${esc(em.name)} <span class="note">· ${EM_KINDS[em.kind]}${em.boost ? ' met boosters' : ''}${r !== room ? ' · in ' + esc(r.name) : ''}${pipeBad(pc) ? ' · ⚠ leiding ' + pc.state : pc.state === 'los' && (P.pipes || []).length ? ' · niet aangesloten' : ''}</span></span><span>${fmt(o / 1000, 2)} kW</span></button>`;
+  };
+  return `<h3>Afgifte</h3>${
+    multi
+      ? `<p class="note">${ems.length ? '' : `${esc(room.name)} heeft geen eigen afgifte, maar wordt verwarmd via ${others.length ? [...new Set(others.map(x => x.room.name))].map(esc).join(' en ') : 'de ruimtes ernaast'}. `}Deze ruimte is open verbonden met ${z.rooms
+          .filter(r => r !== room)
+          .map(r => `<button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button>`)
+          .join(
+            ', '
+          )}: samen één verwarmingszone. De afgifte van alle ruimtes in de zone telt samen tegen het warmteverlies van de hele zone.</p>`
+      : ''
+  }<div class="kcard"><div class="kh"><span>${multi ? 'Afgifte zone' : 'Afgifte'} bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)} °C</span><b>${fmt(emit / 1000, 2)} kW</b></div>
+    <div class="seglegend"><span style="--c:transparent">warmteverlies ${multi ? 'zone ' : ''}${fmt(need / 1000, 2)} kW${multi ? ` (deze ruimte ${fmt(c.total / 1000, 2)})` : ''}</span></div>
     <div class="row">${ok ? `<span class="chip ok">✓ voldoende${need > 0 ? ` (${fmtW((emit / need) * 100)}%)` : ''}</span>` : `<span class="chip bad">⚠ tekort ${fmt((need - emit) / 1000, 2)} kW</span>`}</div>
-    <span class="note">${ns == null ? '' : ns === Infinity ? 'Ook bij 90 °C aanvoer niet voldoende: meer of grotere afgifte nodig.' : `Minimaal nodige aanvoertemperatuur in deze ruimte: ${fmt(ns, 1)} °C (bij ΔT ${fmt(sysDT(), 1)} K).`}</span></div>
-    ${ems
-      .map(em => {
-        const o = emOutput(em, room),
-          pc = pipeCheck(em, o);
-        return `<button class="linkrow" data-act="selem" data-r="${room.id}" data-e="${em.id}"><span>${esc(em.name)} <span class="note">· ${EM_KINDS[em.kind]}${em.boost ? ' met boosters' : ''}${pipeBad(pc) ? ' · ⚠ leiding ' + pc.state : pc.state === 'los' && (P.pipes || []).length ? ' · niet aangesloten' : ''}</span></span><span>${fmt(o / 1000, 2)} kW</span></button>`;
-      })
-      .join('')}
-    ${radAdviceHtml(room, need)}${fillBtn}${twFieldsHtml()}`;
+    <span class="note">${ns == null ? '' : ns === Infinity ? 'Ook bij 90 °C aanvoer niet voldoende: meer of grotere afgifte nodig.' : `Minimaal nodige aanvoertemperatuur ${multi ? 'in deze zone' : 'in deze ruimte'}: ${fmt(ns, 1)} °C (bij ΔT ${fmt(sysDT(), 1)} K).`}</span></div>
+    ${ems.map(em => row(em, room)).join('')}${others.map(x => row(x.em, x.room)).join('')}
+    ${radAdviceHtml(room, need, multi ? emit - roomEmit(room) : 0)}${fillBtn}${twFieldsHtml()}`;
 }
 // how the stated output (75/65/20, fancoil 35/30/20) is converted to the design temperatures
 function convHtml(em, room, out) {
@@ -434,29 +525,31 @@ function emitOverviewHtml(c) {
   let maxNs = 0,
     any = false,
     pipes = 0;
-  const rows = c.per
-    .map(x => {
-      const r = x.room,
-        ems = r.emitters || [];
-      if (!ems.length)
-        return `<tr><td><button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button></td><td>${fmt(x.c.total / 1000, 2)}</td><td>–</td><td colspan="2" style="font-family:var(--font-body);color:var(--muted)">geen afgifte</td></tr>`;
+  const rows = zoneList()
+    .map(z => {
+      const need = zoneNeed(z),
+        lab = z.multi
+          ? zoneLinks(z)
+          : `<button class="crumb" data-act="selroom" data-r="${z.lead.id}">${esc(z.lead.name)}</button>`;
+      if (!z.ems.length)
+        return `<tr><td>${lab}</td><td>${fmt(need / 1000, 2)}</td><td>–</td><td colspan="2" style="font-family:var(--font-body);color:var(--muted)">geen afgifte</td></tr>`;
       any = true;
-      const e = roomEmit(r),
-        ns = neededSupply(r, x.c.total);
+      const e = zoneEmit(z),
+        ns = zoneNeededSupply(z, need);
       if (ns === Infinity) maxNs = Infinity;
       else if (ns != null) maxNs = Math.max(maxNs, ns);
-      ems.forEach(em => {
-        if (pipeBad(pipeCheck(em, emOutput(em, r), N))) pipes++;
+      z.ems.forEach(x => {
+        if (pipeBad(pipeCheck(x.em, emOutput(x.em, x.room), N))) pipes++;
       });
-      const ok = e >= x.c.total - 1;
-      return `<tr class="${ok ? '' : 'miss'}"><td><button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button></td><td>${fmt(x.c.total / 1000, 2)}</td><td>${fmt(e / 1000, 2)}</td><td>${ok ? '✓' : '⚠ ' + fmt((x.c.total - e) / 1000, 2)}</td><td>${ns == null ? '–' : ns === Infinity ? '> 90' : fmt(ns, 0)}</td></tr>`;
+      const ok = e >= need - 1;
+      return `<tr class="${ok ? '' : 'miss'}"><td>${lab}${z.multi ? '<small>open verbonden: één zone</small>' : ''}</td><td>${fmt(need / 1000, 2)}</td><td>${fmt(e / 1000, 2)}</td><td>${ok ? '✓' : '⚠ ' + fmt((need - e) / 1000, 2)}</td><td>${ns == null ? '–' : ns === Infinity ? '> 90' : fmt(ns, 0)}</td></tr>`;
     })
     .join('');
   return `<div class="sec"><h3>Afgifte</h3>${twFieldsHtml()}
     ${
       any
         ? `<div class="kcard"><div class="kh"><span>Minimaal nodige aanvoertemperatuur</span><b>${maxNs === Infinity ? '> 90' : fmt(maxNs, 0)} °C</b></div>
-      <span class="note">De ruimte met de zwaarste vraag bepaalt de aanvoertemperatuur van de hele installatie. Ruimtes zonder afgifte tellen niet mee.${pipes ? ` <b style="color:var(--warn)">⚠ ${pipes} aansluitleiding${pipes > 1 ? 'en zijn' : ' is'} krap of te klein.</b>` : ''}</span></div>`
+      <span class="note">De ruimte met de zwaarste vraag bepaalt de aanvoertemperatuur van de hele installatie. Ruimtes die open met elkaar verbonden zijn (geen wand ertussen), rekenen samen als één zone. Ruimtes zonder afgifte, ook niet in hun zone, tellen niet mee.${pipes ? ` <b style="color:var(--warn)">⚠ ${pipes} aansluitleiding${pipes > 1 ? 'en zijn' : ' is'} krap of te klein.</b>` : ''}</span></div>`
         : ''
     }
     <div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>Verlies kW</th><th>Afgifte kW</th><th>Status</th><th>Aanvoer °C</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;

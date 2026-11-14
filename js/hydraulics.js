@@ -160,15 +160,15 @@ function buildNetwork() {
     });
     return best;
   };
-  // emitters and their design flow: their share of the heat loss of the room
+  // emitters and their design flow: their share of the heat loss of their heating zone (rooms joined by open connections)
   const ems = [];
-  P.rooms.forEach(r => {
-    const list = (r.emitters || []).filter(em => em.kind === 'vv' || (em.a && em.b));
+  zoneList().forEach(z => {
+    const list = z.ems.filter(x => x.em.kind === 'vv' || (x.em.a && x.em.b));
     if (!list.length) return;
-    const outs = list.map(em => emOutput(em, r)),
+    const outs = list.map(x => emOutput(x.em, x.room)),
       sum = outs.reduce((a, x) => a + x, 0),
-      need = Math.max(0, calcRoom(r).total);
-    list.forEach((em, i) => {
+      need = zoneNeed(z);
+    list.forEach(({ em, room: r }, i) => {
       const W = sum > 0 ? (need * outs[i]) / sum : 0,
         n = nearest(r.floorId, nd => emDist(em, nd));
       const o = { em, room: r, node: n, W, lh: lhOf(W, dT), reach: false };
@@ -296,7 +296,8 @@ function network() {
       P.settings.fitPct,
       P.settings.trv,
       P.fittings,
-      P.rooms.map(r => [r.id, r.floorId, r.emitters, r.temp])
+      P.rooms.map(r => [r.id, r.floorId, r.emitters, r.temp]),
+      zoneList().map(z => z.rooms.map(r => r.id).join(','))
     ]) + calcAll().total;
   if (key !== _netKey) {
     _netKey = key;

@@ -217,8 +217,18 @@ Soms is de scheiding tussen twee ruimtes geen muur, bijvoorbeeld waar de hal ove
 - In de tekening is het een stippellijn, en in de 2,5D-weergave staat er geen muur.
 - Hebben de twee ruimtes een andere temperatuur, dan waarschuwt de app. Bij een open verbinding is de temperatuur in de praktijk ongeveer gelijk.
 - Lucht stroomt er vrij. Geef onder **Ventilatie** de overstroom op als de ene ruimte lucht toevoert en de andere afzuigt.
+- De ruimtes vormen samen één **verwarmingszone** (zie hieronder).
 
 Trek je met **Wand** een nieuwe scheiding, dan kies je in het venster meteen of het een binnenwand of een open verbinding wordt.
+
+**Verwarmingszones.** Ruimtes die open met elkaar verbonden zijn, delen hun warmte. Een grote convector in de woonkamer verwarmt ook de open keuken, en een radiator in de hal ook de trap. Voor de afgifte rekent de app zulke ruimtes daarom samen als één zone, zoals ISSO 51 dat ook toelaat:
+
+- het warmteverlies van alle ruimtes in de zone telt samen tegen de afgifte van alle radiatoren, convectoren en vloerverwarming erin;
+- de controle op tekort, de minimaal nodige aanvoertemperatuur, de stooklijn en het radiatoradvies gaan per zone;
+- in het leidingnet krijgt elk element zijn deel van het warmteverlies van de hele zone, zodat ook een ruimte zonder eigen radiator meetelt in het debiet;
+- bij een ruimte zonder eigen afgifte staat waar hij door verwarmd wordt.
+
+Het warmteverlies per ruimte blijft gewoon per ruimte. Een zone ontstaat alleen als beide kanten van het wanddeel op *Open verbinding* staan. Zit er een deur, teken dan een binnenwand met een deur; dan zijn het aparte ruimtes.
 
 ### 2,5D-weergave
 

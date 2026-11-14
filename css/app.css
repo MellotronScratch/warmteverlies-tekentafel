@@ -990,7 +990,8 @@ table.calc tr.miss td {
 .linkrow:hover {
   border-color: var(--accent);
 }
-.linkrow span:last-child {
+.linkrow > span:last-child {
+  flex: none;
   font-family: var(--font-mono);
   color: var(--heat);
   white-space: nowrap;

@@ -7,43 +7,39 @@
 const CURVE_TOP = 15; // °C buiten: het voetpunt van de stooklijn
 function heatingCurve() {
   const S = P.settings,
-    c = calcAll(),
     fixed = +S.flow > 0,
     dT = sysDT(),
     tMax = Math.max(30, +S.tMax || 55), // a heat pump cannot go higher than this
-    rooms = c.per.filter(x => x.c.total > 0),
-    loadAt = t =>
-      rooms.reduce(
-        (a, x) =>
-          a +
-          ((x.room.emitters || []).length && x.room.temp > S.te
-            ? (x.c.total * Math.max(0, x.room.temp - t)) / (x.room.temp - S.te)
-            : 0),
-        0
-      );
+    // per heating zone (rooms joined by open connections): the heat loss of its rooms, which falls with (θi − θe)
+    zones = zoneList()
+      .map(z => ({ z, rs: z.rooms.map(r => ({ r, W: calcRoom(r).total })).filter(x => x.W > 0 && x.r.temp > S.te) }))
+      .filter(x => x.rs.length),
+    needAt = (x, t) => x.rs.reduce((a, o) => a + (o.W * Math.max(0, o.r.temp - t)) / (o.r.temp - S.te), 0),
+    loadAt = t => zones.reduce((a, x) => a + (x.z.ems.length ? needAt(x, t) : 0), 0),
+    // what the curve shows for a zone: its leading room, with the names of all its rooms
+    who = z => (z.multi ? { id: z.lead.id, name: z.name } : z.lead);
   const pts = [];
-  let missing = rooms.filter(x => !(x.room.emitters || []).length).map(x => x.room);
+  let missing = zones.filter(x => !x.z.ems.length).flatMap(x => x.rs.map(o => o.r));
   for (let t = Math.floor(S.te); t <= CURVE_TOP; t++) {
     let best = null,
       lim = null;
     const short = [],
       // with a fixed flow the difference shrinks with the load: ΔT(t) = ΔT(design) × load(t) / load(design)
       dTt = fixed ? Math.max(0.5, (dT * loadAt(t)) / Math.max(1, loadAt(S.te))) : dT;
-    rooms.forEach(x => {
-      const r = x.room;
-      if (!(r.emitters || []).length || r.temp <= S.te) return;
-      const need = (x.c.total * Math.max(0, r.temp - t)) / (r.temp - S.te);
+    zones.forEach(x => {
+      if (!x.z.ems.length) return;
+      const need = needAt(x, t);
       if (need <= 0) return;
-      const ns = neededSupply(r, need, dTt);
+      const ns = zoneNeededSupply(x.z, need, dTt);
       if (ns == null) return;
-      // above the maximum of the heat pump: this room stays too cold, by this much
+      // above the maximum of the heat pump: this zone stays too cold, by this much
       if (ns === Infinity || ns > tMax + 1e-6) {
-        short.push({ room: r, W: need - roomEmit(r, tMax, tMax - dTt) });
+        short.push({ room: who(x.z), W: need - zoneEmit(x.z, tMax, tMax - dTt) });
         return;
       }
       if (best == null || ns > best) {
         best = ns;
-        lim = r;
+        lim = who(x.z);
       }
     });
     pts.push({ t, ts: short.length ? tMax : best, room: short.length ? null : lim, short });
@@ -139,9 +135,11 @@ const radLenFor = (type, h, pNom) => {
   const mm = Math.max(400, Math.ceil(((pNom / per) * 1000) / 100) * 100);
   return mm <= 3000 ? mm : null;
 };
-function radAdvice(room, need) {
+// other = output of the emitters elsewhere in the room's heating zone (they stay as they are)
+function radAdvice(room, need, other) {
+  other = other || 0;
   const S = P.settings,
-    have = roomEmit(room),
+    have = roomEmit(room) + other,
     short = need - have;
   if (!(short > 1)) return null;
   const lm = lmtd(S.twSup, tRet(), room.temp);
@@ -152,7 +150,7 @@ function radAdvice(room, need) {
   const keep = (room.emitters || [])
       .filter(e => e.kind === 'vv' || e.kind === 'fan')
       .reduce((a, e) => a + emOutput(e, room), 0),
-    nomAll = Math.max(0, need - keep) / f;
+    nomAll = Math.max(0, need - keep - other) / f;
   const table = nom =>
     ADV_TYPES.filter(t => RAD_TYPES[t]).map(t => ({ t, lens: ADV_HEIGHTS.map(h => radLenFor(t, h, nom)) }));
   // boosters on the radiators and convectors that do not have them yet
@@ -172,8 +170,8 @@ function radAdvice(room, need) {
     nRad: boostable.length
   };
 }
-function radAdviceHtml(room, need) {
-  const A = radAdvice(room, need),
+function radAdviceHtml(room, need, other) {
+  const A = radAdvice(room, need, other),
     S = P.settings;
   if (!A) return '';
   if (A.impossible)
@@ -188,7 +186,7 @@ function radAdviceHtml(room, need) {
     <p class="note"><b>Bijplaatsen</b>: minimale lengte in mm van een extra paneelradiator:</p>${tbl(A.add)}
     ${
       hasRad
-        ? `<p class="note"><b>Vervangen</b> door één radiator voor de hele ruimte (vloerverwarming en fancoils blijven), minimaal ${fmtW(A.nomAll)} W bij 75/65/20 °C:</p>${tbl(A.replace)}`
+        ? `<p class="note"><b>Vervangen</b> door één radiator voor de hele ruimte (vloerverwarming en fancoils blijven${other > 0 ? ', net als de afgifte in de rest van de zone' : ''}), minimaal ${fmtW(A.nomAll)} W bij 75/65/20 °C:</p>${tbl(A.replace)}`
         : ''
     }
     ${
@@ -200,9 +198,9 @@ function radAdviceHtml(room, need) {
 }
 function shortageSummaryHtml(c) {
   const S = P.settings,
-    list = c.per.filter(x => x.c.total > 0 && (x.room.emitters || []).length && roomEmit(x.room) < x.c.total - 1);
+    list = zoneList().filter(z => z.ems.length && zoneEmit(z) < zoneNeed(z) - 1);
   if (!list.length) return '';
   return `<p class="note" style="color:var(--warn)">⚠ Tekort bij ${nv(S.twSup, 0)}/${fmt(tRet(), 0)} °C in ${list
-    .map(x => `<button class="crumb" data-act="selroom" data-r="${x.room.id}">${esc(x.room.name)}</button>`)
+    .map(z => zoneLinks(z))
     .join(', ')}. Bij elke ruimte staat welke radiator erbij of in de plaats kan.</p>`;
 }
