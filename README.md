@@ -45,6 +45,28 @@ python3 -m http.server
 
 en open http://localhost:8000. Het voorbeeldproject laat meteen zien hoe alles werkt.
 
+## Fouten, suggesties en bijdragen
+
+Zie je een fout in de berekening, werkt iets niet zoals je verwacht, of heb je een idee om de app beter te maken? Meld het als [Issue](https://github.com/MellotronScratch/warmteverlies-tekentafel/issues) op GitHub. Kijk eerst even of er al een melding over is; dan kun je daar reageren.
+
+Een paar tips voor een goede melding:
+
+- Beschrijf wat je deed, wat je verwachtte en wat er gebeurde.
+- Een schermafbeelding helpt vaak.
+- Gaat het om een berekening, voeg dan een export van je project toe (**Project → Exporteren (.json)**). Haal eerst namen en adressen eruit als je die niet openbaar wilt maken: issues zijn voor iedereen zichtbaar.
+- Heb je fabrieksgegevens van een warmtepomp, radiator, thermostaatkraan of ventilator die nog ontbreekt? Zet ze in een issue, met de bron erbij.
+
+**Zelf bijdragen** mag ook graag. Maak een fork, breng je wijziging aan en stuur een *pull request*. Een paar afspraken:
+
+- De app heeft geen build-stap: gewone HTML, CSS en JavaScript in `js/`, zonder bundler of frameworks. Draai hem lokaal zoals onder *Snel beginnen*.
+- Tabellen die gebruikers zelf willen beheren, zoals warmtepompen of radiatoren, horen in `data/*.json`, met een `toelichting` en de bron van de gegevens.
+- Oude projectbestanden moeten blijven werken.
+- Teksten in de app en de handleiding zijn in begrijpelijk Nederlands. Beschrijf een nieuwe functie op de bijbehorende pagina in `docs/`.
+- Controleer of het voorbeeldproject nog op 5,24 kW totaal uitkomt.
+- Code wordt opgemaakt met [Prettier](https://prettier.io) (`.prettierrc.json`).
+
+Twijfel je of iets past, open dan eerst een issue om het te bespreken.
+
 ## Privacy en statistiek
 
 Je projecten, tekeningen en onderleggers blijven in je eigen browser. De app stuurt ze nergens naartoe.
