@@ -162,9 +162,43 @@ function emOutput(em, room, ts, tr) {
     const qmax = 8.92 * Math.pow(Math.max(0, 29 - ti), 1.1); // floor surface at most 29 °C
     return Math.min(kh * dt, qmax) * emArea(em);
   }
-  const nom = EM_NOM[em.kind] || EM_NOM.rad;
-  const boost = em.boost && (em.kind === 'rad' || em.kind === 'conv') ? 1 + (em.boostPct || 0) / 100 : 1;
-  return Math.max(0, em.p) * Math.pow(dt / lmtd(nom[0], nom[1], nom[2]), em.n || EM_N[em.kind] || 1.3) * boost;
+  const nom = EM_NOM[em.kind] || EM_NOM.rad,
+    d0 = lmtd(nom[0], nom[1], nom[2]),
+    q = Math.max(0, em.p) * Math.pow(dt / d0, em.n || EM_N[em.kind] || 1.3),
+    bk = boostKind(em);
+  if (bk === 'pct') return q * (1 + (em.boostPct || 0) / 100);
+  if (bk === 'fans') return Math.max(q, fanHeat(em, (ts + tr) / 2 - ti, d0));
+  return q; // 'fab': the stated output and n already include the fans
+}
+// '' (no boost), 'pct' (fixed percentage), 'fans' (own fans) or 'fab' (built in by the maker)
+const boostKind = em => (em.boost && (em.kind === 'rad' || em.kind === 'conv') ? em.boostMode || 'pct' : '');
+const fanModel = em =>
+  FANS.modellen[em.fan && em.fan.model] || FANS.modellen.anders || { m3h: 100, rpmMin: 0, rpmMax: 100 };
+// air through the emitter in m³/h: fans × free-air flow × speed fraction × share that gets through the fins
+function fanAir(em, pct) {
+  const f = em.fan || {},
+    M = fanModel(em);
+  pct = pct == null ? f.pct : pct;
+  if (!(pct > 0) || !(f.count > 0)) return 0;
+  const m3h = f.model === 'anders' ? f.m3h : M.m3h,
+    rpm = M.rpmMin + ((M.rpmMax - M.rpmMin) * pct) / 100;
+  return f.count * m3h * (rpm / M.rpmMax) * (FANS.doorlaat || 0.7);
+}
+// forced convection (effectiveness-NTU): the fins transfer UA = UA without fans × ratio, calibrated on Jaga
+// Mini Canal Hybrid; the air can at most warm up to the mean water temperature
+function fanHeat(em, dTm, d0, pct) {
+  const V = fanAir(em, pct);
+  if (!(V > 0) || !(dTm > 0) || !(em.p > 0)) return 0;
+  const I = FANS.ijking || {},
+    C = (V * 1.2 * 1005) / 3600,
+    L = emLen(em),
+    r = (I.verhouding || 5.5) * Math.pow(L > 0 ? V / (L * (I.luchtPerMeter || 195)) : 1, I.exponent || 0.6),
+    eps = 1 - Math.exp(-((em.p / d0) * r) / C);
+  return eps * C * dTm;
+}
+function boostLabel(em) {
+  const bk = boostKind(em);
+  return bk === 'fans' ? ` met ${em.fan.count} ventilator${em.fan.count === 1 ? '' : 'en'}` : bk ? ' met boosters' : '';
 }
 // the pipe an emitter hangs on, taken from the drawn network (null: not connected)
 function emPipe(em, N) {
@@ -403,7 +437,7 @@ function roomEmitHtml(room, c) {
   const row = (em, r) => {
     const o = emOutput(em, r),
       pc = pipeCheck(em, o);
-    return `<button class="linkrow" data-act="selem" data-r="${r.id}" data-e="${em.id}"><span>${esc(em.name)} <span class="note">· ${EM_KINDS[em.kind]}${em.boost ? ' met boosters' : ''}${r !== room ? ' · in ' + esc(r.name) : ''}${pipeBad(pc) ? ' · ⚠ leiding ' + pc.state : pc.state === 'los' && (P.pipes || []).length ? ' · niet aangesloten' : ''}</span></span><span>${fmt(o / 1000, 2)} kW</span></button>`;
+    return `<button class="linkrow" data-act="selem" data-r="${r.id}" data-e="${em.id}"><span>${esc(em.name)} <span class="note">· ${EM_KINDS[em.kind]}${boostLabel(em)}${r !== room ? ' · in ' + esc(r.name) : ''}${pipeBad(pc) ? ' · ⚠ leiding ' + pc.state : pc.state === 'los' && (P.pipes || []).length ? ' · niet aangesloten' : ''}</span></span><span>${fmt(o / 1000, 2)} kW</span></button>`;
   };
   return `<h3>Afgifte</h3>${
     multi
@@ -429,9 +463,67 @@ function convHtml(em, room, out) {
     d0 = lmtd(nom[0], nom[1], nom[2]),
     d1 = lmtd(S.twSup, tRet(), room.temp),
     f = d0 > 0 ? Math.pow(d1 / d0, n) : 0,
-    boost = em.boost && (em.kind === 'rad' || em.kind === 'conv') ? 1 + (em.boostPct || 0) / 100 : 1;
+    bk = boostKind(em),
+    boost = bk === 'pct' ? 1 + (em.boostPct || 0) / 100 : 1;
+  if (bk === 'fans')
+    return `<div class="det">Zonder ventilatoren: ${fmtW(em.p)} W bij ${nom[0]}/${nom[1]}/${nom[2]} °C × (${fmt(d1, 1)} K / ${fmt(d0, 1)} K)^${nv(n, 2)} = ${fmtW(em.p * f)} W<br><b>Met ventilatoren: ${fmtW(out)} W bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)}/${nv(room.temp, 1)} °C</b> (${fmtW(em.p > 0 ? (out / em.p) * 100 : 0)}% van het opgegeven vermogen). De berekening staat hieronder bij de ventilatoren.</div>`;
   return `<div class="det">Omrekening: ${fmtW(em.p)} W bij ${nom[0]}/${nom[1]}/${nom[2]} °C × (${fmt(d1, 1)} K / ${fmt(d0, 1)} K)^${nv(n, 2)}${boost !== 1 ? ` × ${nv(boost, 2)} (boosters)` : ''}<br><b>= ${fmtW(out)} W bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)}/${nv(room.temp, 1)} °C</b> (${fmtW(f * boost * 100)}% van het opgegeven vermogen)</div>
   <p class="note">K is het gemiddelde temperatuurverschil tussen water en lucht (logaritmisch). Bij lage aanvoertemperaturen geeft een radiator maar een klein deel van zijn vermogen bij 75/65 °C af: bij 35/30 °C ongeveer een zesde.</p>`;
+}
+// the booster card: how the fans are counted
+function boostHtml(em, room, out) {
+  const S = P.settings,
+    bk = boostKind(em),
+    modes = [
+      ['pct', 'Vaste meerafgifte in procenten'],
+      ['fans', 'Eigen ventilatoren (aantal, type en toerental)'],
+      ['fab', 'Ingebouwd door de fabrikant (Hybrid, DBE)']
+    ],
+    off = emOutput({ ...em, boost: false }, room);
+  let h = `<label class="f" for="f-em-bm">Hoe rekenen<select class="in" id="f-em-bm" data-f="em.boostMode">${modes
+    .map(([k, l]) => `<option value="${k}" ${bk === k ? 'selected' : ''}>${l}</option>`)
+    .join('')}</select></label>`;
+  if (bk === 'pct')
+    return (
+      h +
+      `<div class="fields">${numField('f-em-bp', 'em.boostPct', 'Meerafgifte door boosters', '%', em.boostPct, 0)}</div>
+      <p class="note">Zonder boosters ${fmt(off / 1000, 2)} kW, met boosters ${fmt(out / 1000, 2)} kW. Fabrikanten noemen bij lage watertemperatuur 30 tot 100% meer afgifte, afhankelijk van radiatortype en aantal ventilatoren. 40% is een voorzichtige waarde; gebruik bij voorkeur de opgave van de fabrikant, of kies <i>Eigen ventilatoren</i>.</p>`
+    );
+  if (bk === 'fab')
+    return (
+      h +
+      `<p class="note">Vul hierboven bij <i>Vermogen</i> het vermogen bij 75/65/20 °C <b>met de ventilatoren aan</b> in (de stand die je gebruikt) en bij <i>Exponent n</i> de waarde van de fabrikant. Bij Jaga Hybrid en DBE is dat ongeveer 1,05 tot 1,13; de ventilatoren zitten dan al in het vermogen en in de lagere n, dus de app telt niets extra op.</p>`
+    );
+  const f = em.fan,
+    M = fanModel(em),
+    nom = EM_NOM[em.kind] || EM_NOM.rad,
+    d0 = lmtd(nom[0], nom[1], nom[2]),
+    dTm = (S.twSup + tRet()) / 2 - room.temp,
+    V = fanAir(em),
+    L = emLen(em),
+    m3h = f.model === 'anders' ? f.m3h : M.m3h,
+    rpm = M.rpmMin + ((M.rpmMax - M.rpmMin) * f.pct) / 100,
+    I = FANS.ijking || {},
+    C = (V * 1.2 * 1005) / 3600,
+    r = (I.verhouding || 5.5) * Math.pow(L > 0 ? V / (L * (I.luchtPerMeter || 195)) : 1, I.exponent || 0.6),
+    UA = (em.p / d0) * r,
+    eps = C > 0 ? 1 - Math.exp(-UA / C) : 0;
+  h += `<label class="f" for="f-em-fm">Ventilator<select class="in" id="f-em-fm" data-f="em.fan.model">${Object.entries(
+    FANS.modellen
+  )
+    .map(([k, x]) => `<option value="${k}" ${f.model === k ? 'selected' : ''}>${esc(x.naam)}</option>`)
+    .join('')}</select></label>
+    <div class="fields">${numField('f-em-fc', 'em.fan.count', 'Aantal', 'st.', f.count, 0)}${numField('f-em-fp', 'em.fan.pct', 'Toerental (PWM)', '%', f.pct, 0)}${f.model === 'anders' ? numField('f-em-fq', 'em.fan.m3h', 'Luchtdebiet per stuk bij 100%', 'm³/h', f.m3h, 0) : ''}</div>`;
+  const speeds = [20, 40, 60, 80, 100];
+  h += `<div class="det">Lucht: ${f.count} × ${fmtW(m3h)} m³/h${f.model === 'anders' ? '' : ` × ${fmtW(rpm)}/${fmtW(M.rpmMax)} toeren`} × ${nv((FANS.doorlaat || 0.7) * 100, 0)}% doorlaat = <b>${fmtW(V)} m³/h</b>${L > 0 ? ` (${fmtW(V / L)} m³/h per meter)` : ''}<br>
+    Lamellenblok: UA ${fmtW(em.p / d0)} W/K zonder ventilatoren × ${fmt(r, 1)} = ${fmtW(UA)} W/K; lucht ${fmtW(C)} W/K<br>
+    Rendement ε = 1 − exp(−${fmtW(UA)} / ${fmtW(C)}) = ${fmtW(eps * 100)}%<br>
+    <b>${fmtW(eps * 100)}% × ${fmtW(C)} W/K × ${fmt(dTm, 1)} K = ${fmtW(fanHeat(em, dTm, d0))} W</b> (zonder ventilatoren ${fmtW(off)} W)</div>
+    <div class="tablewrap"><table class="calc"><thead><tr><th>Toerental</th>${speeds.map(p => `<th>${p}%</th>`).join('')}</tr></thead><tbody><tr><td>kW</td>${speeds
+      .map(p => `<td>${fmt(Math.max(off, fanHeat(em, dTm, d0, p)) / 1000, 2)}</td>`)
+      .join('')}</tr></tbody></table></div>
+    <p class="note">Bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)} °C en ${nv(room.temp, 1)} °C in de ruimte. Vul bij <i>Vermogen</i> het vermogen <b>zonder</b> ventilatoren in. De ventilatoren blazen lucht door het lamellenblok; die lucht warmt op tot hoogstens de gemiddelde watertemperatuur (${fmt(dTm, 1)} K boven de ruimte). Hoe goed dat lukt (ε) hangt af van het lamellenblok en de hoeveelheid lucht: meer lucht geeft meer warmte, maar steeds minder per m³. De verhouding van ${nv(I.verhouding || 5.5, 1)} bij ${fmtW(I.luchtPerMeter || 195)} m³/h per meter komt uit de opgave van Jaga voor de Mini Canal Hybrid tegenover de gewone Mini Canal (data/ventilatoren.json). Het blijft een schatting: meten aan het water (debiet × temperatuurverschil) is nauwkeuriger. Vul het toerental in dat de ventilatoren bij de ontwerptemperatuur (${nv(S.te, 0)} °C buiten) halen: een regeling op de aanvoertemperatuur laat ze dan meestal het hardst draaien.</p>`;
+  return h;
 }
 function viewEm(room, em) {
   const S = P.settings,
@@ -490,13 +582,8 @@ function viewEm(room, em) {
     <p class="note">${em.kind === 'conv' ? 'Bij convectoren hangt het vermogen sterk af van de bouwhoogte, de lamellen en de inbouw (vloerput, omkasting). Neem de waarde uit de catalogus van de fabrikant bij 75/65/20 °C. ' : em.kind === 'rad' ? 'Vul het vermogen van de typeplaat of uit de documentatie in (EN 442, 75/65/20 °C), of laat het afleiden uit type, hoogte en lengte. ' : 'Vul het vermogen uit de documentatie in (fancoils worden meestal bij 35 °C opgegeven). '}De app rekent het om naar ${nv(S.twSup, 1)}/${fmt(tRet(), 1)} °C met exponent n (radiator 1,3, convector 1,4, fancoil 1,0). De lengte verander je hier of door een uiteinde in de tekening te slepen; het vermogen blijft dan wat je hebt ingevuld.</p>`;
     h += `${
       em.kind === 'rad' || em.kind === 'conv'
-        ? `<div class="card"><label class="chk"><input type="checkbox" id="f-em-boost" data-f="em.boost" ${em.boost ? 'checked' : ''}> Voorzien van boosters (ventilatoren)</label>
-      ${
-        em.boost
-          ? `<div class="fields">${numField('f-em-bp', 'em.boostPct', 'Meerafgifte door boosters', '%', em.boostPct, 0)}</div>
-      <p class="note">Zonder boosters ${fmt(emOutput({ ...em, boost: false }, room) / 1000, 2)} kW, met boosters ${fmt(out / 1000, 2)} kW. Fabrikanten noemen bij lage watertemperatuur 30 tot 100% meer afgifte, afhankelijk van radiatortype en aantal ventilatoren. 40% is een voorzichtige waarde; gebruik bij voorkeur de opgave van de fabrikant.</p>`
-          : ''
-      }</div>`
+        ? `<div class="card"><label class="chk"><input type="checkbox" id="f-em-boost" data-f="em.boost" ${em.boost ? 'checked' : ''}> Voorzien van ventilatoren (boosters)</label>
+      ${em.boost ? boostHtml(em, room, out) : ''}</div>`
         : ''
     }`;
   } else

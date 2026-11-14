@@ -11,6 +11,7 @@ let VV_COVER = {}; // data/vloerverwarming.json: {tegels: [naam, R], ...}
 let VV_KH = {}; // data/vloerverwarming.json: {15: [afgiftecoëfficiënt bij R = 0 / 0,05 / 0,10 / 0,15], ...}
 let TRV = { lichaam: 0.5, kranen: {} }; // data/thermostaatkranen.json: kv per voorinstelling, debietbegrenzers
 let FITTINGS = {}; // data/appendages.json: {vuilfilter: {naam, kv}, ...}
+let FANS = { doorlaat: 0.7, ijking: {}, modellen: {} }; // data/ventilatoren.json: pc-ventilatoren als booster
 
 async function loadData() {
   const get = f =>
@@ -18,14 +19,15 @@ async function loadData() {
       if (!r.ok) throw new Error(f + ' (' + r.status + ')');
       return r.json();
     });
-  const [hp, mat, pipes, rad, vv, trv, fit] = await Promise.all([
+  const [hp, mat, pipes, rad, vv, trv, fit, fans] = await Promise.all([
     get('warmtepompen.json'),
     get('materialen.json'),
     get('leidingen.json'),
     get('radiatoren.json'),
     get('vloerverwarming.json'),
     get('thermostaatkranen.json'),
-    get('appendages.json')
+    get('appendages.json'),
+    get('ventilatoren.json')
   ]);
   HP_DEFAULT = hp;
   MAT_PRESETS = mat.materialen.map(m => [m.id, m.naam, m.soort, +m.waarde || 0, m.kleur]);
@@ -40,6 +42,7 @@ async function loadData() {
   VV_KH = vv.afgifteCoefficient;
   TRV = trv;
   FITTINGS = fit.appendages;
+  FANS = fans;
 }
 
 function showDataError(err) {

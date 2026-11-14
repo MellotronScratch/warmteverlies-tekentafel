@@ -16,7 +16,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 - **Constructies**: opbouw in lagen (R = d / λ) met luchtspouwen, geventileerde spouwen en stijlen of regels volgens NEN-EN-ISO 6946, of direct een U-waarde.
 - **Schuine daken**: zadeldak en lessenaarsdak met muurplaathoogte en vlak plafond (hanenbalk), inclusief juiste wand- en dakoppervlakken en inhoud.
 - **Ventilatie en infiltratie**: systeem A, C of D met WTW, overstroom tussen ruimtes en infiltratie uit qv10.
-- **Afgifte**: radiatoren (vermogen zelf invullen of afleiden uit type, hoogte en lengte), convectoren, fancoils (met boosters) en vloerverwarming bij je eigen aanvoer- en retourtemperatuur. Met controle van de aansluitleiding (de getekende leiding naar het element) en de minimaal nodige aanvoertemperatuur.
+- **Afgifte**: radiatoren (vermogen zelf invullen of afleiden uit type, hoogte en lengte), convectoren (ook met ventilatoren), fancoils en vloerverwarming bij je eigen aanvoer- en retourtemperatuur. Met controle van de aansluitleiding (de getekende leiding naar het element) en de minimaal nodige aanvoertemperatuur.
 - **Verbeteradviezen** en **warmtepompkeuze**: vergelijk warmtepompen met het warmteverlies bij −10 °C (dekt het maximale vermogen het verlies?) en bij +10 °C (kan hij ver genoeg terugregelen, of gaat hij pendelen?). Per warmtepomp zie je vanaf welke buitentemperatuur hij pendelt. De lijst is gesorteerd op beide.
 - **Export**: JSON, CSV en [heatlossjs](https://github.com/trystanLea/heatlossjs).
 
@@ -369,6 +369,22 @@ Bij elk element staat hoe de app het vermogen omrekent naar jouw aanvoer- en ret
 
 <img src="docs/img/radiator.png" width="360" alt="Het paneel van een radiator met de omrekening">
 
+### Ventilatoren (boosters)
+
+Zet bij een radiator of convector **Voorzien van ventilatoren (boosters)** aan en kies onder **Hoe rekenen**:
+
+- **Vaste meerafgifte in procenten**: het vermogen zonder ventilatoren × (1 + percentage). Standaard 40 %. Handig als de fabrikant van een losse booster een percentage noemt.
+- **Eigen ventilatoren**: voor bijvoorbeeld pc-ventilatoren op PWM. Kies het type (Arctic P12/P14, Noctua NF-A12x25/NF-A14, of zelf invullen) en vul het aantal en het toerental bij de ontwerptemperatuur in. Bij **Vermogen** blijft het vermogen **zonder** ventilatoren staan.
+- **Ingebouwd door de fabrikant (Hybrid, DBE)**: vul het vermogen bij 75/65/20 °C met de ventilatoren aan in, en de exponent n van de fabrikant (bij Jaga ongeveer 1,1). De app telt dan niets extra op.
+
+Bij **Eigen ventilatoren** rekent de app zo:
+
+1. **Lucht**: aantal × luchtdebiet per ventilator × (toerental / maximaal toerental) × 70 % doorlaat door lamellen en rooster.
+2. **Lamellenblok**: zonder ventilatoren draagt het blok UA = vermogen / 49,8 K over (W/K). Met ventilatoren is dat ongeveer 5,5 keer zoveel bij 195 m³/h per meter convector, en het schaalt met (lucht / 195 per meter)^0,6. Die verhouding komt uit het selectiemodel van Jaga: de Mini Canal Hybrid tegenover de gewone Mini Canal.
+3. **Afgifte**: ε × luchtcapaciteit × (gemiddelde watertemperatuur − ruimtetemperatuur), met ε = 1 − exp(−UA / luchtcapaciteit). De lucht kan nooit warmer worden dan het water, dus meer lucht geeft steeds minder extra.
+
+Onder de berekening staat de afgifte bij 20, 40, 60, 80 en 100 % toerental. Het blijft een schatting. Wil je het precies weten, meet dan aan het water: vermogen = 1,16 × debiet (l/h) × temperatuurverschil aanvoer-retour (K). De ventilatortypen en de ijking staan in `data/ventilatoren.json`.
+
 ### Debiet van de warmtepomp
 
 Onder **Afgiftesysteem** (bij *Installatie* of bij een radiator) vul je de aanvoertemperatuur in, en óf de retourtemperatuur, óf het **debiet** van de warmtepomp in l/h.
@@ -448,6 +464,7 @@ De tabellen waar de app mee rekent, staan als JSON in de map `data/`. Je kunt ze
 | `vloerverwarming.json` | Vloerafwerkingen (warmteweerstand) en de afgiftecoëfficiënt per hart-op-hartafstand. |
 | `thermostaatkranen.json` | Thermostaatkranen met de kv-waarde per voorinstelling, of het instelbereik van een debietbegrenzer (Heimeier Eclipse). |
 | `appendages.json` | Appendages in de hoofdleiding (vuilfilter, afsluiter, driewegklep, …) met een typische kv-waarde. |
+| `ventilatoren.json` | Ventilatoren voor boosters (luchtdebiet en toerental) en de ijking van de ventilatorberekening. |
 
 Verander de sleutels en id's van bestaande regels niet, want projecten verwijzen ernaar. Voeg je een regel toe, geef die dan een nieuwe, unieke id. Na een wijziging ververs je de pagina. Is een bestand geen geldige JSON meer, dan meldt de app dat bij het opstarten.
 

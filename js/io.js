@@ -161,7 +161,7 @@ function toHeatlossjs() {
       if (em.kind === 'rad' || em.kind === 'conv')
         rooms[nm].radiators.push({
           name: em.name + (em.boost ? ' (met boosters)' : ''),
-          heat50k: Math.round(em.p * (em.boost ? 1 + (em.boostPct || 0) / 100 : 1)),
+          heat50k: Math.round(emOutput(em, { temp: 20 }, 75, 65)),
           model: 'pow'
         });
       else if (em.kind === 'vv')

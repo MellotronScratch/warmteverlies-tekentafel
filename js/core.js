@@ -573,6 +573,14 @@ function normalizeProject(p) {
           cover: VV_COVER[e.cover] ? e.cover : 'tegels',
           boost: !!e.boost && (kind === 'rad' || kind === 'conv'),
           boostPct: Number.isFinite(+e.boostPct) && +e.boostPct >= 0 ? +e.boostPct : 40,
+          // how the boost is counted: fixed percentage, own fans (count, model, speed) or built in by the maker
+          boostMode: ['pct', 'fans', 'fab'].includes(e.boostMode) ? e.boostMode : 'pct',
+          fan: {
+            model: FANS.modellen[e.fan && e.fan.model] ? e.fan.model : 'arctic-p14',
+            count: e.fan && +e.fan.count >= 0 ? Math.round(+e.fan.count) : 2,
+            pct: e.fan && Number.isFinite(+e.fan.pct) ? Math.min(100, Math.max(0, +e.fan.pct)) : 100,
+            m3h: e.fan && +e.fan.m3h > 0 ? +e.fan.m3h : 100
+          },
           pipe: { mat, dn },
           rt: RAD_TYPES[e.rt] ? e.rt : '',
           rh: +e.rh > 0 ? +e.rh : 600,

@@ -1,0 +1,12 @@
+{
+  "toelichting": "Losse ventilatoren (bijvoorbeeld pc-ventilatoren) onder of in een radiator of convector. Luchtdebiet per ventilator in m³/h bij het hoogste toerental, vrij uitblazend volgens de fabrikant. Het toerental loopt bij PWM ongeveer lineair van rpmMin naar rpmMax, en het luchtdebiet loopt evenredig met het toerental mee. 'doorlaat' is het deel van het vrij uitblazende debiet dat door het lamellenblok en het rooster komt. De ijking komt uit het selectiemodel van Jaga (2024-01): de Mini Canal Hybrid tegenover de gewone Mini Canal met dezelfde maten. Met ventilatoren draagt het lamellenblok ongeveer 'verhouding' keer zoveel warmte over (UA in W/K) als zonder ventilatoren bij 75/65/20 °C, bij 'luchtPerMeter' m³/h per meter convector. Bij meer of minder lucht schaalt dat met (lucht / luchtPerMeter)^exponent. Verander de sleutels van de modellen niet: projecten verwijzen ernaar.",
+  "doorlaat": 0.7,
+  "ijking": { "verhouding": 5.5, "luchtPerMeter": 195, "exponent": 0.6 },
+  "modellen": {
+    "arctic-p14": { "naam": "Arctic P14 PWM PST (140 mm)", "m3h": 123.7, "rpmMin": 200, "rpmMax": 1700 },
+    "arctic-p12": { "naam": "Arctic P12 PWM PST (120 mm)", "m3h": 95.7, "rpmMin": 200, "rpmMax": 1800 },
+    "noctua-a14": { "naam": "Noctua NF-A14 PWM (140 mm)", "m3h": 140.2, "rpmMin": 300, "rpmMax": 1500 },
+    "noctua-a12x25": { "naam": "Noctua NF-A12x25 PWM (120 mm)", "m3h": 102.1, "rpmMin": 450, "rpmMax": 2000 },
+    "anders": { "naam": "Andere ventilator (zelf invullen)", "m3h": 100, "rpmMin": 0, "rpmMax": 100 }
+  }
+}

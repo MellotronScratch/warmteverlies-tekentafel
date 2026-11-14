@@ -781,7 +781,32 @@ function applyField(el, final) {
       const k = parts[1];
       if (k === 'name') em.name = v;
       else if (k === 'boost') em.boost = el.checked;
-      else if (k === 'trv') {
+      else if (k === 'boostMode') {
+        if (!['pct', 'fans', 'fab'].includes(v)) return;
+        em.boostMode = v;
+        // built-in fans: the maker's exponent is much lower than for a passive convector
+        if (v === 'fab' && em.n === EM_N[em.kind]) em.n = 1.1;
+        else if (v !== 'fab' && em.n === 1.1) em.n = EM_N[em.kind];
+      } else if (k === 'fan') {
+        const f = em.fan;
+        if (parts[2] === 'model') {
+          if (!FANS.modellen[v]) return;
+          f.model = v;
+        } else {
+          const n = num(v);
+          if (n == null || n < 0) return;
+          if (parts[2] === 'count') {
+            if (n > 200) return;
+            f.count = Math.round(n);
+          } else if (parts[2] === 'pct') {
+            if (n > 100) return;
+            f.pct = n;
+          } else if (parts[2] === 'm3h') {
+            if (n <= 0 || n > 2000) return;
+            f.m3h = n;
+          } else return;
+        }
+      } else if (k === 'trv') {
         if (v && !TRV.kranen[v]) return;
         em.trv = v;
       } else if (k === 'kind') {
