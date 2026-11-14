@@ -355,6 +355,15 @@ function viewEm(room, em) {
     <div class="seglegend"><span style="--c:transparent">${fmtW(pc.lh)} l/h water</span><span style="--c:transparent">inhoud ca. ${fmt(emVolume(em), 1)} l</span><span style="--c:transparent">ruimte ${nv(room.temp, 1)} °C</span></div></div>
   ${isV ? '' : convHtml(em, room, out)}
   ${netEmHtml(em)}
+  ${
+    em.kind === 'rad' || em.kind === 'conv'
+      ? `<label class="f" for="f-em-trv">Thermostaatkraan<select class="in" id="f-em-trv" data-f="em.trv"><option value="" ${em.trv && TRV.kranen[em.trv] ? '' : 'selected'}>Zoals voor het hele huis (${esc((TRV.kranen[S.trv] || TRV.kranen.onbekend || {}).naam || '')})</option>${Object.entries(
+          TRV.kranen
+        )
+          .map(([k, x]) => `<option value="${k}" ${em.trv === k ? 'selected' : ''}>${esc(x.naam)}</option>`)
+          .join('')}</select></label>`
+      : ''
+  }
   <div class="fields"><label class="f" for="f-em-kind">Soort<select class="in" id="f-em-kind" data-f="em.kind" ${isV ? 'disabled' : ''}>${kinds}</select></label>`;
   if (!isV) {
     const nom = EM_NOM[em.kind],

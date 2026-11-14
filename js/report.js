@@ -188,7 +188,7 @@ function reportHtml() {
   }
   // leidingnet
   if (N && N.root)
-    h += `<section class="rsec"><h2>Leidingnet</h2><div class="repschema">${schemaSvg(N)}</div>${networkHtml()}${volumeHtml()}</section>`;
+    h += `<section class="rsec"><h2>Leidingnet</h2><div class="repschema">${schemaSvg(N)}</div>${networkHtml(true)}${volumeHtml()}</section>`;
   // verbeteradviezen
   const adv = computeAdvice(c),
     chosen = adv.filter(a => P.advSel[a.con.id]);

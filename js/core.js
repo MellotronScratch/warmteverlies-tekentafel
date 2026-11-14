@@ -91,7 +91,8 @@ const DEFAULT_SETTINGS = {
   fInf: 1,
   twSup: 35,
   twRet: 30,
-  flow: 0 // l/h; 0 = flow follows from the supply/return difference
+  flow: 0, // l/h; 0 = flow follows from the supply/return difference
+  trv: 'onbekend' // thermostatic radiator valve for the whole house (data/thermostaatkranen.json); per emitter em.trv
 };
 // improvement advice: constructions of this kind facing outside/ground/unheated with U above 'on' get the measure, to U 'to'
 const ADVICE_DEFAULT = {
@@ -504,6 +505,15 @@ function normalizeProject(p) {
     Number.isFinite(+p.hpPos.y)
       ? { floorId: p.hpPos.floorId, x: +p.hpPos.x, y: +p.hpPos.y }
       : null;
+  // appendages in the main pipe at the heat pump: type (data/appendages.json), number, kv
+  p.fittings = (Array.isArray(p.fittings) ? p.fittings : [])
+    .filter(x => x && typeof x === 'object')
+    .map(x => ({
+      id: x.id || rid(),
+      type: String(x.type || 'anders'),
+      n: Math.max(1, Math.round(+x.n) || 1),
+      kv: +x.kv > 0 ? +x.kv : 10
+    }));
   p.pipes = (Array.isArray(p.pipes) ? p.pipes : [])
     .filter(x => x && Array.isArray(x.pts) && x.pts.length >= 2 && p.floors.some(f => f.id === x.floorId))
     .map(x => {
@@ -567,7 +577,8 @@ function normalizeProject(p) {
           rt: RAD_TYPES[e.rt] ? e.rt : '',
           rh: +e.rh > 0 ? +e.rh : 600,
           rl: +e.rl > 0 ? +e.rl : 0,
-          loops: [1, 2, 3, 4].includes(+e.loops) ? +e.loops : 1
+          loops: [1, 2, 3, 4].includes(+e.loops) ? +e.loops : 1,
+          trv: typeof e.trv === 'string' ? e.trv : '' // '' = the valve chosen for the whole house
         };
       });
     r.emitters.forEach(syncRad);

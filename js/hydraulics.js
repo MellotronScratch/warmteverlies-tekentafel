@@ -17,6 +17,50 @@ const VV_MANIFOLD_DP = 2; // kPa over de verdeler
 const nodeKey = (f, p) => f + '|' + Math.round(p.x * 100) + '|' + Math.round(p.y * 100);
 const lerpP = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 const lhOf = (W, dT) => W / (1.163 * Math.max(0.5, dT)); // l/h bij vermogen W en ΔT K
+const kvDp = (lh, kv) => (kv > 0 ? 100 * Math.pow(lh / 1000 / kv, 2) : 0); // kPa over een kv bij lh l/h
+
+// the thermostatic valve of a radiator or convector: its own choice, otherwise the one for the whole house
+const trvOf = em =>
+  em.kind === 'rad' || em.kind === 'conv'
+    ? TRV.kranen[em.trv] || TRV.kranen[P.settings.trv] || TRV.kranen.onbekend || null
+    : null;
+// the preset that gives an element its design flow, when the index circuit sets the pressure
+function presetFor(o, index) {
+  const v = o.trv;
+  if (!v || !index) return null;
+  const avail = index.dpTot - o.dpPath - TRV.lichaam; // kPa left for the valve
+  if (v.soort === 'debiet') {
+    const s = Math.max(v.min, Math.min(v.max, Math.round(o.lh / 5) * 5));
+    return { kind: 'debiet', s, over: o.lh > v.max + 0.5, under: o.lh < v.min, noisy: avail > v.dpMax, avail };
+  }
+  if (v.soort !== 'kv' || !(v.standen || []).length) return null;
+  const st = v.standen,
+    last = st[st.length - 1];
+  if (o === index || !(avail > 0)) return { kind: 'kv', s: last[0], kv: last[1], index: o === index, avail };
+  const kvNeed = o.lh / 1000 / Math.sqrt(avail / 100);
+  let best = st[0];
+  st.forEach(x => {
+    if (Math.abs(Math.log(x[1] / kvNeed)) < Math.abs(Math.log(best[1] / kvNeed))) best = x;
+  });
+  return {
+    kind: 'kv',
+    s: best[0],
+    kv: best[1],
+    kvNeed,
+    pct: (best[1] / kvNeed) * 100, // flow at this preset compared with the design flow
+    low: kvNeed < st[0][1] * 0.9,
+    avail
+  };
+}
+// short text for tables: the preset, or the extra resistance for a valve without presets
+function presetText(o, N) {
+  if (N.index && N.index.em === o.em && (!o.preset || o.preset.kind !== 'debiet'))
+    return o.preset ? 'index · ' + o.preset.s : 'index';
+  if (o.preset && o.preset.kind === 'kv') return 'stand ' + o.preset.s;
+  if (o.preset && o.preset.kind === 'debiet') return fmtW(o.preset.s) + ' l/h';
+  const extra = N.index ? N.index.dpTot - o.dpTot : 0;
+  return '+' + fmt(extra, 1) + ' kPa';
+}
 
 // drukverlies (kPa) over L meter leiding (enkel) met binnendiameter d (mm), debiet q (l/h); ×2 voor aanvoer + retour als both
 function pipeDp(mat, dmm, L, lh, both) {
@@ -194,7 +238,17 @@ function buildNetwork() {
       o.dpEm =
         pipeDp('pex', (PIPES.pex && PIPES.pex.d['16']) || 12, (loop / groups) * fit, o.lh / groups, false).dp +
         VV_MANIFOLD_DP;
-    } else o.dpEm = EM_DP[o.em.kind] || 3;
+    } else {
+      // radiator or convector: radiator and return fitting, plus the thermostatic valve fully open (or its minimum)
+      const v = (o.trv = trvOf(o.em));
+      o.dpEm = !v
+        ? EM_DP[o.em.kind] || 3
+        : v.soort === 'kv' && (v.standen || []).length
+          ? TRV.lichaam + kvDp(o.lh, v.standen[v.standen.length - 1][1])
+          : v.soort === 'debiet'
+            ? TRV.lichaam + (o.lh > v.debietHoog ? v.dpMinHoog : v.dpMin)
+            : +v.dp || EM_DP[o.em.kind] || 3;
+    }
     o.dpPath = o.reach ? o.node.cum : NaN;
     o.dpTot = o.reach ? o.dpPath + o.dpEm : NaN;
   });
@@ -203,6 +257,11 @@ function buildNetwork() {
   // edges of the index circuit
   const indexEdges = new Set();
   if (index) for (let n = index.node; n && n.parent; n = n.up) indexEdges.add(n.parent);
+  reached.forEach(o => (o.preset = presetFor(o, index)));
+  // appendages in the main pipe: all water flows through them
+  const total = reached.reduce((a, o) => a + o.lh, 0),
+    fittings = (P.fittings || []).map(f => ({ f, dp: f.n * kvDp(total, f.kv) })),
+    dpFit = fittings.reduce((a, x) => a + x.dp, 0);
   return {
     hp,
     root,
@@ -213,7 +272,10 @@ function buildNetwork() {
     loopEdges,
     index,
     indexEdges,
-    total: reached.reduce((a, o) => a + o.lh, 0),
+    total,
+    fittings,
+    dpFit,
+    dpPump: (index ? index.dpTot : 0) + dpFit, // what the pump has to deliver
     dT,
     loose: edges.filter(e => !e.inTree).length
   };
@@ -232,6 +294,8 @@ function network() {
       P.settings.flow,
       hpSel,
       P.settings.fitPct,
+      P.settings.trv,
+      P.fittings,
       P.rooms.map(r => [r.id, r.floorId, r.emitters, r.temp])
     ]) + calcAll().total;
   if (key !== _netKey) {
@@ -247,7 +311,7 @@ function viewHp() {
   return `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><h2>Warmtepomp</h2>
     <p class="note">Het beginpunt van het leidingnet: de warmtepomp of de plek waar de leidingen van het buitendeel binnenkomen. Sleep het blokje om het te verplaatsen.</p></div>
   <div class="fields">${floorSelect('f-hp-fl', 'hp.floorId', P.hpPos.floorId)}</div>
-  <div class="det">${N.root ? `Aangesloten op het leidingnet · ${fmtW(N.total)} l/h${N.index ? ` · indexcircuit ${fmt(N.index.dpTot, 1)} kPa` : ''}` : 'Nog niet aangesloten: laat een leiding hier beginnen.'}</div>
+  <div class="det">${N.root ? `Aangesloten op het leidingnet · ${fmtW(N.total)} l/h${N.index ? ` · indexcircuit ${fmt(N.index.dpTot, 1)} kPa${N.dpFit > 0.05 ? ` + appendages ${fmt(N.dpFit, 1)} kPa` : ''}` : ''}` : 'Nog niet aangesloten: laat een leiding hier beginnen.'}</div>
   <div class="row">${N.root ? '<button class="btn" data-act="schema">Schema van het leidingnet</button>' : ''}<button class="btn danger" data-act="delhp">Warmtepomp weghalen</button></div>`;
 }
 function vState(v) {
@@ -261,7 +325,18 @@ function netEmHtml(em) {
   if (!o.node)
     return `<p class="note">Niet aangesloten op het leidingnet: laat een leiding eindigen bij dit element (binnen ${nv(ATTACH * 100, 0)} cm).</p>`;
   if (!o.reach) return `<p class="note">Aangesloten op een leiding, maar die is niet verbonden met de warmtepomp.</p>`;
-  const extra = N.index ? N.index.dpTot - o.dpTot : 0;
+  const extra = N.index ? N.index.dpTot - o.dpTot : 0,
+    pr = o.preset,
+    vn = o.trv ? esc(o.trv.naam) : '';
+  let tune = '';
+  if (pr && pr.kind === 'kv')
+    tune = pr.index
+      ? `<br><b>Dit is het indexcircuit:</b> ${vn} helemaal open, stand ${esc(pr.s)}.`
+      : `<br>Voorinstelling ${vn}: <b>stand ${esc(pr.s)}</b> (kv ${nv(pr.kv, 3)}, nodig ${nv(pr.kvNeed, 3)}; ongeveer ${fmtW(pr.pct)}% van het ontwerpdebiet)${pr.low ? `<br><span style="color:var(--warn)">⚠ Zelfs stand ${esc(o.trv.standen[0][0])} laat nog te veel water door. Knijp de retourkoppeling iets dicht of kies een kraan met een kleinere kv.</span>` : ''}`;
+  else if (pr && pr.kind === 'debiet')
+    tune = `<br>${vn}: <b>instellen op ${fmtW(pr.s)} l/h</b>${N.index && N.index.em === em ? ' · dit is het indexcircuit' : ''}${pr.over ? `<br><span style="color:var(--warn)">⚠ Het ontwerpdebiet (${fmtW(o.lh)} l/h) is meer dan de kraan aankan (${fmtW(o.trv.max)} l/h).</span>` : ''}${pr.noisy ? `<br><span style="color:var(--warn)">⚠ Er staat ${fmt(pr.avail, 0)} kPa over de kraan, meer dan ${fmtW(o.trv.dpMax)} kPa: kans op geluid.</span>` : ''}`;
+  if (tune)
+    return `<div class="det">Leidingnet: ${fmtW(o.lh)} l/h · drukverlies tot de warmtepomp ${fmt(o.dpPath, 1)} kPa + radiator en kraan ${fmt(o.dpEm, 1)} kPa = ${fmt(o.dpTot, 1)} kPa${tune}</div>`;
   return `<div class="det">Leidingnet: ${fmtW(o.lh)} l/h · drukverlies tot de warmtepomp ${fmt(o.dpPath, 1)} kPa + ${o.groups ? (o.groups > 1 ? o.groups + ' groepen vloerverwarming' : 'vloerverwarming') : 'element'} ${fmt(o.dpEm, 1)} kPa = ${fmt(o.dpTot, 1)} kPa${
     N.index && N.index.em === em
       ? '<br><b>Dit is het indexcircuit.</b>'
@@ -287,7 +362,7 @@ function netPipeHtml(pp) {
       : `<p class="note" style="color:var(--warn)">⚠ ${st === 'bad' ? 'Te hoge snelheid' : 'Vrij hoge snelheid'}: kies een grotere diameter (richtwaarde tot ${nv(V_OK, 1)} m/s).</p>`
   }`;
 }
-function networkHtml() {
+function networkHtml(rep) {
   if (!(P.pipes || []).length && !P.hpPos) return '';
   const N = network(),
     S = P.settings;
@@ -305,13 +380,13 @@ function networkHtml() {
   const reached = N.ems.filter(o => o.reach),
     loose = N.ems.filter(o => !o.reach),
     fast = N.edges.filter(e => e.inTree && e.v > V_OK);
-  h += `<div class="kcard"><div class="kh"><span>Indexcircuit</span><b>${N.index ? fmt(N.index.dpTot, 1) + ' kPa' : '–'}</b></div>
+  h += `<div class="kcard"><div class="kh"><span>${N.dpFit > 0.05 ? 'Indexcircuit + appendages' : 'Indexcircuit'}</span><b>${N.index ? fmt(N.dpPump, 1) + ' kPa' : '–'}</b></div>
     <div class="row"><button class="btn small" data-act="schema">Schema van het leidingnet</button></div>
-    <span class="note">${N.index ? `Naar ${esc(N.index.em.name)} in ${esc(N.index.room.name)}: leidingen ${fmt(N.index.dpPath, 1)} kPa + element ${fmt(N.index.dpEm, 1)} kPa. Dit is het drukverlies dat de pomp moet overwinnen bij ${fmtW(N.total)} l/h (ΔT ${nv(N.dT, 1)} K).` : 'Nog geen aangesloten afgifte met een warmteverlies.'}</span>
+    <span class="note">${N.index ? `Naar ${esc(N.index.em.name)} in ${esc(N.index.room.name)}: leidingen ${fmt(N.index.dpPath, 1)} kPa + element ${fmt(N.index.dpEm, 1)} kPa${N.dpFit > 0.05 ? ` + appendages bij de warmtepomp ${fmt(N.dpFit, 1)} kPa` : ''}. Dit is het drukverlies dat de pomp moet overwinnen bij ${fmtW(N.total)} l/h (ΔT ${nv(N.dT, 1)} K).` : 'Nog geen aangesloten afgifte met een warmteverlies.'}</span>
     ${(() => {
       const hp = hpList && hpList.find(x => x.id === hpSel);
       if (!hp || !(+hp.restopvoerhoogte > 0) || !N.index) return '';
-      const ok = +hp.restopvoerhoogte >= N.index.dpTot;
+      const ok = +hp.restopvoerhoogte >= N.dpPump;
       return `<div class="row">${ok ? `<span class="chip ok">✓ ${esc(hp.merk)} ${esc(hp.model)} levert ${fmt(+hp.restopvoerhoogte, 0)} kPa</span>` : `<span class="chip bad">⚠ ${esc(hp.merk)} ${esc(hp.model)} levert maar ${fmt(+hp.restopvoerhoogte, 0)} kPa</span>`}</div>`;
     })()}</div>`;
   if (N.loops)
@@ -326,13 +401,61 @@ function networkHtml() {
       .slice()
       .sort((a, b) => b.dpTot - a.dpTot)
       .forEach(o => {
-        const extra = N.index ? N.index.dpTot - o.dpTot : 0;
-        h += `<tr><td><button class="crumb" data-act="selem" data-r="${o.room.id}" data-e="${o.em.id}">${esc(o.em.name)}</button><small>${esc(o.room.name)}</small></td><td>${fmtW(o.lh)}</td><td>${fmt(o.dpTot, 1)}</td><td>${N.index && N.index.em === o.em ? 'index' : '+' + fmt(extra, 1) + ' kPa'}</td></tr>`;
+        h += `<tr><td><button class="crumb" data-act="selem" data-r="${o.room.id}" data-e="${o.em.id}">${esc(o.em.name)}</button><small>${esc(o.room.name)}${o.trv && o.em.trv ? ' · ' + esc(o.trv.naam) : ''}</small></td><td>${fmtW(o.lh)}</td><td>${fmt(o.dpTot, 1)}</td><td>${presetText(o, N)}</td></tr>`;
       });
     h += `</tbody></table></div>`;
   }
+  h +=
+    (rep
+      ? `<p class="note">Thermostaatkranen: ${esc((TRV.kranen[S.trv] || TRV.kranen.onbekend || {}).naam || '')}.</p>`
+      : trvHtml(N)) + fittingsHtml(N, rep);
   h += `<div class="fields">${numField('f-s-fit', 'set.fitPct', 'Opslag bochten en koppelingen', '%', S.fitPct, 0)}</div>
-    <p class="note">Debiet per element: zijn aandeel in het warmteverlies van de ruimte bij ΔT ${nv(N.dT, 1)} K. Drukverlies van de leidingen met Darcy-Weisbach (water van 35 °C, aanvoer + retour), plus de opslag voor bochten en koppelingen. Per element rekent de app indicatief ${nv(EM_DP.rad, 0)} kPa voor radiator of convector met kraan, ${nv(EM_DP.fan, 0)} kPa voor een fancoil, en bij vloerverwarming de lussen van 16×2 (verdeeld over groepen van hoogstens 100 m) plus ${nv(VV_MANIFOLD_DP, 0)} kPa voor de verdeler. Bij <i>Inregelen</i> staat hoeveel extra weerstand een element nodig heeft om niet meer water te krijgen dan het indexcircuit.</p>
+    <p class="note">Debiet per element: zijn aandeel in het warmteverlies van de ruimte bij ΔT ${nv(N.dT, 1)} K. Drukverlies van de leidingen met Darcy-Weisbach (water van 35 °C, aanvoer + retour), plus de opslag voor bochten en koppelingen. Per element rekent de app ${(TRV.kranen[S.trv] || {}).soort === 'kv' || (TRV.kranen[S.trv] || {}).soort === 'debiet' ? `voor radiator of convector ${nv(TRV.lichaam, 1)} kPa voor radiator en retourkoppeling plus de thermostaatkraan (helemaal open, of het minimum van een debietbegrenzer)` : `indicatief ${nv(EM_DP.rad, 0)} kPa voor radiator of convector met kraan`}, ${nv(EM_DP.fan, 0)} kPa voor een fancoil, en bij vloerverwarming de lussen van 16×2 (verdeeld over groepen van hoogstens 100 m) plus ${nv(VV_MANIFOLD_DP, 0)} kPa voor de verdeler. Bij <i>Inregelen</i> staat de voorinstelling van de kraan, of, als die niet bekend is, hoeveel extra weerstand een element nodig heeft om niet meer water te krijgen dan het indexcircuit.</p>
     <p class="note">Stijgleidingen: laat leidingen op twee verdiepingen op precies hetzelfde punt eindigen. Dan worden ze verticaal verbonden. Het indexcircuit licht oranje op in de plattegrond.</p></div>`;
+  return h;
+}
+
+// thermostatic valves: the type for the whole house (a radiator can have its own in its panel)
+function trvHtml(N) {
+  const S = P.settings,
+    cur = TRV.kranen[S.trv] ? S.trv : 'onbekend',
+    v = TRV.kranen[cur],
+    own = N.ems.filter(o => o.em.trv && TRV.kranen[o.em.trv]).length;
+  return `<div class="sec"><h3>Thermostaatkranen</h3><label class="f" for="f-s-trv">Kranen in het hele huis<select class="in" id="f-s-trv" data-f="set.trv">${Object.entries(
+    TRV.kranen
+  )
+    .map(([k, x]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(x.naam)}</option>`)
+    .join('')}</select></label>
+    <p class="note">${
+      !v || v.soort === 'vast'
+        ? `Zonder bekende kraan rekent de app met ${nv(v ? v.dp : 3, 0)} kPa over radiator en kraan, en staat bij <i>Inregelen</i> hoeveel extra weerstand een radiator nodig heeft. Kies je kraan, dan rekent de app de voorinstelling uit.`
+        : v.soort === 'kv'
+          ? `De app rekent per radiator uit welke stand de kraan nodig heeft om het ontwerpdebiet te krijgen, als de kraan van het indexcircuit helemaal open staat. De kv-waarden per stand komen uit de datasheet (${esc(v.bron || '')}). Zet daarna de thermostaatkop terug; de voorinstelling blijft staan.`
+          : `Deze kraan begrenst zelf het debiet: je stelt per radiator het debiet in l/h in, en de kraan houdt dat vast, ook als andere kranen dichtgaan. Hij heeft minstens ${nv(v.dpMin, 0)} kPa nodig (${nv(v.dpMinHoog, 0)} kPa boven ${nv(v.debietHoog, 0)} l/h); dat telt mee in het indexcircuit.`
+    }${own ? ` ${own} element(en) hebben een eigen kraan, gekozen bij het element zelf.` : ''}</p></div>`;
+}
+// appendages in the main pipe at the heat pump
+function fittingsHtml(N, rep) {
+  const list = N.fittings || [];
+  let h = `<div class="sec"><h3>Appendages bij de warmtepomp</h3>`;
+  if (rep)
+    return list.length
+      ? h +
+          `<p class="note">${list.map(x => `${x.f.n} × ${esc((FITTINGS[x.f.type] || {}).naam || x.f.type)} (kv ${nv(x.f.kv, 1)}): ${fmt(x.dp, 1)} kPa`).join(' · ')}</p></div>`
+      : '';
+  h += list
+    .map(
+      ({ f, dp }) =>
+        `<div class="card fitrow"><label class="f" for="f-fit-${f.id}-t">Onderdeel<select class="in" id="f-fit-${f.id}-t" data-f="fit.${f.id}.type">${Object.entries(
+          FITTINGS
+        )
+          .map(([k, x]) => `<option value="${k}" ${k === f.type ? 'selected' : ''}>${esc(x.naam)}</option>`)
+          .join(
+            ''
+          )}</select></label>${numField('f-fit-' + f.id + '-n', 'fit.' + f.id + '.n', 'Aantal', '×', f.n, 0)}${numField('f-fit-' + f.id + '-kv', 'fit.' + f.id + '.kv', 'kv', 'm³/h', f.kv, 1)}<span class="fitdp">${fmt(dp, 1)} kPa</span><button class="btn small" data-act="delfit" data-f="${f.id}" aria-label="Verwijder ${esc((FITTINGS[f.type] || {}).naam || 'onderdeel')}">✕</button></div>`
+    )
+    .join('');
+  h += `<div class="row"><button class="btn small" data-act="addfit">+ Appendage</button>${list.length ? `<span class="note">Samen ${fmt(N.dpFit, 1)} kPa bij ${fmtW(N.total)} l/h</span>` : ''}</div>
+    <p class="note">Onderdelen in de hoofdleiding waar al het water doorheen gaat, zoals een vuilfilter, afsluiters, een terugslagklep of de driewegklep voor tapwater. Hun drukverlies (debiet ÷ kv)² telt op bij het indexcircuit, en dat moet de pomp samen leveren. De kv staat in de datasheet van het onderdeel; de voorgestelde waarde is een typische waarde voor 1 inch. Een afsluiter die helemaal open staat, telt bijna niet.</p></div>`;
   return h;
 }

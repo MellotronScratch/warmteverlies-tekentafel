@@ -129,7 +129,7 @@ function schemaSvg(N) {
       );
       s += `<g class="schem" data-r="${o.room.id}" data-e="${o.em.id}" style="cursor:pointer"><rect x="${xBox}" y="${yo - 19}" width="${box}" height="38" rx="7" fill="var(--surface)" stroke="${idx ? '#F59E0B' : 'var(--line)'}" stroke-width="${idx ? 2 : 1}"/>
         <text x="${xBox + 10}" y="${yo - 3}" font-size="12" class="schl"><tspan font-weight="600">${esc(o.em.name)}</tspan> · ${esc(o.room.name)}${P.floors.length > 1 ? ' <tspan class="schs">(' + esc(fname(o.room.floorId)) + ')</tspan>' : ''}</text>
-        <text x="${xBox + 10}" y="${yo + 12}" font-size="10" class="schs">${fmt(o.W / 1000, 2)} kW · ${fmtW(o.lh)} l/h · Δp ${fmt(o.dpTot, 1)} kPa · ${idx ? 'indexcircuit' : 'inregelen +' + fmt(extra, 1) + ' kPa'}</text><title>Klik om dit element te openen</title></g>`;
+        <text x="${xBox + 10}" y="${yo + 12}" font-size="10" class="schs">${fmt(o.W / 1000, 2)} kW · ${fmtW(o.lh)} l/h · Δp ${fmt(o.dpTot, 1)} kPa · ${idx ? 'indexcircuit' + (o.preset ? ' · ' + (o.preset.kind === 'debiet' ? fmtW(o.preset.s) + ' l/h' : 'stand ' + o.preset.s) : '') : o.preset ? 'inregelen ' + presetText(o, N) : 'inregelen +' + fmt(extra, 1) + ' kPa'}</text><title>Klik om dit element te openen</title></g>`;
     });
     if (!t.ems.length && !t.segs.length && t !== T)
       s += `<circle cx="${x}" cy="${y}" r="4" fill="var(--warn)"/><text x="${x + 8}" y="${y + 4}" font-size="10" class="schs warn">loos eind</text>`;

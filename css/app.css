@@ -1873,3 +1873,20 @@ label.chk {
   outline: 3px dashed var(--accent);
   outline-offset: -6px;
 }
+
+/* appendages bij de warmtepomp */
+.fitrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: end;
+}
+.fitrow > label:first-child {
+  grid-column: 1 / -1;
+}
+.fitrow .fitdp {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding-bottom: 10px;
+  white-space: nowrap;
+}

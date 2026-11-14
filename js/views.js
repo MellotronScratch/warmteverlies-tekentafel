@@ -676,6 +676,12 @@ function applyField(el, final) {
     }
     case 'set': {
       const k = parts[1];
+      if (k === 'trv') {
+        if (!TRV.kranen[v]) return;
+        P.settings.trv = v;
+        changed = true;
+        break;
+      }
       if (k === 'ventSys' || k === 'infMode') {
         P.settings[k] = v;
         changed = true;
@@ -705,6 +711,24 @@ function applyField(el, final) {
         return;
       }
       P.settings[k] = n;
+      changed = true;
+      break;
+    }
+    case 'fit': {
+      const f = (P.fittings || []).find(x => x.id === parts[1]);
+      if (!f) return;
+      const k = parts[2];
+      if (k === 'type') {
+        if (!FITTINGS[v]) return;
+        f.type = v;
+        f.kv = FITTINGS[v].kv; // a new type starts from its typical kv
+      } else {
+        const n = num(v);
+        if (n == null || !(n > 0)) return;
+        if (k === 'n') f.n = Math.max(1, Math.round(n));
+        else if (k === 'kv') f.kv = n;
+        else return;
+      }
       changed = true;
       break;
     }
@@ -749,7 +773,10 @@ function applyField(el, final) {
       const k = parts[1];
       if (k === 'name') em.name = v;
       else if (k === 'boost') em.boost = el.checked;
-      else if (k === 'kind') {
+      else if (k === 'trv') {
+        if (v && !TRV.kranen[v]) return;
+        em.trv = v;
+      } else if (k === 'kind') {
         if (!EM_KINDS[v] || v === 'vv') return;
         em.kind = v;
         em.n = EM_N[v];
@@ -1461,6 +1488,21 @@ function act(a, b) {
       break;
     case 'advrules':
       advRulesOpen = !advRulesOpen;
+      renderPanel();
+      break;
+    case 'addfit': {
+      pushUndo();
+      const t = FITTINGS.vuilfilter ? 'vuilfilter' : Object.keys(FITTINGS)[0] || 'anders';
+      P.fittings = P.fittings || [];
+      P.fittings.push({ id: rid(), type: t, n: 1, kv: (FITTINGS[t] || {}).kv || 10 });
+      markDirty();
+      renderPanel();
+      break;
+    }
+    case 'delfit':
+      pushUndo();
+      P.fittings = (P.fittings || []).filter(x => x.id !== b.dataset.f);
+      markDirty();
       renderPanel();
       break;
     case 'hpsel':

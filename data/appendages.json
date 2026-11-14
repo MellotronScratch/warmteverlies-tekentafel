@@ -1,0 +1,12 @@
+{
+  "toelichting": "Appendages in de hoofdleiding bij de warmtepomp (Resultaten › Leidingnet). Al het water stroomt erdoor, dus hun drukverlies telt op bij het indexcircuit: Δp = (debiet / kv)² × 100 kPa, met het debiet in m³/h. De kv-waarden hieronder zijn typische waarden voor 1 inch (28 mm) en alleen een startpunt: vul bij voorkeur de kv uit de datasheet van jouw onderdeel in. Verander de sleutels niet: projecten verwijzen ernaar.",
+  "appendages": {
+    "vuilfilter": { "naam": "Vuil- of magneetfilter", "kv": 10 },
+    "afsluiter": { "naam": "Afsluiter (kogelkraan)", "kv": 50 },
+    "terugslagklep": { "naam": "Terugslagklep", "kv": 10 },
+    "driewegklep": { "naam": "Driewegklep (tapwater)", "kv": 8 },
+    "warmtemeter": { "naam": "Warmtemeter", "kv": 3 },
+    "wisselaar": { "naam": "Platenwisselaar", "kv": 5 },
+    "anders": { "naam": "Ander onderdeel", "kv": 10 }
+  }
+}
