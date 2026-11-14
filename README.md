@@ -374,7 +374,7 @@ Bij elk element staat hoe de app het vermogen omrekent naar jouw aanvoer- en ret
 Zet bij een radiator of convector **Voorzien van ventilatoren (boosters)** aan en kies onder **Hoe rekenen**:
 
 - **Vaste meerafgifte in procenten**: het vermogen zonder ventilatoren × (1 + percentage). Standaard 40 %. Handig als de fabrikant van een losse booster een percentage noemt.
-- **Eigen ventilatoren**: voor bijvoorbeeld pc-ventilatoren op PWM. Kies het type (Arctic P12/P14, Noctua NF-A12x25/NF-A14, of zelf invullen) en vul het aantal en het toerental bij de ontwerptemperatuur in. Bij **Vermogen** blijft het vermogen **zonder** ventilatoren staan.
+- **Eigen ventilatoren**: voor bijvoorbeeld pc-ventilatoren op PWM. Kies het type (Arctic P8/P9/P12/P14 of Noctua NF-A8/NF-A9/NF-A12x25/NF-A14, in 80, 92, 120 en 140 mm, of zelf invullen) en vul het aantal en het toerental bij de ontwerptemperatuur in. Bij **Vermogen** blijft het vermogen **zonder** ventilatoren staan.
 - **Ingebouwd door de fabrikant (Hybrid, DBE)**: vul het vermogen bij 75/65/20 °C met de ventilatoren aan in, en de exponent n van de fabrikant (bij Jaga ongeveer 1,1). De app telt dan niets extra op.
 
 Bij **Eigen ventilatoren** rekent de app zo:
