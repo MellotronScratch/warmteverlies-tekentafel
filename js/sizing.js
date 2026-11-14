@@ -196,7 +196,7 @@ function radAdviceHtml(room, need) {
         ? `<p class="note"><b>Boosters</b> (ventilatoren onder de radiator) op ${A.nRad > 1 ? 'de ' + A.nRad + ' radiatoren' : 'de radiator'} geven bij 40 % meerafgifte ongeveer ${fmtW(A.boostGain)} W extra: ${A.boostGain >= A.short ? '<b>genoeg</b> om het tekort te dekken.' : 'niet genoeg voor het hele tekort.'}</p>`
         : ''
     }
-    <p class="note">Lengtes zijn afgerond op 100 mm en komen uit de vuistregel in <code>data/radiatoren.json</code> (±10 %). Kies uiteindelijk in de tabel van de fabrikant. Een lagere aanvoertemperatuur vraagt meer radiator; zie de stooklijn bij Resultaten.</p></div>`;
+    <p class="note">Lengtes zijn afgerond op 100 mm en komen uit de vuistregel in <code>data/radiatoren.json</code> (±10 %). Kies uiteindelijk in de tabel van de fabrikant. Een lagere aanvoertemperatuur vraagt meer radiator; zie de stooklijn onder Installatie.</p></div>`;
 }
 function shortageSummaryHtml(c) {
   const S = P.settings,

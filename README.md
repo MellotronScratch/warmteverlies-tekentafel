@@ -33,6 +33,14 @@ Open daarna http://localhost:8000. In VS Code kan het ook met de extensie *Live 
 
 De kolom rechts met de eigenschappen maak je breder of smaller door de rand aan de linkerkant te verslepen. Dubbelklik op die rand zet hem terug op de standaardbreedte. Je browser onthoudt de breedte.
 
+Het paneel heeft zes tabbladen:
+- **Selectie**: wat je in de tekening hebt aangeklikt.
+- **Constructies**: wanden, ramen, vloeren en daken met hun U-waarde.
+- **Ventilatie**: ventilatie en infiltratie.
+- **Installatie**: afgifte, stooklijn, warmtepomp, systeeminhoud, leidingnet, thermostaatkranen en appendages.
+- **Resultaten**: het warmteverlies per ruimte, het woonoppervlak en de verbeteradviezen.
+- **Project**: verdiepingen, rekenwaarden en je projecten.
+
 Met **Lagen** boven de tekening zet je leidingen en warmtepomp, radiatoren en vloerverwarming, luchtstromen, trappen en de onderlegger aan of uit. Zo werk je rustiger aan de ruimtes en wanden. Kies je een gereedschap voor iets wat uit staat, zoals *Leiding*, dan komt die laag vanzelf terug.
 
 <img src="docs/img/lagen.png" width="600" alt="Het menu Lagen boven de tekening">
@@ -256,7 +264,7 @@ Onder **Ventilatie → Infiltratie** reken je de luchtlekkage van de woning uit 
 
 Een warmtepomp stelt de aanvoertemperatuur in op de buitentemperatuur: hoe kouder het buiten is, hoe warmer het water. Dat verband heet de **stooklijn** (ook weerafhankelijke regeling of heating curve). Een warmtepomp werkt grofweg 2 à 3 % zuiniger per graad lagere aanvoer, dus een stooklijn die niet hoger staat dan nodig, loont.
 
-Onder **Resultaten → Stooklijn** rekent de app voor elke buitentemperatuur van de ontwerptemperatuur tot +15 °C uit welke aanvoertemperatuur nodig is. Het warmteverlies van elke ruimte neemt daarbij evenredig af met het verschil tussen binnen en buiten, en de app zoekt de laagste aanvoer waarbij de radiatoren en de vloerverwarming dat nog dekken. Je ziet:
+Onder **Installatie → Stooklijn** rekent de app voor elke buitentemperatuur van de ontwerptemperatuur tot +15 °C uit welke aanvoertemperatuur nodig is. Het warmteverlies van elke ruimte neemt daarbij evenredig af met het verschil tussen binnen en buiten, en de app zoekt de laagste aanvoer waarbij de radiatoren en de vloerverwarming dat nog dekken. Je ziet:
 
 - de berekende lijn, en de rechte lijn die je op de warmtepomp instelt: het **eindpunt** bij de laagste buitentemperatuur en het **voetpunt** bij +15 °C;
 - de helling;
@@ -264,7 +272,7 @@ Onder **Resultaten → Stooklijn** rekent de app voor elke buitentemperatuur van
 
 De berekening gaat uit van één aanvoertemperatuur voor het hele huis, met de ΔT tussen aanvoer en retour uit het project. Stel de lijn daarna in de praktijk bij.
 
-<img src="docs/img/stooklijn.png" width="360" alt="De stooklijn onder Resultaten">
+<img src="docs/img/stooklijn.png" width="360" alt="De stooklijn onder Installatie">
 
 ## Radiatoradvies
 
@@ -275,7 +283,7 @@ Is de afgifte in een ruimte te klein bij de ingestelde aanvoer- en retourtempera
 - **vervangen**: dezelfde tabel voor één radiator die de hele ruimte verwarmt;
 - **boosters**: of ventilatoren onder de bestaande radiator het tekort zouden dekken.
 
-Onder Resultaten staat welke ruimtes een tekort hebben. De lengtes komen uit de vuistregel in `data/radiatoren.json` (±10 %). Kies uiteindelijk uit de tabel van de fabrikant.
+Onder Installatie staat welke ruimtes een tekort hebben. De lengtes komen uit de vuistregel in `data/radiatoren.json` (±10 %). Kies uiteindelijk uit de tabel van de fabrikant.
 
 ## Vloerverwarming
 
@@ -293,14 +301,14 @@ Met **Leiding** (`L`) teken je een eenvoudig leidingnetwerk, bijvoorbeeld van de
 
 <img src="docs/img/leidingen.png" width="600" alt="Leidingen op de 1e verdieping met de begane grond als ondergrond">
 
-Onder **Resultaten → Systeeminhoud** telt de app de waterinhoud op: getekende leidingen, radiatoren, convectoren, vloerverwarmingslussen, de warmtepomp en eventueel een schakelvat. Dat vergelijkt hij met wat de gekozen warmtepomp nodig heeft:
+Onder **Installatie → Systeeminhoud** telt de app de waterinhoud op: getekende leidingen, radiatoren, convectoren, vloerverwarmingslussen, de warmtepomp en eventueel een schakelvat. Dat vergelijkt hij met wat de gekozen warmtepomp nodig heeft:
 
 - staat in de warmtepomplijst een `minInhoud` (liter), dan geldt die;
 - anders rekent de app met een vuistregel (standaard 15 liter per kW maximaal vermogen bij +7 °C, aan te passen).
 
 Is de inhoud te klein, dan adviseert de app een schakelvat: dat vergroot de systeeminhoud. Tel in gedachten alleen kringen mee die altijd open staan: thermostaatkranen en ruimteregeling verkleinen de werkelijke inhoud. Een buffervat tussen aanvoer en retour (hydraulische scheiding) is iets anders. Dat heb je nodig als de warmtepomp meer water moet rondpompen dan het afgiftesysteem aankan, of bij extra pompgroepen. Of dat nodig is, volgt uit het debiet (zie *Debiet van de warmtepomp*), niet uit de inhoud. De waterinhoud van radiatoren is een schatting per meter of per kW. Bij een convector loopt er meestal een lus koperbuis van 15 mm door de lamellen, over de lengte min ongeveer 15 cm. Een lus is twee buizen, en een dubbele convector heeft twee lussen (vier buizen). Kies het aantal lussen bij de convector. Bij elk afgifte-element zie je de geschatte inhoud.
 
-<img src="docs/img/systeeminhoud.png" width="360" alt="Systeeminhoud onder Resultaten">
+<img src="docs/img/systeeminhoud.png" width="360" alt="Systeeminhoud onder Installatie">
 
 ### Leidingnet, debiet en indexcircuit
 
@@ -313,13 +321,13 @@ Plaats met **Warmtepomp** (`K`) de warmtepomp, of de plek waar de leidingen van 
 
 Vanaf de warmtepomp rekent de app per leidingstuk het debiet (de som van alles erachter), de stroomsnelheid en het drukverlies (Darcy-Weisbach, aanvoer + retour, met een instelbare opslag voor bochten en koppelingen). Het debiet per element is zijn aandeel in het warmteverlies van de ruimte, bij de ΔT tussen aanvoer en retour.
 
-Het **indexcircuit** is de route naar het element met het grootste totale drukverlies: leidingen plus het element zelf. Het licht oranje op in de plattegrond. Onder **Resultaten → Leidingnet en indexcircuit** zie je:
+Het **indexcircuit** is de route naar het element met het grootste totale drukverlies: leidingen plus het element zelf. Het licht oranje op in de plattegrond. Onder **Installatie → Leidingnet en indexcircuit** zie je:
 
 - per element het debiet, het drukverlies en hoeveel extra weerstand het nodig heeft om goed ingeregeld te zijn ten opzichte van het indexcircuit;
 - leidingstukken waar het water sneller stroomt dan 0,5 m/s;
 - elementen die niet zijn aangesloten, en lussen in het net.
 
-Met **Schema van het leidingnet** (onder Resultaten of bij de warmtepomp) zie je het hele circuit als schema: van de warmtepomp naar alle aangesloten elementen. Rechte stukken zonder aftakking zijn samengevoegd. Per stuk zie je de maat, de lengte, het debiet, de snelheid en waar een stijgleiding naar een andere verdieping gaat. Per element zie je het vermogen, het debiet, het drukverlies en het inregeladvies. Het indexcircuit is oranje. Een leiding die nergens heen gaat, staat er als *loos eind* in. Klik op een element om het te openen, of druk het schema af.
+Met **Schema van het leidingnet** (onder Installatie of bij de warmtepomp) zie je het hele circuit als schema: van de warmtepomp naar alle aangesloten elementen. Rechte stukken zonder aftakking zijn samengevoegd. Per stuk zie je de maat, de lengte, het debiet, de snelheid en waar een stijgleiding naar een andere verdieping gaat. Per element zie je het vermogen, het debiet, het drukverlies en het inregeladvies. Het indexcircuit is oranje. Een leiding die nergens heen gaat, staat er als *loos eind* in. Klik op een element om het te openen, of druk het schema af.
 
 <img src="docs/img/schema.png" width="800" alt="Het schema van het leidingnet met het indexcircuit in oranje">
 
@@ -329,7 +337,7 @@ Zonder gekozen thermostaatkraan is de weerstand van een element indicatief: 3 kP
 
 ### Thermostaatkranen en voorinstelling
 
-Onder **Resultaten → Thermostaatkranen** kies je welke kranen er in het huis zitten. Heeft één radiator een andere kraan, kies die dan in het paneel van die radiator. De app rekent dan de voorinstelling per radiator uit:
+Onder **Installatie → Thermostaatkranen** kies je welke kranen er in het huis zitten. Heeft één radiator een andere kraan, kies die dan in het paneel van die radiator. De app rekent dan de voorinstelling per radiator uit:
 
 - **Kranen met standen**, zoals Heimeier V-exact II (1–8) of Danfoss RA-N (1–7 en N): de kraan van het indexcircuit staat helemaal open. Voor elke andere radiator zoekt de app de stand waarmee hij zijn ontwerpdebiet krijgt, met de kv-waarden per stand uit de datasheet. Bij de radiator staat hoeveel procent van het ontwerpdebiet die stand ongeveer geeft. Laat zelfs stand 1 te veel water door, dan zegt de app dat.
 - **Heimeier Eclipse**: die begrenst zelf het debiet. Je stelt per radiator het debiet in l/h in. De kraan heeft wel minstens 10 kPa drukverschil nodig (15 kPa boven 100 l/h), en dat telt mee in het indexcircuit.
@@ -338,7 +346,7 @@ De standen staan in de tabel onder **Leidingnet en indexcircuit**, in het schema
 
 ### Appendages bij de warmtepomp
 
-Onder **Resultaten → Appendages bij de warmtepomp** zet je de onderdelen in de hoofdleiding waar al het water doorheen gaat: een vuil- of magneetfilter, afsluiters, een terugslagklep, de driewegklep voor tapwater, een warmtemeter of een platenwisselaar. Hun drukverlies is (debiet ÷ kv)² en telt op bij het indexcircuit. Dat totaal vergelijkt de app met de restopvoerhoogte van de warmtepomp. De voorgestelde kv is een typische waarde voor 1 inch; vul liever de kv uit de datasheet van jouw onderdeel in.
+Onder **Installatie → Appendages bij de warmtepomp** zet je de onderdelen in de hoofdleiding waar al het water doorheen gaat: een vuil- of magneetfilter, afsluiters, een terugslagklep, de driewegklep voor tapwater, een warmtemeter of een platenwisselaar. Hun drukverlies is (debiet ÷ kv)² en telt op bij het indexcircuit. Dat totaal vergelijkt de app met de restopvoerhoogte van de warmtepomp. De voorgestelde kv is een typische waarde voor 1 inch; vul liever de kv uit de datasheet van jouw onderdeel in.
 
 ## Radiatorvermogen
 
@@ -353,7 +361,7 @@ Bij elk element staat hoe de app het vermogen omrekent naar jouw aanvoer- en ret
 
 ### Debiet van de warmtepomp
 
-Onder **Afgiftesysteem** (bij *Resultaten* of bij een radiator) vul je de aanvoertemperatuur in, en óf de retourtemperatuur, óf het **debiet** van de warmtepomp in l/h.
+Onder **Afgiftesysteem** (bij *Installatie* of bij een radiator) vul je de aanvoertemperatuur in, en óf de retourtemperatuur, óf het **debiet** van de warmtepomp in l/h.
 
 - **Retourtemperatuur ingevuld:** het debiet volgt uit het vermogen: debiet = vermogen / (1,163 × ΔT). Bij een klein huis en ΔT 5 K komt daar vaak een laag debiet uit.
 - **Debiet ingevuld** (bijvoorbeeld 700 of 1000 l/h): dan volgt de ΔT uit het vermogen, en daaruit de retourtemperatuur. Een hoger debiet geeft een kleinere ΔT, een hogere gemiddelde watertemperatuur en dus meer afgifte van de radiatoren en convectoren. De stooklijn kan daardoor iets omlaag. Tegelijk stroomt er meer water door de leidingen, dus het drukverlies van het indexcircuit en de stroomsnelheid nemen toe.
@@ -364,7 +372,7 @@ Staat bij de gekozen warmtepomp in `data/warmtepompen.json` een `minDebiet`, dan
 
 ## Warmtepomp kiezen
 
-Onder **Resultaten → Warmtepomp** vergelijk je de warmtepompen uit `data/warmtepompen.json` met het warmteverlies van je huis. De grafiek toont het warmteverlies over de buitentemperatuur, met het maximale en minimale vermogen van de gekozen warmtepomp. Een geschikte warmtepomp dekt bij de ontwerptemperatuur het verlies, en kan bij +10 °C ver genoeg terugregelen zodat hij niet steeds aan- en afslaat (pendelen). Per warmtepomp zie je vanaf welke buitentemperatuur hij pendelt.
+Onder **Installatie → Warmtepomp** vergelijk je de warmtepompen uit `data/warmtepompen.json` met het warmteverlies van je huis. De grafiek toont het warmteverlies over de buitentemperatuur, met het maximale en minimale vermogen van de gekozen warmtepomp. Een geschikte warmtepomp dekt bij de ontwerptemperatuur het verlies, en kan bij +10 °C ver genoeg terugregelen zodat hij niet steeds aan- en afslaat (pendelen). Per warmtepomp zie je vanaf welke buitentemperatuur hij pendelt.
 
 <img src="docs/img/warmtepomp.png" width="360" alt="Warmtepompkeuze met grafiek van vermogen en warmteverlies">
 

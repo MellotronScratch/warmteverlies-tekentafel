@@ -96,7 +96,7 @@ async function saveHpOwn(list) {
   }
 }
 function rerenderHp() {
-  if (tab === 'res') renderPanel();
+  if (tab === 'res' || tab === 'inst') renderPanel();
 }
 // design heat loss as a straight line: zero at the loss-weighted indoor temperature
 // improvement measures: per construction, the drop in heat loss when its U goes from the current value to the target
@@ -186,7 +186,7 @@ function adviceHtml(c) {
   if (!list.length)
     h += `<p class="note">Geen adviezen: alle constructies aan de buitenkant, de grond of een onverwarmde ruimte zijn al beter dan de uitgangspunten hieronder.</p>`;
   else {
-    h += `<p class="note">Constructies aan de buitenkant met een slechtere U-waarde dan de drempel. Vink een maatregel aan om hem mee te nemen; de warmtepompkeuze hieronder rekent dan met het warmteverlies na de maatregelen.</p>`;
+    h += `<p class="note">Constructies aan de buitenkant met een slechtere U-waarde dan de drempel. Vink een maatregel aan om hem mee te nemen; de warmtepompkeuze onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button> rekent dan met het warmteverlies na de maatregelen.</p>`;
     list.forEach(a => {
       const pct = c.total > 0 ? (a.dW / c.total) * 100 : 0;
       const on = !!P.advSel[a.con.id];

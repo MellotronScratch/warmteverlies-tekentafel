@@ -376,7 +376,7 @@ $('file-in').addEventListener('change', e => {
       hpSource = 'eigen';
       hpErr = '';
       saveHpOwn(l);
-      tab = 'res';
+      tab = 'inst';
       renderPanel();
       toast(`${l.length} warmtepomp${l.length > 1 ? 'en' : ''} geïmporteerd.`);
       return;

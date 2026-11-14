@@ -548,10 +548,11 @@ select:focus-visible,
 }
 .tab {
   flex: 1 0 auto;
-  font-size: 13px;
+  font-size: 12px;
+  letter-spacing: -0.01em;
   border: none;
   background: none;
-  padding: 12px 6px 10px;
+  padding: 12px 3px 10px;
   cursor: pointer;
   color: var(--muted);
   border-bottom: 3px solid transparent;
