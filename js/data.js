@@ -9,6 +9,7 @@ let RAD_TYPES = {}; // data/radiatoren.json: {T22: [watt per meter bij 600 mm, o
 let RAD_L = {}; // data/radiatoren.json: {T22: liter per meter bij 600 mm, ...}
 let VV_COVER = {}; // data/vloerverwarming.json: {tegels: [naam, R], ...}
 let VV_KH = {}; // data/vloerverwarming.json: {15: [afgiftecoëfficiënt bij R = 0 / 0,05 / 0,10 / 0,15], ...}
+let EL = null; // data/energielabel.json: klimaat, labelgrenzen en aannames voor de indicatie van het energielabel
 
 async function loadData() {
   const get = f =>
@@ -16,12 +17,13 @@ async function loadData() {
       if (!r.ok) throw new Error(f + ' (' + r.status + ')');
       return r.json();
     });
-  const [hp, mat, pipes, rad, vv] = await Promise.all([
+  const [hp, mat, pipes, rad, vv, el] = await Promise.all([
     get('warmtepompen.json'),
     get('materialen.json'),
     get('leidingen.json'),
     get('radiatoren.json'),
-    get('vloerverwarming.json')
+    get('vloerverwarming.json'),
+    get('energielabel.json')
   ]);
   HP_DEFAULT = hp;
   MAT_PRESETS = mat.materialen.map(m => [m.id, m.naam, m.soort, +m.waarde || 0, m.kleur]);
@@ -34,6 +36,7 @@ async function loadData() {
   RAD_L = Object.fromEntries(Object.entries(rad.paneelradiatoren).map(([k, v]) => [k, v.literPerMeter]));
   VV_COVER = Object.fromEntries(Object.entries(vv.vloerafwerkingen).map(([k, v]) => [k, [v.naam, v.R]]));
   VV_KH = vv.afgifteCoefficient;
+  EL = el;
 }
 
 function showDataError(err) {

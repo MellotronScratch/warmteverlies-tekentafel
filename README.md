@@ -13,6 +13,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 - **2,5D-weergave**: bekijk de verdiepingen gestapeld en van opzij. Klik een vloer of wand aan om hem te bewerken.
 - **Warmtebeeld**: kleur elk vlak van groen tot rood naar zijn warmteverlies per m².
 - **Woonoppervlak**: zonder meterkast en technische ruimtes, en onder een schuin dak alleen het deel boven 1,5 m.
+- **Energielabel (indicatie)**: een schatting van het label uit het jaarverbruik, met zon op de ramen, tapwater en zonnepanelen.
 - **Constructies**: opbouw in lagen (R = d / λ) met luchtspouwen, geventileerde spouwen en stijlen of regels volgens NEN-EN-ISO 6946, of direct een U-waarde.
 - **Schuine daken**: zadeldak en lessenaarsdak met muurplaathoogte en vlak plafond (hanenbalk), inclusief juiste wand- en dakoppervlakken en inhoud.
 - **Ventilatie en infiltratie**: systeem A, C of D met WTW, overstroom tussen ruimtes en infiltratie uit qv10.
@@ -234,6 +235,20 @@ Onder **Resultaten** staat het woonoppervlak van het huis, totaal en per verdiep
 
 Er wordt gemeten binnen de getekende wanden. Teken je op buitenmaat, dan komt het woonoppervlak dus wat hoger uit. Dakkapellen tellen niet extra mee.
 
+### Energielabel (indicatie)
+
+Onder **Resultaten**, na de verbeteradviezen, staat een schatting van het energielabel. Sinds 2021 hangt het label aan één getal: de primaire fossiele energie in kWh per m² per jaar (NTA 8800). De app benadert dat zo:
+
+1. **Warmteverlies over het jaar**: de verliesfactor (W/K) volgt uit je tekening, met de schil naar buiten, de grond en onverwarmde ruimtes plus ventilatie en infiltratie. Muren naar de buren tellen niet mee. De app rekent per maand met de gemiddelde buitentemperatuur in De Bilt en 20 °C binnen.
+2. **Min de nuttige winst** van de zon door de ramen en van mensen en apparaten. Voor de zon telt de richting van elk raam en dakraam. Stel daarvoor onder Energielabel in waar het **noorden** ligt ten opzichte van je tekening. Een kleine plattegrond met noordpijl laat zien of het klopt.
+3. **Plus warm tapwater** (volgt uit het aantal bewoners, en dat volgt uit het woonoppervlak) en **pompen en ventilatoren**.
+4. **Opwekking**: kies warmtepomp, hybride warmtepomp of cv-ketel, en waarmee je tapwater maakt. De SCOP van de warmtepomp volgt uit je aanvoertemperatuur; weet je de echte SCOP, vul die dan in.
+5. **Min zonnepanelen** (vul het piekvermogen in kWp in), omrekenen naar primaire energie (elektriciteit telt 1,45 keer zo zwaar als gas) en delen door het woonoppervlak.
+
+Vink je verbeteradviezen aan, dan zie je op de labelschaal ook het label na die maatregelen. Het label staat ook in het rapport.
+
+Het officiële label komt van een EP-adviseur. De NTA 8800 rekent op een aantal punten met vaste standaardwaarden, bijvoorbeeld voor luchtdichtheid en installaties. Bij oudere huizen valt het officiële label daardoor vaak ongunstiger uit dan wat je echt verbruikt. Zie de uitkomst dus als indicatie, vooral handig om maatregelen te vergelijken. De klimaatgegevens, labelgrenzen en aannames staan in `data/energielabel.json` en kun je zelf aanpassen.
+
 ## Ventilatie en luchtstromen
 
 Onder **Ventilatie** kies je het systeem (A, C of D met WTW) en vul je per ruimte de inblaas of toevoer en de afzuiging in m³/h in.
@@ -415,6 +430,7 @@ De tabellen waar de app mee rekent, staan als JSON in de map `data/`. Je kunt ze
 | `leidingen.json` | Leidingtypes (koper, alupex, staal) met per buitendiameter de binnendiameter. |
 | `radiatoren.json` | Paneeltypes (T10 t/m T33) met vermogen en waterinhoud per meter bij 600 mm hoogte. |
 | `vloerverwarming.json` | Vloerafwerkingen (warmteweerstand) en de afgiftecoëfficiënt per hart-op-hartafstand. |
+| `energielabel.json` | Klimaat per maand (buitentemperatuur en zoninstraling per windrichting), labelgrenzen, primaire-energiefactoren en de aannames voor de indicatie van het energielabel. |
 
 Verander de sleutels en id's van bestaande regels niet, want projecten verwijzen ernaar. Voeg je een regel toe, geef die dan een nieuwe, unieke id. Na een wijziging ververs je de pagina. Is een bestand geen geldige JSON meer, dan meldt de app dat bij het opstarten.
 

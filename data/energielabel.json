@@ -1,0 +1,54 @@
+{
+  "toelichting": "Gegevens voor de indicatie van het energielabel (Resultaten › Energielabel). Het officiële label rekent een EP-adviseur uit met de NTA 8800. De app benadert dat met een maandberekening: warmteverlies min nuttige winst van zon en interne warmte, plus warm tapwater en hulpenergie, min zonnepanelen, omgerekend naar primaire fossiele energie per m² woonoppervlak per jaar. klimaat: buitentemperatuur per maand (°C, De Bilt, ongeveer het gemiddelde 1991–2020) en zoninstraling per maand (kWh/m²) op een horizontaal vlak en op verticale gevels naar noord, oost, zuid en west (benaderd; tussenliggende richtingen en hellende dakramen rekent de app tussen deze waarden in). labelgrenzen: bovengrens per label in kWh/m²·jaar primaire fossiele energie (EP2), het laatste label (G) heeft geen grens. primaireFactor: kWh primaire fossiele energie per kWh elektriciteit of gas. De overige waarden zijn aannames; pas ze gerust aan.",
+  "klimaat": {
+    "dagen": [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31],
+    "buitentemperatuur": [3.6, 3.9, 6.5, 9.8, 13.4, 16.2, 18.3, 17.9, 14.7, 10.9, 7.0, 4.2],
+    "zonHorizontaal": [19, 35, 70, 112, 145, 150, 150, 127, 85, 51, 23, 14],
+    "zonNoord": [9, 15, 24, 33, 45, 50, 48, 38, 27, 18, 10, 7],
+    "zonOost": [14, 25, 46, 69, 87, 88, 88, 75, 52, 31, 15, 10],
+    "zonZuid": [37, 50, 74, 87, 92, 87, 90, 91, 82, 66, 38, 30],
+    "zonWest": [14, 25, 46, 69, 87, 88, 88, 75, 52, 31, 15, 10]
+  },
+  "labelgrenzen": [
+    ["A++++", 0],
+    ["A+++", 50],
+    ["A++", 75],
+    ["A+", 105],
+    ["A", 160],
+    ["B", 190],
+    ["C", 250],
+    ["D", 290],
+    ["E", 335],
+    ["F", 380],
+    ["G", null]
+  ],
+  "primaireFactor": { "elektriciteit": 1.45, "gas": 1.0 },
+  "gasKwhPerM3": 9.77,
+  "binnentemperatuur": 20,
+  "interneWarmte": { "perWoning": 180, "perM2": 2.8, "toelichting": "W, gemiddeld over het jaar: mensen, verlichting en apparaten" },
+  "warmtecapaciteit": 110,
+  "zon": {
+    "glasfractie": 0.75,
+    "beschaduwing": 0.9,
+    "invalshoek": 0.9,
+    "gWaarde": [
+      [4.0, 0.85],
+      [2.5, 0.75],
+      [1.3, 0.6],
+      [0, 0.5]
+    ],
+    "toelichting": "gWaarde: zontoetreding van het glas, gekozen op de U-waarde van het raam: U vanaf 4,0 enkel glas, vanaf 2,5 dubbel glas, vanaf 1,3 HR++, daaronder triple glas. Ramen en deuren met 'deur' in de naam (en geen 'glas', 'schuif', 'tuin', 'terras' of 'balkon') tellen niet mee voor de zon."
+  },
+  "ventilatieStandaard": 0.35,
+  "tapwater": { "kWhPerPersoon": 800, "toelichting": "Warmte voor warm tapwater per bewoner per jaar, inclusief leidingverlies. Het aantal bewoners volgt uit het woonoppervlak." },
+  "opwekking": {
+    "ketelRendement": 0.9,
+    "hybrideAandeelWarmtepomp": 0.7,
+    "tapwaterWarmtepompCop": 2.5,
+    "tapwaterKetelRendement": 0.75,
+    "tapwaterElektrischRendement": 0.9,
+    "afgifteRendement": 0.95
+  },
+  "hulpenergie": { "pompPerM2": 0.5, "ventilatorC": 1.0, "ventilatorD": 2.0, "toelichting": "kWh elektriciteit per m² woonoppervlak per jaar: cv-pomp en ventilatoren" },
+  "zonnepanelenKwhPerKwp": 875
+}

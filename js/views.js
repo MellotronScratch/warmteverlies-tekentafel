@@ -57,6 +57,7 @@ function viewRes() {
   ${shortageSummaryHtml(c)}
   ${curveHtml()}
   ${adviceHtml(c)}
+  ${labelHtml(c)}
   ${hpSectionHtml(c)}
   ${volumeHtml()}
   ${networkHtml()}
@@ -676,6 +677,12 @@ function applyField(el, final) {
     }
     case 'set': {
       const k = parts[1];
+      if (k === 'elHeat' || k === 'elDhw') {
+        if (!(k === 'elHeat' ? EL_HEAT : EL_DHW)[v]) return;
+        P.settings[k] = v;
+        changed = true;
+        break;
+      }
       if (k === 'ventSys' || k === 'infMode') {
         P.settings[k] = v;
         changed = true;
@@ -686,6 +693,19 @@ function applyField(el, final) {
       if ((k === 'eta' && (n < 0 || n > 1)) || ((k === 'qv10' || k === 'fInf') && n < 0)) return;
       if ((k === 'snap' || k === 'height') && n <= 0) return;
       if (k === 'maxWall' && n < 0) return;
+      if (k === 'north') {
+        P.settings.north = ((Math.round(n) % 360) + 360) % 360;
+        changed = true;
+        break;
+      }
+      if (
+        (k === 'elScop' && (n < 0 || n > 8)) ||
+        (k === 'elEff' && (n < 0 || n > 1.2)) ||
+        (k === 'elPv' && (n < 0 || n > 100))
+      ) {
+        toast('Die waarde is niet overgenomen: SCOP 0–8, rendement 0–1,2 en zonnepanelen 0–100 kWp.');
+        return;
+      }
       // temperatures that only make sense in a small range (a typo like 225 instead of 22,5 turns every result upside down)
       const RANGE = {
         tRet: [5, 35],

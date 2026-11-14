@@ -91,7 +91,14 @@ const DEFAULT_SETTINGS = {
   fInf: 1,
   twSup: 35,
   twRet: 30,
-  flow: 0 // l/h; 0 = flow follows from the supply/return difference
+  flow: 0, // l/h; 0 = flow follows from the supply/return difference
+  // energy label estimate: where north is (degrees clockwise from the top of the drawing), heating, hot water, solar panels
+  north: 0,
+  elHeat: 'wp', // wp | hybride | ketel
+  elScop: 0, // 0 = from the supply temperature
+  elEff: 0, // boiler efficiency; 0 = from data/energielabel.json
+  elDhw: 'wp', // wp | ketel | elek
+  elPv: 0 // kWp
 };
 // improvement advice: constructions of this kind facing outside/ground/unheated with U above 'on' get the measure, to U 'to'
 const ADVICE_DEFAULT = {
