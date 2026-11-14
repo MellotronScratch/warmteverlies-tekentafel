@@ -807,7 +807,12 @@ function applyField(el, final) {
         syncRad(em);
       } else if (k === 'rh' || k === 'rl') {
         const n = num(v);
-        if (n == null || n < 100 || n > (k === 'rh' ? 1500 : 6000)) return;
+        const max = k === 'rh' ? 3000 : 6000; // tall vertical radiators go up to 2 m and more
+        if (n == null || n < 100 || n > max) {
+          if (final && n != null)
+            toast(`${k === 'rh' ? 'Hoogte' : 'Lengte'} moet tussen 100 en ${fmtW(max)} mm liggen.`);
+          return;
+        }
         em[k] = n;
         if (k === 'rl' && final && n >= 200) setEmLen(em, n);
         syncRad(em);
