@@ -915,9 +915,13 @@ function renderCanvas() {
         });
         return;
       }
-      if (e.a.f !== curFloor || !NET.indexEdges.has(e)) return;
+      if (e.a.f !== curFloor) return;
       const a = S(e.a),
         b = S(e.b);
+      // pipes that are too small: purple, bright above V_MAX, faint between V_OK and V_MAX
+      if (e.inTree && e.v > V_OK)
+        out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${PIPE_FAST}" stroke-opacity="${e.v > V_MAX ? 0.75 : 0.35}" stroke-width="22" stroke-linecap="round" pointer-events="none"><title>${fmt(e.v, 2)} m/s: ${e.v > V_MAX ? 'leiding te klein' : 'leiding krap'}</title></line>`;
+      if (!NET.indexEdges.has(e)) return;
       out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#F59E0B" stroke-opacity=".55" stroke-width="15" stroke-linecap="round" pointer-events="none"/>`;
     });
   }
@@ -1430,6 +1434,21 @@ function renderScale() {
   }
   $('scalebar').innerHTML = `<span>${nv(m, 1)} m</span><i style="width:${(m * view.s).toFixed(0)}px"></i>`;
 }
+const PIPE_FAST = '#C026D3';
+// pipe colours in the legend, only for what is on this floor
+function pipeLegendHtml() {
+  if (!layerOn('pipes') || !(P.pipes || []).length || view3d) return '';
+  const N = network(),
+    es = N.edges.filter(e => !e.vert && e.a.f === curFloor);
+  const row = (st, txt) => `<div><span class="sw" style="${st}"></span><span>${txt}</span></div>`;
+  let h = '';
+  if (es.some(e => N.indexEdges.has(e))) h += row('background:#F59E0B;opacity:.7', 'Indexcircuit');
+  if (es.some(e => e.inTree && e.v > V_MAX))
+    h += row(`background:${PIPE_FAST};opacity:.8`, `Leiding te klein (boven ${nv(V_MAX, 1)} m/s)`);
+  if (es.some(e => e.inTree && e.v > V_OK && e.v <= V_MAX))
+    h += row(`background:${PIPE_FAST};opacity:.4`, `Leiding krap (${nv(V_OK, 1)} tot ${nv(V_MAX, 1)} m/s)`);
+  return h;
+}
 function renderLegend() {
   const used = new Map();
   curRooms().forEach(r =>
@@ -1448,17 +1467,19 @@ function renderLegend() {
     return;
   }
   el.classList.remove('heat');
-  if (!used.size) {
+  const pipes = pipeLegendHtml();
+  if (!used.size && !pipes) {
     el.hidden = true;
     return;
   }
   el.hidden = false;
-  el.innerHTML = [...used.values()]
-    .map(
-      c =>
-        `<div><span class="sw" style="background:${esc(c.color)}"></span><span>${esc(c.name)} · U ${nv(c.U, 3)}</span></div>`
-    )
-    .join('');
+  el.innerHTML =
+    [...used.values()]
+      .map(
+        c =>
+          `<div><span class="sw" style="background:${esc(c.color)}"></span><span>${esc(c.name)} · U ${nv(c.U, 3)}</span></div>`
+      )
+      .join('') + pipes;
 }
 function updateCoords() {
   $('coords').textContent = cursorW ? `x ${fmt(cursorW.x)}  y ${fmt(cursorW.y)} m` : 'x –  y –';
