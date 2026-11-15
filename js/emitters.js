@@ -196,6 +196,28 @@ function fanHeat(em, dTm, d0, pct) {
     eps = 1 - Math.exp(-((em.p / d0) * r) / C);
   return eps * C * dTm;
 }
+// lowest fan speed (%) at which this emitter, together with the other emitters in its room or heating zone,
+// covers the heat loss at the design temperatures: {need, rest, pct} with pct 0 (no fans needed) or Infinity
+function fanNeed(em, room) {
+  const S = P.settings,
+    ts = S.twSup,
+    tr = tRet(),
+    z = zoneOf(room),
+    need = z && z.ems.length ? zoneNeed(z) : calcRoom(room).total,
+    others = z && z.ems.length ? zoneEmit(z, ts, tr) - emOutput(em, room, ts, tr) : roomEmit(room) - emOutput(em, room),
+    rest = Math.max(0, need - others),
+    at = pct => emOutput({ ...em, fan: { ...em.fan, pct } }, room, ts, tr);
+  if (at(0) >= rest) return { need, rest, pct: 0 };
+  if (at(100) < rest) return { need, rest, pct: Infinity, max: at(100) };
+  let lo = 0,
+    hi = 100;
+  for (let k = 0; k < 30; k++) {
+    const m = (lo + hi) / 2;
+    if (at(m) < rest) lo = m;
+    else hi = m;
+  }
+  return { need, rest, pct: hi, at };
+}
 function boostLabel(em) {
   const bk = boostKind(em);
   return bk === 'fans' ? ` met ${em.fan.count} ventilator${em.fan.count === 1 ? '' : 'en'}` : bk ? ' met boosters' : '';
@@ -470,6 +492,46 @@ function convHtml(em, room, out) {
   return `<div class="det">Omrekening: ${fmtW(em.p)} W bij ${nom[0]}/${nom[1]}/${nom[2]} °C × (${fmt(d1, 1)} K / ${fmt(d0, 1)} K)^${nv(n, 2)}${boost !== 1 ? ` × ${nv(boost, 2)} (boosters)` : ''}<br><b>= ${fmtW(out)} W bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)}/${nv(room.temp, 1)} °C</b> (${fmtW(f * boost * 100)}% van het opgegeven vermogen)</div>
   <p class="note">K is het gemiddelde temperatuurverschil tussen water en lucht (logaritmisch). Bij lage aanvoertemperaturen geeft een radiator maar een klein deel van zijn vermogen bij 75/65 °C af: bij 35/30 °C ongeveer een zesde.</p>`;
 }
+// what speed the fans need: exact, and with some margin because the fan model is an estimate
+function fanNeedHtml(em, room) {
+  const F = fanNeed(em, room),
+    z = zoneOf(room),
+    multi = z && z.multi,
+    where = multi ? 'de zone ' + esc(z.rooms.map(r => r.name).join(' + ')) : esc(room.name),
+    share =
+      F.rest < F.need - 1 ? ` (${fmtW(F.need)} W, waarvan de andere afgifte ${fmtW(F.need - F.rest)} W levert)` : '';
+  let h = `<div class="sec"><h3>Benodigd toerental</h3>`;
+  if (F.pct === 0)
+    return (
+      h +
+      `<p class="note">Zonder ventilatoren geeft dit element al genoeg voor ${where}: ${fmtW(F.rest)} W nodig${share}. De ventilatoren zijn bij de ontwerptemperatuur niet nodig; ze helpen wel om sneller op te warmen.</p></div>`
+    );
+  if (F.pct === Infinity)
+    return (
+      h +
+      `<div class="warnbox">Ook op 100% geven ${em.fan.count} ventilatoren te weinig: ${fmtW(F.max)} W van de ${fmtW(F.rest)} W die ${where} nodig heeft${share}. Neem meer of grotere ventilatoren, of een hogere aanvoertemperatuur.</div></div>`
+    );
+  // with margin: the speed at which the fans give 1.5× what is needed (capped at 100 %)
+  const target = F.rest * 1.5;
+  let lo = 0,
+    hi = 100;
+  if (F.at(100) < target) lo = hi = 100;
+  else
+    for (let k = 0; k < 30; k++) {
+      const m = (lo + hi) / 2;
+      if (F.at(m) < target) lo = m;
+      else hi = m;
+    }
+  const exact = Math.max(1, Math.ceil(F.pct)),
+    safe = Math.max(exact, Math.ceil(hi));
+  return (
+    h +
+    `<div class="kcard"><div class="kh"><span>${em.fan.count} × ${esc(fanModel(em).naam)}</span><b>${exact}%</b></div>
+    <div class="seglegend"><span style="--c:transparent">met 50% marge ${safe}%</span><span style="--c:transparent">${fmtW(F.rest)} W nodig</span></div></div>
+    <p class="note">Bij ${nv(P.settings.twSup, 1)}/${fmt(tRet(), 1)} °C en ${nv(P.settings.te, 0)} °C buiten heeft ${where} ${fmtW(F.rest)} W van dit element nodig${share}. Dat halen deze ventilatoren vanaf ${exact}%. Omdat de berekening een schatting is, raden we ${safe}% aan (50% meer vermogen dan nodig). Probeer een ander aantal of type hierboven: het toerental rekent meteen mee. ${exact < 6 ? 'Veel ventilatoren stoppen onder ongeveer 5% PWM of draaien dan op hun minimum. ' : ''}Een regeling op de watertemperatuur (zoals een HeatMeister) mag dit toerental bijna gelijk houden over de hele stooklijn: de stooklijn verlaagt de aanvoer al in dezelfde mate als het warmteverlies.</p>
+    <div class="row">${em.fan.pct !== safe ? `<button class="btn small" data-act="fanpct" data-v="${safe}">Zet toerental op ${safe}%</button>` : ''}</div></div>`
+  );
+}
 // the booster card: how the fans are counted
 function boostHtml(em, room, out) {
   const S = P.settings,
@@ -523,6 +585,7 @@ function boostHtml(em, room, out) {
       .map(p => `<td>${fmt(Math.max(off, fanHeat(em, dTm, d0, p)) / 1000, 2)}</td>`)
       .join('')}</tr></tbody></table></div>
     <p class="note">Bij ${nv(S.twSup, 1)}/${fmt(tRet(), 1)} °C en ${nv(room.temp, 1)} °C in de ruimte. Vul bij <i>Vermogen</i> het vermogen <b>zonder</b> ventilatoren in. De ventilatoren blazen lucht door het lamellenblok; die lucht warmt op tot hoogstens de gemiddelde watertemperatuur (${fmt(dTm, 1)} K boven de ruimte). Hoe goed dat lukt (ε) hangt af van het lamellenblok en de hoeveelheid lucht: meer lucht geeft meer warmte, maar steeds minder per m³. De verhouding van ${nv(I.verhouding || 5.5, 1)} bij ${fmtW(I.luchtPerMeter || 195)} m³/h per meter komt uit de opgave van Jaga voor de Mini Canal Hybrid tegenover de gewone Mini Canal (data/ventilatoren.json). Het blijft een schatting: meten aan het water (debiet × temperatuurverschil) is nauwkeuriger. Vul het toerental in dat de ventilatoren bij de ontwerptemperatuur (${nv(S.te, 0)} °C buiten) halen: een regeling op de aanvoertemperatuur laat ze dan meestal het hardst draaien.</p>`;
+  h += fanNeedHtml(em, room);
   return h;
 }
 function viewEm(room, em) {

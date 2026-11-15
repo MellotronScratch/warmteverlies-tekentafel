@@ -1537,6 +1537,17 @@ function act(a, b) {
       renderPanel();
       break;
     }
+    case 'fanpct': {
+      const em = selEm(),
+        v = +b.dataset.v;
+      if (!em || !(v >= 0 && v <= 100)) break;
+      pushUndo();
+      em.fan.pct = v;
+      markDirty();
+      renderCanvas();
+      renderPanel();
+      break;
+    }
     case 'delfit':
       pushUndo();
       P.fittings = (P.fittings || []).filter(x => x.id !== b.dataset.f);

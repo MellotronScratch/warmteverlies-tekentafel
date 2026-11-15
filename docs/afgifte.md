@@ -27,7 +27,11 @@ Bij **Eigen ventilatoren** rekent de app zo:
 2. **Lamellenblok**: zonder ventilatoren draagt het blok UA = vermogen / 49,8 K over (W/K). Met ventilatoren is dat ongeveer 5,5 keer zoveel bij 195 m³/h per meter convector, en het schaalt met (lucht / 195 per meter)^0,6. Die verhouding komt uit het selectiemodel van Jaga: de Mini Canal Hybrid tegenover de gewone Mini Canal.
 3. **Afgifte**: ε × luchtcapaciteit × (gemiddelde watertemperatuur − ruimtetemperatuur), met ε = 1 − exp(−UA / luchtcapaciteit). De lucht kan nooit warmer worden dan het water, dus meer lucht geeft steeds minder extra.
 
-Onder de berekening staat de afgifte bij 20, 40, 60, 80 en 100 % toerental. Het blijft een schatting. Wil je het precies weten, meet dan aan het water: vermogen = 1,16 × debiet (l/h) × temperatuurverschil aanvoer-retour (K). De ventilatortypen en de ijking staan in [`data/ventilatoren.json`](../data/ventilatoren.json).
+Onder de berekening staat de afgifte bij 20, 40, 60, 80 en 100 % toerental.
+
+**Benodigd toerental.** Onderaan de kaart rekent de app uit welk toerental de ventilatoren nodig hebben om de ruimte bij de ontwerptemperatuur warm te krijgen. Is de ruimte open verbonden met andere ruimtes, dan geldt dat voor de hele verwarmingszone. Wat andere radiatoren in de ruimte of zone al leveren, gaat eraf. Je ziet het exacte toerental en een advies met 50 % marge, omdat de berekening een schatting is. Met **Zet toerental op …** neem je het advies over. Verander je het aantal of het type ventilatoren, dan rekent het toerental meteen mee. Zo zie je bijvoorbeeld dat 10 ventilatoren op een lager toerental kunnen draaien dan 5. Kunnen de ventilatoren het ook op 100 % niet aan, dan zegt de app hoeveel er ontbreekt.
+
+Een regeling op de watertemperatuur, zoals een HeatMeister, mag dit toerental bijna gelijk houden over de hele stooklijn. De stooklijn verlaagt de aanvoertemperatuur al in dezelfde verhouding als het warmteverlies. Stel het minimale en maximale toerental dus dicht bij elkaar in, rond het advies. Het blijft een schatting. Wil je het precies weten, meet dan aan het water: vermogen = 1,16 × debiet (l/h) × temperatuurverschil aanvoer-retour (K). De ventilatortypen en de ijking staan in [`data/ventilatoren.json`](../data/ventilatoren.json).
 
 ## Radiatoradvies
 
