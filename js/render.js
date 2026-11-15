@@ -694,6 +694,65 @@ function renderCanvas() {
   }
   const calc = {};
   curRooms().forEach(r => (calc[r.id] = calcRoom(r)));
+  // labels: room labels go first; other texts try a few spots and are left out when they would overlap
+  const LB = [],
+    WALLS = curRooms().flatMap(r => r.pts.map((p, i) => [S(p), S(r.pts[(i + 1) % r.pts.length])])),
+    segBox = ([a, b], o) => {
+      // does the wall line a-b cross box o (with a few px margin for the wall thickness)?
+      const x0 = o.x - 3,
+        x1 = o.x + o.w + 3,
+        y0 = o.y - 3,
+        y1 = o.y + o.h + 3;
+      let t0 = 0,
+        t1 = 1;
+      const dx = b.x - a.x,
+        dy = b.y - a.y;
+      for (const [pp, q] of [
+        [-dx, a.x - x0],
+        [dx, x1 - a.x],
+        [-dy, a.y - y0],
+        [dy, y1 - a.y]
+      ]) {
+        if (pp === 0) {
+          if (q < 0) return false;
+        } else {
+          const t = q / pp;
+          if (pp < 0) t0 = Math.max(t0, t);
+          else t1 = Math.min(t1, t);
+          if (t0 > t1) return false;
+        }
+      }
+      return true;
+    },
+    inView = b => b.x >= 2 && b.y >= 2 && b.x + b.w <= W - 2 && b.y + b.h <= H - 2,
+    txtW = (t, fs) => String(t).length * fs * 0.6 + 4,
+    lbOver = b => LB.some(o => b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h),
+    // first a spot clear of other labels and walls, then one clear of other labels (with its halo on the wall)
+    lbPlace = (cands, w, h, force) => {
+      const box = c => ({ x: c.x - w / 2, y: c.y - h + 3, w, h });
+      for (const clear of [
+        b => !lbOver(b) && inView(b) && !WALLS.some(wl => segBox(wl, b)),
+        b => !lbOver(b) && inView(b)
+      ])
+        for (const c of cands)
+          if (clear(box(c))) {
+            LB.push(box(c));
+            return c;
+          }
+      if (!force) return null;
+      LB.push(box(cands[0]));
+      return cands[0];
+    },
+    roomBox = r => {
+      const c = S(labelPt(r.pts)),
+        xs = r.pts.map(p => p.x),
+        ys = r.pts.map(p => p.y),
+        full =
+          (Math.max(...xs) - Math.min(...xs)) * view.s >= 110 && (Math.max(...ys) - Math.min(...ys)) * view.s >= 96,
+        w = Math.max(full ? 96 : 56, txtW(r.name, 10.5) * 1.15 + (full ? 60 : 0));
+      return { x: c.x - w / 2, y: c.y - 27, w, h: full ? 63 : 38 };
+    };
+  curRooms().forEach(r => LB.push(roomBox(r)));
   let out =
     gridSvg(W, H) +
     '<defs><pattern id="vvhatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--c-hp)" stroke-width="1.3" stroke-opacity=".45"/></pattern><marker id="airhead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--c-air)"/></marker><pattern id="videhatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0M-2 2L2 -2M8 12L12 8" stroke="var(--muted)" stroke-width="1" stroke-opacity=".4"/></pattern></defs>';
@@ -740,7 +799,25 @@ function renderCanvas() {
     if (sel && sel.r === r.id)
       out += `<polygon points="${pts}" fill="var(--accent-soft-2)" stroke="none" pointer-events="none"/>`;
     out += `<polygon data-k="vide" data-r="${r.id}" points="${pts}" fill="url(#videhatch)" stroke="var(--wall)" stroke-width="5" stroke-linejoin="miter" style="cursor:pointer"/>`;
-    out += `<text x="${c.x}" y="${c.y - 4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${r.kind === 'trap' ? 'Trappenhuis' : 'Vide'} · ${esc(r.name)}</text><text x="${c.x}" y="${c.y + 12}" text-anchor="middle" class="rsub" font-size="10" pointer-events="none">loopt door vanaf ${esc(base.name)}</text>`;
+    const t1 = `${r.kind === 'trap' ? 'Trappenhuis' : 'Vide'} · ${r.name}`,
+      t2 = `loopt door vanaf ${base.name}`,
+      xs = r.pts.map(p => p.x),
+      w = Math.max(txtW(t1, 10.5) * 1.15, txtW(t2, 10)),
+      at =
+        (Math.max(...xs) - Math.min(...xs)) * view.s >= w * 0.8 &&
+        lbPlace(
+          [0, -22, 22, -44, 44]
+            .map(d => ({ x: c.x, y: c.y + 12 + d }))
+            .filter(q => {
+              // both lines inside the void itself
+              const cw = centroid(r.pts);
+              return [q.y + 2, q.y - 26].every(y => pointInPoly({ x: cw.x, y: cw.y + (y - c.y) / view.s }, r.pts));
+            }),
+          w,
+          32
+        );
+    if (at)
+      out += `<text x="${at.x}" y="${at.y - 16}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(t1)}</text><text x="${at.x}" y="${at.y}" text-anchor="middle" class="rsub" font-size="10" pointer-events="none">${esc(t2)}</text>`;
   });
   // room fills
   curRooms().forEach(r => {
@@ -845,6 +922,7 @@ function renderCanvas() {
     });
   }
   // pipe network: one line = supply (red) and return (blue)
+  const pipeLabels = [];
   (layerOn('pipes') ? P.pipes || [] : [])
     .filter(pp => pp.floorId === curFloor)
     .forEach(pp => {
@@ -872,7 +950,20 @@ function renderCanvas() {
       const tr = NET ? NET.edges.filter(e => e.pp === pp && e.inTree && !e.vert) : [],
         mq = tr.length ? Math.max(...tr.map(e => e.lh)) : 0,
         mv = tr.length ? Math.max(...tr.map(e => e.v)) : 0;
-      out += `<text x="${m.x}" y="${m.y - 9}" text-anchor="middle" class="dim" font-size="10" pointer-events="none" ${mv > V_OK ? 'style="fill:var(--warn)"' : ''}>${esc((PIPES[pp.mat] || {}).label || '')} ${esc(dnLabel(pp.mat, pp.dn))} · ${fmt(pipeLen(pp) + pp.extra, 1)} m${tr.length ? ` · ${fmtW(mq)} l/h · ${fmt(mv, 2)} m/s` : ''}</text>`;
+      const ptxt = `${(PIPES[pp.mat] || {}).label || ''} ${dnLabel(pp.mat, pp.dn)} · ${fmt(pipeLen(pp) + pp.extra, 1)} m${tr.length ? ` · ${fmtW(mq)} l/h · ${fmt(mv, 2)} m/s` : ''}`,
+        pa = S(a),
+        pb = S(b);
+      pipeLabels.push(() => {
+        const cands = [];
+        [0.5, 0.3, 0.7].forEach(t => {
+          const x = pa.x + (pb.x - pa.x) * t,
+            y = pa.y + (pb.y - pa.y) * t;
+          cands.push({ x, y: y - 9 }, { x, y: y + 18 }, { x, y: y - 22 }, { x, y: y + 31 });
+        });
+        const at = lbPlace(cands, txtW(ptxt, 10), 13, isSel);
+        if (at)
+          out += `<text x="${at.x}" y="${at.y}" text-anchor="middle" class="dim" font-size="10" pointer-events="none" ${mv > V_OK ? 'style="fill:var(--warn)"' : ''}>${esc(ptxt)}</text>`;
+      });
       if (isSel && tool === 'select') {
         pp.pts.forEach((p, i) => {
           const q = S(p);
@@ -956,10 +1047,18 @@ function renderCanvas() {
           dx = c.x - m.x,
           dy = c.y - m.y,
           dd = Math.hypot(dx, dy) || 1;
-        out += `<text x="${m.x + (dx / dd) * 16}" y="${m.y + (dy / dd) * 16 + 3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${pipeBad(pc) ? '⚠ ' : ''}${fmt(o / 1000, 2)} kW${em.boost ? ' ⟳' : ''}</text>`;
+        const etxt = `${pipeBad(pc) ? '⚠ ' : ''}${fmt(o / 1000, 2)} kW${em.boost ? ' ⟳' : ''}`,
+          at = lbPlace(
+            [16, 30, -16, 44].map(k => ({ x: m.x + (dx / dd) * k, y: m.y + (dy / dd) * k + 3 })),
+            txtW(etxt, 10),
+            13,
+            true
+          );
+        out += `<text x="${at.x}" y="${at.y}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--c-hp)" pointer-events="none">${esc(etxt)}</text>`;
       }
     })
   );
+  pipeLabels.forEach(f => f());
   if (drag && drag.type === 'emline') {
     const a = S(drag.p0),
       b = S(drag.p1);
@@ -1005,7 +1104,13 @@ function renderCanvas() {
       const q = g.plan.map(S),
         c = { x: q.reduce((a, p) => a + p.x, 0) / q.length, y: q.reduce((a, p) => a + p.y, 0) / q.length };
       out += `<polygon points="${q.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="${g.it.kind === 'raam' ? 'var(--heat)' : 'none'}" fill-opacity=".12" stroke="var(--heat)" stroke-width="1.4" stroke-dasharray="4 3" pointer-events="none"/>`;
-      out += `<text x="${c.x}" y="${c.y + 3}" text-anchor="middle" class="dim" font-size="9.5" pointer-events="none">${esc(g.it.name)}</text>`;
+      const at = lbPlace(
+        [0, -13, 13, -26, 26].map(d => ({ x: c.x, y: c.y + 3 + d })),
+        txtW(g.it.name, 9.5),
+        12
+      );
+      if (at)
+        out += `<text x="${at.x}" y="${at.y}" text-anchor="middle" class="dim" font-size="9.5" pointer-events="none">${esc(g.it.name)}</text>`;
     })
   );
   // knee walls: a dashed line where the partition stands, storage behind it
@@ -1022,7 +1127,18 @@ function renderCanvas() {
         dy = m.y - cc.y,
         d = Math.hypot(dx, dy) || 1;
       out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--ink)" stroke-opacity=".75" stroke-width="2.2" stroke-dasharray="8 5" pointer-events="none"/>`;
-      out += `<text x="${m.x + (dx / d) * 14}" y="${m.y + (dy / d) * 14 + 3}" text-anchor="middle" class="dim" font-size="10" pointer-events="none">knieschot ${fmt(r.roof.kneeH, 2)} m</text>`;
+      const ktxt = `knieschot ${fmt(r.roof.kneeH, 2)} m`,
+        at = lbPlace(
+          [0.5, 0.2, 0.8, 0.35, 0.65].flatMap(t => {
+            const x = a.x + (b.x - a.x) * t,
+              y = a.y + (b.y - a.y) * t;
+            return [14, -14].map(k => ({ x: x + (dx / d) * k, y: y + (dy / d) * k + 3 }));
+          }),
+          txtW(ktxt, 10),
+          13
+        );
+      if (at)
+        out += `<text x="${at.x}" y="${at.y}" text-anchor="middle" class="dim" font-size="10" pointer-events="none">${esc(ktxt)}</text>`;
     });
   });
   // sloped roofs: ridge (orange dashes) and the edge of a flat ceiling (grey dashes), with heights
@@ -1036,9 +1152,22 @@ function renderCanvas() {
         b = S(sg[1]);
       const ridge = R.type === 'zadel' && R.wc === 0;
       out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${ridge ? 'var(--heat)' : 'var(--muted)'}" stroke-width="1.6" stroke-dasharray="7 5" pointer-events="none"/>`;
-      const lx = a.x + (b.x - a.x) * 0.12,
-        ly = a.y + (b.y - a.y) * 0.12;
-      out += `<text x="${lx}" y="${ly - 5}" class="dim" font-size="10" pointer-events="none" ${ridge ? '' : 'style="fill:var(--muted)"'}>${ridge ? 'nok' : 'plafond'} ${fmt(R.z(c), 2)} m</text>`;
+      const ntxt = `${ridge ? 'nok' : 'plafond'} ${fmt(R.z(c), 2)} m`,
+        nw = txtW(ntxt, 10),
+        at = lbPlace(
+          [0.12, 0.3, 0.7, 0.88].flatMap(t => {
+            const x = a.x + (b.x - a.x) * t + nw / 2,
+              y = a.y + (b.y - a.y) * t;
+            return [
+              { x, y: y - 5 },
+              { x, y: y + 14 }
+            ];
+          }),
+          nw,
+          13
+        );
+      if (at)
+        out += `<text x="${at.x - nw / 2}" y="${at.y}" class="dim" font-size="10" pointer-events="none" ${ridge ? '' : 'style="fill:var(--muted)"'}>${esc(ntxt)}</text>`;
     });
     // outer walls: mark the low eave(s) with the height of the wall plate (not when a knee wall stands in front of it)
     const eaves = kneeLines(r).cs.length ? [] : R.type === 'zadel' ? [R.smin, R.smax] : [R.lowMin ? R.smin : R.smax];

@@ -11,11 +11,39 @@ function reportPlanSvg(fl, box, N) {
   const X = p => (pad + (p.x - box.x0) * sc).toFixed(1),
     Y = p => (pad + (p.y - box.y0) * sc).toFixed(1),
     pts = a => a.map(p => X(p) + ',' + Y(p)).join(' ');
-  const rooms = P.rooms.filter(r => r.floorId === fl.id);
-  let s = '';
+  const rooms = P.rooms.filter(r => r.floorId === fl.id),
+    fi = floorIdx(fl.id),
+    through = P.rooms.filter(r => r.floorId !== fl.id && presentOn(r, fl.id)), // stairwells and voids from below
+    el = floorElev();
+  // stair treads with the walking line and an arrow pointing up; on the top storey the flight that arrives there
+  const stair = r => {
+    if (r.kind !== 'trap' || !spans(r)) return '';
+    const l = levelsOf(r),
+      i = Math.min(fi, l[1] - 1),
+      sg = stairTreads(r, el[P.floors[i + 1].id] - el[P.floors[i].id]);
+    if (!sg) return '';
+    let o = sg.treads
+      .map(q => `<polygon points="${pts(q.poly)}" fill="none" stroke="#8a9a9f" stroke-width=".8"/>`)
+      .join('');
+    const mids = sg.treads.map(q => centroid(q.poly)).map(p => ({ x: +X(p), y: +Y(p) })),
+      a = mids[mids.length - 2] || mids[0],
+      b = mids[mids.length - 1],
+      ang = Math.atan2(b.y - a.y, b.x - a.x),
+      hd = 6;
+    o += `<polyline points="${mids.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="none" stroke="#5b6f76" stroke-width="1"/>`;
+    o += `<path d="M${b.x} ${b.y}L${(b.x - hd * Math.cos(ang - 0.45)).toFixed(1)} ${(b.y - hd * Math.sin(ang - 0.45)).toFixed(1)}M${b.x} ${b.y}L${(b.x - hd * Math.cos(ang + 0.45)).toFixed(1)} ${(b.y - hd * Math.sin(ang + 0.45)).toFixed(1)}" stroke="#5b6f76" stroke-width="1"/><circle cx="${mids[0].x}" cy="${mids[0].y}" r="2" fill="#5b6f76"/>`;
+    return o;
+  };
+  let s =
+    '<defs><pattern id="rephatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#8a9a9f" stroke-width="1"/></pattern></defs>';
+  through.forEach(r => {
+    s += `<polygon points="${pts(r.pts)}" fill="${r.kind === 'trap' ? '#fff' : 'url(#rephatch)'}" stroke="#1f3b44" stroke-width="1.6"/>`;
+    s += stair(r);
+  });
   rooms.forEach(r => {
     const un = r.heated === false;
     s += `<polygon points="${pts(r.pts)}" fill="${un ? '#eef1f1' : '#fff'}" stroke="#1f3b44" stroke-width="1.6" ${un ? 'stroke-dasharray="5 3"' : ''}/>`;
+    s += stair(r);
   });
   rooms.forEach(r =>
     (r.emitters || []).forEach(em => {
@@ -33,10 +61,19 @@ function reportPlanSvg(fl, box, N) {
     });
   if (P.hpPos && P.hpPos.floorId === fl.id)
     s += `<rect x="${+X(P.hpPos) - 13}" y="${+Y(P.hpPos) - 9}" width="26" height="18" rx="3" fill="#fff" stroke="#DC2626" stroke-width="1.6"/><text x="${X(P.hpPos)}" y="${+Y(P.hpPos) + 3.5}" font-size="9" font-weight="700" text-anchor="middle" fill="#DC2626">WP</text>`;
+  through.forEach(r => {
+    const c = centroid(r.pts),
+      xs = r.pts.map(p => p.x),
+      wPx = (Math.max(...xs) - Math.min(...xs)) * sc,
+      kw = r.kind === 'trap' ? 'Trap' : 'Vide',
+      lab = r.name.toLowerCase().startsWith(kw.toLowerCase()) ? r.name : `${kw} · ${r.name}`;
+    if (wPx < lab.length * 5.5) return; // too narrow for a label, e.g. a duct
+    s += `<text x="${X(c)}" y="${+Y(c) - 2}" font-size="10.5" font-weight="600" text-anchor="middle" fill="#15313a" paint-order="stroke" stroke="#fff" stroke-width="3">${esc(lab)}</text><text x="${X(c)}" y="${+Y(c) + 11}" font-size="9" text-anchor="middle" fill="#5b6f76" paint-order="stroke" stroke="#fff" stroke-width="3">vanaf ${esc(P.floors[floorIdx(r.floorId)].name)}</text>`;
+  });
   rooms.forEach(r => {
     const c = centroid(r.pts),
       k = calcRoom(r);
-    s += `<text x="${X(c)}" y="${+Y(c) - 2}" font-size="11" font-weight="600" text-anchor="middle" fill="#15313a">${esc(r.name)}</text><text x="${X(c)}" y="${+Y(c) + 11}" font-size="9.5" text-anchor="middle" fill="#5b6f76">${k.unheated ? 'onverwarmd' : fmtW(k.total) + ' W · ' + fmt(k.Af, 1) + ' m²'}</text>`;
+    s += `<text x="${X(c)}" y="${+Y(c) - 2}" font-size="11" font-weight="600" text-anchor="middle" fill="#15313a" paint-order="stroke" stroke="#fff" stroke-width="3">${esc(r.name)}</text><text x="${X(c)}" y="${+Y(c) + 11}" font-size="9.5" text-anchor="middle" fill="#5b6f76" paint-order="stroke" stroke="#fff" stroke-width="3">${k.unheated ? 'onverwarmd' : fmtW(k.total) + ' W · ' + fmt(k.Af, 1) + ' m²'}</text>`;
   });
   // scale bar
   const m = box.w > 12 ? 5 : 1,
