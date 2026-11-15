@@ -1147,6 +1147,19 @@ svg .pilltxt {
 .stage.panning {
   cursor: grabbing;
 }
+/* the heat pump list scrolls on its own, so the rest of the tab stays close */
+.hplist {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(420px, 55vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
 .hprow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

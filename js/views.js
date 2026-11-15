@@ -247,7 +247,9 @@ function renderPanel() {
   document.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
   // keep the scroll position while editing the same thing; start at the top when something else is shown
   const key = tab + '|' + (tab === 'sel' && sel ? [sel.t, sel.r, sel.w, sel.s, sel.e, sel.i].join(':') : '');
-  const st = key === panelKey ? pbody.scrollTop : 0;
+  const st = key === panelKey ? pbody.scrollTop : 0,
+    hl = pbody.querySelector('.hplist'),
+    hst = key === panelKey && hl ? hl.scrollTop : null; // the heat pump list scrolls on its own
   panelKey = key;
   let h = '';
   if (tab === 'sel' && sel && sel.t === 'pipe' && (validateSel(), sel)) {
@@ -268,6 +270,12 @@ function renderPanel() {
   else h = viewSet();
   pbody.innerHTML = h;
   pbody.scrollTop = st;
+  const hl2 = pbody.querySelector('.hplist');
+  if (hl2) {
+    const cur = hl2.querySelector('.hprow.cur');
+    if (hst != null) hl2.scrollTop = hst;
+    else if (cur) hl2.scrollTop = Math.max(0, cur.offsetTop - 6);
+  }
   bindHpChart();
   if (tab === 'con' && conFocus) {
     const el = $('card-' + conFocus);

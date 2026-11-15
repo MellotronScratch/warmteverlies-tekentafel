@@ -223,6 +223,7 @@ function hpSectionHtml(c) {
     <p class="note">${save > 0 ? `<b>Beoordeeld op het warmteverlies na de aangevinkte maatregelen.</b> ` : ''}Bij ${nv(L.te, 0)} °C is het warmteverlies ${fmt(L.at(L.te), 2)} kW; bij +10 °C nog ${fmt(L.at(10), 2)} kW. Een geschikte warmtepomp levert bij ${nv(L.te, 0)} °C minstens dat vermogen, en kan bij +10 °C terugregelen tot onder het warmteverlies, zodat hij niet steeds aan- en afslaat (pendelen). Bij <i>pendelt boven</i> staat vanaf welke buitentemperatuur het minimale vermogen groter is dan het warmteverlies. Hoe hoger die temperatuur, hoe minder uren hij pendelt. De lijst is gesorteerd op beide: hoeveel te groot bij de ontwerptemperatuur, en hoeveel het minimum bij +10 °C boven het verlies ligt.</p>`;
   if (hpErr) h += `<div class="warnbox">${esc(hpErr)}</div>`;
   if (cur) h += hpChartHtml(cur.h, cur.j, L, L0);
+  h += `<div class="hplist" role="list" aria-label="Warmtepompen">`;
   h += rows
     .map(
       ({
@@ -235,6 +236,7 @@ function hpSectionHtml(c) {
       ${j.mod ? `<span class="chip ok">✓ min. ${fmt(j.min10, 1)} kW bij +10 °C${j.cyc != null ? ` · pendelt boven ${fmtT(j.cyc)}` : ''}</span>` : `<span class="chip bad">⚠ min. ${fmt(j.min10, 1)} kW bij +10 °C (${fmtW(j.pend * 100 + 100)}% van het verlies): pendelt al boven ${fmtT(j.cyc)}</span>`}${j.ex10 ? '<span class="chip">+10 °C doorgerekend</span>' : ''}</span></button>`
     )
     .join('');
+  h += `</div><p class="note">${rows.length} warmtepompen; scroll in de lijst voor meer.</p>`;
   h += `<div class="row"><button class="btn small" data-act="hpexport">Lijst downloaden (.json)</button><button class="btn small" data-act="hpimport">Eigen lijst importeren</button>${hpSource === 'eigen' ? '<button class="btn small" data-act="hpreset">Standaardlijst terugzetten</button>' : ''}</div>
     <p class="note">${hpSource === 'eigen' ? 'Je gebruikt je eigen lijst.' : 'Dit is de standaardlijst.'} Download de lijst, vul hem aan in een teksteditor en importeer hem weer. Per warmtepomp geef je het minimale en maximale vermogen bij een paar buitentemperaturen; daartussen rekent de app rechtlijnig door. Staan er alleen gegevens bij −10 en +7 °C in, dan is de waarde bij +10 °C doorgerekend.</p></div>`;
   return h;
