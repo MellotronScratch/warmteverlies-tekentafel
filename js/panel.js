@@ -607,7 +607,7 @@ function conCard(c, uses) {
   const open = conOpen === c.id;
   const r = c.mode === 'lagen' && c.layers.length ? calcLayers(c) : null;
   const Rc = r ? r.Rc : c.U > 0 ? 1 / c.U - RS[c.kind][0] - rseOf(c) : NaN;
-  let h = `<div class="concard ${open ? 'open' : ''}" id="card-${c.id}"><button class="consum" data-act="togglecon" data-c="${c.id}" aria-expanded="${open}"><span class="sw" style="background:${esc(c.color)}"></span><span class="nm">${esc(c.name)}</span><span class="val">Rc ${Number.isFinite(Rc) ? fmt(Rc, 2) : '–'} · U ${nv(c.U, 3)}</span><span aria-hidden="true">${open ? '▴' : '▾'}</span></button>`;
+  let h = `<div class="concard ${open ? 'open' : ''}" id="card-${c.id}"><div class="conhead"><button class="consum" data-act="togglecon" data-c="${c.id}" aria-expanded="${open}"><span class="sw" style="background:${esc(c.color)}"></span><span class="nm">${esc(c.name)}</span><span class="val">Rc ${Number.isFinite(Rc) ? fmt(Rc, 2) : '–'} · U ${nv(c.U, 3)}</span><span aria-hidden="true">${open ? '▴' : '▾'}</span></button><button class="xbtn condup" data-act="dupcon" data-c="${c.id}" title="Kopie maken" aria-label="Kopie maken van ${esc(c.name)}">⧉</button></div>`;
   if (open) {
     h += `<div class="conbody">
     <div class="row"><input type="color" class="colorin" id="f-con-${c.id}-col" data-f="con.${c.id}.color" value="${esc(c.color)}" aria-label="Kleur"><input class="in grow" id="f-con-${c.id}-n" data-f="con.${c.id}.name" value="${esc(c.name)}" aria-label="Naam constructie"></div>
@@ -619,7 +619,7 @@ function conCard(c, uses) {
     <label class="f" for="f-con-${c.id}-mode">Invoer<select class="in" id="f-con-${c.id}-mode" data-f="con.${c.id}.mode"><option value="lagen" ${c.mode === 'lagen' ? 'selected' : ''}>Opbouw in lagen</option><option value="U" ${c.mode === 'U' ? 'selected' : ''}>U-waarde invullen</option></select></label></div>
     <label class="chk"><input type="checkbox" id="f-con-${c.id}-inner" data-f="con.${c.id}.inner" ${c.inner ? 'checked' : ''}> Aan beide kanten binnen (binnenwand of verdiepingsvloer, Rse = Rsi)</label>
     ${c.mode === 'U' ? `<div class="fields">${numField('f-con-' + c.id + '-u', 'con.' + c.id + '.U', 'U-waarde', 'W/m²K', c.U, 3)}${numField('f-con-' + c.id + '-rc', 'con.' + c.id + '.Rc', 'Rc', 'm²K/W', Rc, 2)}</div><p class="note">Bijvoorbeeld de U-waarde uit <a href="https://www.ubakus.de/u-wert-rechner/" target="_blank" rel="noopener">ubakus.de</a> of van de leverancier.</p>` : layersEditor(c)}
-    <div class="row"><span class="note grow">${uses[c.id] ? `Gebruikt op ${uses[c.id].length} plek${uses[c.id].length > 1 ? 'ken' : ''}` : 'Nog niet gebruikt'}</span><button class="btn small" data-act="dupcon" data-c="${c.id}">Kopie</button><button class="btn small danger" data-act="delcon" data-c="${c.id}" ${uses[c.id] ? 'disabled title="Nog in gebruik: kies op de plekken hieronder eerst een andere constructie"' : ''}>Verwijderen</button></div>
+    <div class="row"><span class="note grow">${uses[c.id] ? `Gebruikt op ${uses[c.id].length} plek${uses[c.id].length > 1 ? 'ken' : ''}` : 'Nog niet gebruikt'}</span><button class="btn small" data-act="dupcon" data-c="${c.id}">Kopie maken</button><button class="btn small danger" data-act="delcon" data-c="${c.id}" ${uses[c.id] ? 'disabled title="Nog in gebruik: kies op de plekken hieronder eerst een andere constructie"' : ''}>Verwijderen</button></div>
     ${
       uses[c.id]
         ? `<div class="uselist">${uses[c.id]

@@ -31,6 +31,8 @@ Een paar dingen om op te letten:
 
 De doorsnede bovenaan de kaart toont het temperatuurverloop door de wand bij de ontwerptemperatuur. Lagen die niet meetellen worden lichter weergegeven.
 
+**Kopie maken.** Lijkt een constructie veel op een die je al hebt, bijvoorbeeld dezelfde spouwmuur maar met dikkere isolatie, klik dan op ⧉ rechts naast de naam (of op **Kopie maken** in de opengeklapte kaart). De kopie komt direct onder het origineel, met alle lagen en dezelfde instellingen, en klapt meteen open. Geef hem een nieuwe naam en pas aan wat anders is. Het origineel blijft gekoppeld aan de wanden waar het al op zat.
+
 <img src="img/constructie.png" width="360" alt="Een constructie met opbouw in lagen en temperatuurverloop">
 
 ## 2. Constructie koppelen aan een wand

@@ -1272,7 +1272,17 @@ svg .pilltxt {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
 }
+.conhead {
+  display: flex;
+  align-items: center;
+  padding-right: 6px;
+}
+.condup {
+  flex: none;
+}
 .consum {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 9px;

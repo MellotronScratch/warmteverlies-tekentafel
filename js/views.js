@@ -1397,7 +1397,8 @@ function act(a, b) {
       c.name = src.name + ' (kopie)';
       c.color = PALETTE[P.constructions.length % PALETTE.length];
       c.layers.forEach(l => (l.id = rid()));
-      P.constructions.push(c);
+      // directly below the original, so it is easy to find
+      P.constructions.splice(P.constructions.indexOf(src) + 1, 0, c);
       conFocus = c.id;
       markDirty();
       renderAll();
