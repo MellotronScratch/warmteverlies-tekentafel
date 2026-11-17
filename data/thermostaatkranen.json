@@ -1,5 +1,5 @@
 {
-  "toelichting": "Thermostaatkranen voor de voorinstelling per radiator of convector (Resultaten › Leidingnet). soort 'kv': per stand de kv-waarde (m³/h bij 1 bar drukverschil) bij een P-band van 2 K, uit de datasheet van de fabrikant; de app kiest de stand waarmee de radiator zijn ontwerpdebiet krijgt. soort 'debiet': een kraan die zelf het debiet begrenst (bijvoorbeeld Heimeier Eclipse); je stelt het debiet in l/h in, binnen min–max, en de kraan heeft minstens dpMin kPa drukverschil nodig (optioneel dpMinHoog boven debietHoog l/h) en hoogstens dpMax kPa om stil te blijven. soort 'vast': geen voorinstelling bekend, de app rekent met dp kPa over radiator en kraan samen. lichaam: kPa over radiator en retourkoppeling bij een kraan met voorinstelling. Verander de sleutels niet: projecten verwijzen ernaar.",
+  "toelichting": "Thermostaatkranen voor de voorinstelling per radiator of convector (Resultaten › Leidingnet). soort 'kv': per stand de kv-waarde (m³/h bij 1 bar drukverschil) bij een P-band van 2 K, uit de datasheet van de fabrikant; de app kiest de stand waarmee de radiator zijn ontwerpdebiet krijgt. soort 'debiet': een kraan die zelf het debiet begrenst (bijvoorbeeld Heimeier Eclipse); je stelt het debiet in l/h in, binnen min–max. Heeft de kraan vaste standen, zet die dan in 'standen' als [stand, l/h]; de app kiest de kleinste stand die genoeg doorlaat. Minimaal drukverschil: 'dpStappen' als [[tot l/h, kPa], …], of dpMin (met dpMinHoog boven debietHoog l/h). dpMax: hoogstens zoveel kPa om stil te blijven. soort 'vast': geen voorinstelling bekend, de app rekent met dp kPa over radiator en kraan samen. lichaam: kPa over radiator en retourkoppeling bij een kraan met voorinstelling. Verander de sleutels niet: projecten verwijzen ernaar.",
   "lichaam": 0.5,
   "kranen": {
     "onbekend": {
@@ -37,6 +37,35 @@
       ],
       "bron": "Danfoss datasheet VDSXL202 (RA-N 15), kv bij xp 2 K"
     },
+    "oventrop-av9": {
+      "naam": "Oventrop AV 9",
+      "soort": "kv",
+      "standen": [
+        ["1", 0.05],
+        ["2", 0.09],
+        ["3", 0.13],
+        ["4", 0.18],
+        ["5", 0.24],
+        ["6", 0.31],
+        ["7", 0.41],
+        ["8", 0.55],
+        ["9", 0.67]
+      ],
+      "bron": "Oventrop, Thermostatventile (2014), diagramme 7: Baureihe AV 9, kv bij 2 K P-afwijking"
+    },
+    "oventrop-av6": {
+      "naam": "Oventrop AV 6",
+      "soort": "kv",
+      "standen": [
+        ["1", 0.055],
+        ["2", 0.17],
+        ["3", 0.313],
+        ["4", 0.446],
+        ["5", 0.56],
+        ["6", 0.65]
+      ],
+      "bron": "Oventrop, Thermostatventile (2014), diagramme 8: Baureihen AV 6, RFV 6 en ADV 6, kv bij 2 K P-afwijking"
+    },
     "heimeier-eclipse-150": {
       "naam": "Heimeier Eclipse (debietbegrenzer, 10–150 l/h)",
       "soort": "debiet",
@@ -65,6 +94,70 @@
       "dpMin": 15,
       "dpMax": 70,
       "bron": "Gampper, Ventilunterteile Vario-DP (10-2022): regelbereik 15–70 kPa, instelbereik 20–340 l/h; Jaga aansluitsets en ventielen NL.2026"
+    },
+    "danfoss-radv": {
+      "naam": "Danfoss RA-DV (debietbegrenzer, standen 1–7 en N, 10–135 l/h)",
+      "soort": "debiet",
+      "min": 10,
+      "max": 135,
+      "standen": [
+        ["1", 10],
+        ["2", 15],
+        ["3", 20],
+        ["4", 35],
+        ["5", 50],
+        ["6", 80],
+        ["7", 100],
+        ["N", 135]
+      ],
+      "dpStappen": [[135, 10]],
+      "dpMax": 60,
+      "bron": "Danfoss datasheet RA-DV (AI125086402935en-010603, 02/2022): maximaal debiet per stand bij 0,1 bar, min. 0,1 bar, max. 0,6 bar"
+    },
+    "oventrop-aq": {
+      "naam": "Oventrop AQ (debietbegrenzer, 10–170 l/h)",
+      "soort": "debiet",
+      "min": 10,
+      "max": 170,
+      "dpStappen": [
+        [130, 10],
+        [170, 15]
+      ],
+      "dpMax": 60,
+      "bron": "Oventrop datasheet AQ/AQH (DE-01201-11830-DB-V2335): 10 kPa tot 130 l/h, 15 kPa daarboven; geluidsarm tot 60 kPa"
+    },
+    "oventrop-aqh": {
+      "naam": "Oventrop AQH (debietbegrenzer, 35–420 l/h)",
+      "soort": "debiet",
+      "min": 35,
+      "max": 420,
+      "dpStappen": [
+        [170, 15],
+        [300, 20],
+        [420, 25]
+      ],
+      "dpMax": 60,
+      "bron": "Oventrop datasheet AQ/AQH (DE-01201-11830-DB-V2335): 15 kPa tot 170 l/h, 20 kPa tot 300 l/h, 25 kPa tot 420 l/h; geluidsarm tot 60 kPa"
+    },
+    "caleffi-dynamical": {
+      "naam": "Caleffi Dynamical serie 230–234 (debietbegrenzer, standen 1–6, 20–120 l/h)",
+      "soort": "debiet",
+      "min": 20,
+      "max": 120,
+      "standen": [
+        ["1", 20],
+        ["2", 40],
+        ["3", 60],
+        ["4", 80],
+        ["5", 100],
+        ["6", 120]
+      ],
+      "dpStappen": [
+        [80, 10],
+        [120, 15]
+      ],
+      "dpMax": 70,
+      "bron": "Caleffi brochure 01330/17 NL: stand 1–4 vanaf 10 kPa, stand 5–6 vanaf 15 kPa, aanbevolen onder 70 kPa"
     }
   }
 }

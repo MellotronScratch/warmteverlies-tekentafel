@@ -24,14 +24,48 @@ const trvOf = em =>
   em.kind === 'rad' || em.kind === 'conv'
     ? TRV.kranen[em.trv] || TRV.kranen[P.settings.trv] || TRV.kranen.onbekend || null
     : null;
+// flow limiter: minimum differential pressure at a flow. 'dpStappen' [[up to l/h, kPa], …], or the older
+// dpMin with dpMinHoog above debietHoog l/h
+function trvDpMin(v, lh) {
+  const st = Array.isArray(v.dpStappen) ? v.dpStappen : [];
+  if (st.length) return (st.find(s => lh <= s[0]) || st[st.length - 1])[1];
+  return lh > v.debietHoog && v.dpMinHoog ? v.dpMinHoog : v.dpMin;
+}
+// the same as text: "10 kPa (15 kPa boven 130 l/h)"
+function trvDpText(v) {
+  const st = Array.isArray(v.dpStappen) ? v.dpStappen : [];
+  if (st.length > 1)
+    return `${nv(st[0][1], 0)} kPa (${st
+      .slice(1)
+      .map((s, i) => `${nv(s[1], 0)} kPa boven ${nv(st[i][0], 0)} l/h`)
+      .join(', ')})`;
+  if (st.length) return `${nv(st[0][1], 0)} kPa`;
+  return `${nv(v.dpMin, 0)} kPa${v.dpMinHoog > v.dpMin && v.debietHoog ? ` (${nv(v.dpMinHoog, 0)} kPa boven ${nv(v.debietHoog, 0)} l/h)` : ''}`;
+}
 // the preset that gives an element its design flow, when the index circuit sets the pressure
 function presetFor(o, index) {
   const v = o.trv;
   if (!v || !index) return null;
   const avail = index.dpTot - o.dpPath - TRV.lichaam; // kPa left for the valve
   if (v.soort === 'debiet') {
+    const noisy = avail > v.dpMax;
+    // fixed settings (for example Danfoss RA-DV): the smallest setting that lets the design flow through
+    if (Array.isArray(v.standen) && v.standen.length) {
+      const st = v.standen,
+        last = st[st.length - 1],
+        pick = st.find(x => x[1] >= o.lh - 0.5) || last;
+      return {
+        kind: 'debiet',
+        s: pick[1],
+        stand: pick[0],
+        over: o.lh > last[1] + 0.5,
+        under: o.lh < st[0][1],
+        noisy,
+        avail
+      };
+    }
     const s = Math.max(v.min, Math.min(v.max, Math.round(o.lh / 5) * 5));
-    return { kind: 'debiet', s, over: o.lh > v.max + 0.5, under: o.lh < v.min, noisy: avail > v.dpMax, avail };
+    return { kind: 'debiet', s, over: o.lh > v.max + 0.5, under: o.lh < v.min, noisy, avail };
   }
   if (v.soort !== 'kv' || !(v.standen || []).length) return null;
   const st = v.standen,
@@ -57,7 +91,8 @@ function presetText(o, N) {
   if (N.index && N.index.em === o.em && (!o.preset || o.preset.kind !== 'debiet'))
     return o.preset ? 'index · ' + o.preset.s : 'index';
   if (o.preset && o.preset.kind === 'kv') return 'stand ' + o.preset.s;
-  if (o.preset && o.preset.kind === 'debiet') return fmtW(o.preset.s) + ' l/h';
+  if (o.preset && o.preset.kind === 'debiet')
+    return (o.preset.stand != null ? 'stand ' + o.preset.stand + ' · ' : '') + fmtW(o.preset.s) + ' l/h';
   const extra = N.index ? N.index.dpTot - o.dpTot : 0;
   return '+' + fmt(extra, 1) + ' kPa';
 }
@@ -246,7 +281,7 @@ function buildNetwork() {
         : v.soort === 'kv' && (v.standen || []).length
           ? TRV.lichaam + kvDp(o.lh, v.standen[v.standen.length - 1][1])
           : v.soort === 'debiet'
-            ? TRV.lichaam + (o.lh > v.debietHoog ? v.dpMinHoog : v.dpMin)
+            ? TRV.lichaam + trvDpMin(v, o.lh)
             : +v.dp || EM_DP[o.em.kind] || 3;
     }
     o.dpPath = o.reach ? o.node.cum : NaN;
@@ -332,7 +367,7 @@ function netEmHtml(em) {
       ? `<br><b>Dit is het indexcircuit:</b> ${vn} helemaal open, stand ${esc(pr.s)}.`
       : `<br>Voorinstelling ${vn}: <b>stand ${esc(pr.s)}</b> (kv ${nv(pr.kv, 3)}, nodig ${nv(pr.kvNeed, 3)}; ongeveer ${fmtW(pr.pct)}% van het ontwerpdebiet)${pr.low ? `<br><span style="color:var(--warn)">⚠ Zelfs stand ${esc(o.trv.standen[0][0])} laat nog te veel water door. Knijp de retourkoppeling iets dicht of kies een kraan met een kleinere kv.</span>` : ''}`;
   else if (pr && pr.kind === 'debiet')
-    tune = `<br>${vn}: <b>instellen op ${fmtW(pr.s)} l/h</b>${N.index && N.index.em === em ? ' · dit is het indexcircuit' : ''}${pr.over ? `<br><span style="color:var(--warn)">⚠ Het ontwerpdebiet (${fmtW(o.lh)} l/h) is meer dan de kraan aankan (${fmtW(o.trv.max)} l/h).</span>` : ''}${pr.noisy ? `<br><span style="color:var(--warn)">⚠ Er staat ${fmt(pr.avail, 0)} kPa over de kraan, meer dan ${fmtW(o.trv.dpMax)} kPa: kans op geluid.</span>` : ''}`;
+    tune = `<br>${vn}: <b>${pr.stand != null ? `stand ${esc(String(pr.stand))} (tot ${fmtW(pr.s)} l/h)` : `instellen op ${fmtW(pr.s)} l/h`}</b>${N.index && N.index.em === em ? ' · dit is het indexcircuit' : ''}${pr.over ? `<br><span style="color:var(--warn)">⚠ Het ontwerpdebiet (${fmtW(o.lh)} l/h) is meer dan de kraan aankan (${fmtW(o.trv.max)} l/h).</span>` : ''}${pr.noisy ? `<br><span style="color:var(--warn)">⚠ Er staat ${fmt(pr.avail, 0)} kPa over de kraan, meer dan ${fmtW(o.trv.dpMax)} kPa: kans op geluid.</span>` : ''}`;
   if (tune)
     return `<div class="det">Leidingnet: ${fmtW(o.lh)} l/h · drukverlies tot de warmtepomp ${fmt(o.dpPath, 1)} kPa + radiator en kraan ${fmt(o.dpEm, 1)} kPa = ${fmt(o.dpTot, 1)} kPa${tune}</div>`;
   return `<div class="det">Leidingnet: ${fmtW(o.lh)} l/h · drukverlies tot de warmtepomp ${fmt(o.dpPath, 1)} kPa + ${o.groups ? (o.groups > 1 ? o.groups + ' groepen vloerverwarming' : 'vloerverwarming') : 'element'} ${fmt(o.dpEm, 1)} kPa = ${fmt(o.dpTot, 1)} kPa${
@@ -440,7 +475,7 @@ function trvHtml(N) {
         ? `Zonder bekende kraan rekent de app met ${nv(v ? v.dp : 3, 0)} kPa over radiator en kraan, en staat bij <i>Inregelen</i> hoeveel extra weerstand een radiator nodig heeft. Kies je kraan, dan rekent de app de voorinstelling uit.`
         : v.soort === 'kv'
           ? `De app rekent per radiator uit welke stand de kraan nodig heeft om het ontwerpdebiet te krijgen, als de kraan van het indexcircuit helemaal open staat. De kv-waarden per stand komen uit de datasheet (${esc(v.bron || '')}). Zet daarna de thermostaatkop terug; de voorinstelling blijft staan.`
-          : `Deze kraan begrenst zelf het debiet: je stelt per radiator het debiet in l/h in, en de kraan houdt dat vast, ook als andere kranen dichtgaan. Instelbereik ${nv(v.min, 0)} tot ${nv(v.max, 0)} l/h. Hij heeft minstens ${nv(v.dpMin, 0)} kPa nodig${v.dpMinHoog > v.dpMin && v.debietHoog ? ` (${nv(v.dpMinHoog, 0)} kPa boven ${nv(v.debietHoog, 0)} l/h)` : ''}; dat telt mee in het indexcircuit.`
+          : `Deze kraan begrenst zelf het debiet: je stelt per radiator het debiet in l/h in, en de kraan houdt dat vast, ook als andere kranen dichtgaan. ${Array.isArray(v.standen) && v.standen.length ? `Standen ${v.standen.map(s => `${esc(String(s[0]))}: ${nv(s[1], 0)}`).join(', ')} l/h; de app kiest de kleinste stand die genoeg doorlaat.` : `Instelbereik ${nv(v.min, 0)} tot ${nv(v.max, 0)} l/h.`} Hij heeft minstens ${trvDpText(v)} nodig; dat telt mee in het indexcircuit.`
     }${own ? ` ${own} element(en) hebben een eigen kraan, gekozen bij het element zelf.` : ''}</p></div>`;
 }
 // appendages in the main pipe at the heat pump

@@ -81,7 +81,7 @@ Zonder gekozen thermostaatkraan is de weerstand van een element indicatief: 3 kP
 
 Onder **Installatie → Thermostaatkranen** kies je welke kranen er in het huis zitten. Heeft één radiator een andere kraan, kies die dan in het paneel van die radiator. De app rekent dan de voorinstelling per radiator uit:
 
-- **Kranen met standen**, zoals Heimeier V-exact II (1–8) of Danfoss RA-N (1–7 en N): de kraan van het indexcircuit staat helemaal open. Voor elke andere radiator zoekt de app de stand waarmee hij zijn ontwerpdebiet krijgt, met de kv-waarden per stand uit de datasheet. Bij de radiator staat hoeveel procent van het ontwerpdebiet die stand ongeveer geeft. Laat zelfs stand 1 te veel water door, dan zegt de app dat.
+- **Kranen met standen**, zoals Heimeier V-exact II (1–8), Danfoss RA-N (1–7 en N) of Oventrop AV 9 (1–9) en AV 6 (1–6): de kraan van het indexcircuit staat helemaal open. Voor elke andere radiator zoekt de app de stand waarmee hij zijn ontwerpdebiet krijgt, met de kv-waarden per stand uit de datasheet. Bij de radiator staat hoeveel procent van het ontwerpdebiet die stand ongeveer geeft. Laat zelfs stand 1 te veel water door, dan zegt de app dat.
 - **Debietbegrenzers**: die begrenzen zelf het debiet. Je stelt per radiator het debiet in l/h in. Ze hebben wel een minimaal drukverschil nodig, en dat telt mee in het indexcircuit:
 
   | Kraan | Instelbereik | Minimaal drukverschil |
@@ -89,6 +89,12 @@ Onder **Installatie → Thermostaatkranen** kies je welke kranen er in het huis 
   | Heimeier Eclipse | 10–150 l/h | 10 kPa (15 kPa boven 100 l/h) |
   | Heimeier Eclipse 300 | 30–300 l/h | 20 kPa |
   | Jaga Gampper Vario DP (opvolger van de Eclipse bij Jaga) | 20–340 l/h | 15 kPa |
+  | Danfoss RA-DV | standen 1–7 en N: 10–135 l/h | 10 kPa |
+  | Oventrop AQ | 10–170 l/h | 10 kPa (15 kPa boven 130 l/h) |
+  | Oventrop AQH | 35–420 l/h | 15 kPa (20 kPa boven 170, 25 kPa boven 300 l/h) |
+  | Caleffi Dynamical | standen 1–6: 20–120 l/h | 10 kPa (15 kPa bij stand 5 en 6) |
+
+  Bij een kraan met vaste standen, zoals de Danfoss RA-DV en de Caleffi Dynamical, kiest de app de kleinste stand die genoeg doorlaat.
 
   Vraagt een radiator meer dan de kraan doorlaat, dan zegt de app dat. Bij een convector die meer dan 150 l/h nodig heeft, is een Eclipse 300 of Gampper Vario DP dus de oplossing.
 
