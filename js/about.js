@@ -1,6 +1,7 @@
 // Het knopje linksonder: een venster met uitleg en links naar de handleiding en contact.
 'use strict';
-const CONTACT_MAIL = ''; // e-mailadres voor "Mail sturen"; leeg = die regel staat er niet
+// "Mail sturen" gaat via api/mail.php op de server: het adres staat in de config daar, niet in de broncode
+const MAIL_URL = 'https://warmtepomptekentafel.nl/api/mail.php';
 const REPO_URL = 'https://github.com/MellotronScratch/warmteverlies-tekentafel';
 
 function aboutHtml() {
@@ -13,7 +14,7 @@ function aboutHtml() {
     <div class="about-links">
       <a class="linkrow" href="https://warmtepomptekentafel.nl/handleiding/" ${ext}><span>Handleiding</span><span>warmtepomptekentafel.nl</span></a>
       <a class="linkrow" href="${REPO_URL}/issues" ${ext}><span>Fout melden of idee delen</span><span>GitHub</span></a>
-      ${CONTACT_MAIL ? `<a class="linkrow" href="mailto:${esc(CONTACT_MAIL)}?subject=${encodeURIComponent('Warmtepomp Tekentafel')}"><span>Mail sturen</span><span>${esc(CONTACT_MAIL)}</span></a>` : ''}
+      <a class="linkrow" href="${MAIL_URL}"><span>Mail sturen</span><span>e-mail</span></a>
     </div>
     <div class="row"><button class="btn" id="about-close">Sluiten</button></div>
   </div>`;

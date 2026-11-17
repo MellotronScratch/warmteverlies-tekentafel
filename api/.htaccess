@@ -1,5 +1,5 @@
-# Alleen share.php is van buitenaf bereikbaar; config, schema en voorbeeld niet.
-<FilesMatch "^(?!share\.php$).+$">
+# Alleen share.php en mail.php zijn van buitenaf bereikbaar; config, schema en voorbeeld niet.
+<FilesMatch "^(?!(share|mail)\.php$).+$">
   Require all denied
 </FilesMatch>
 Options -Indexes

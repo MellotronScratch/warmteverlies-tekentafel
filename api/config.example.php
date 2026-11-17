@@ -25,4 +25,7 @@ return [
   'maxBytes' => 262144, // grootste project in bytes (versleuteld en gecomprimeerd); een huis is een paar kB
   'perHour' => 30, // nieuwe links per uur per IP-adres
   'days' => 400, // een link die zo lang niet is geopend, wordt verwijderd
+
+  // adres voor "Mail sturen" in het venster Over (api/mail.php stuurt de bezoeker door naar mailto:); leeg = geen adres
+  'mail' => '',
 ];

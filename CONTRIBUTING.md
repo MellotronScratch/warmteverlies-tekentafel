@@ -27,7 +27,7 @@ Lokaal bewaart de app projecten in de opslag van je browser, net als online. Een
   - `js/report.js`, `js/io.js`, `js/storage.js`, `js/share.js`, `js/about.js`, `js/theme.js`, `js/main.js`: rapport, import en export, opslaan, delen, het venster _Over_, licht en donker, en het opstarten.
 - `data/*.json`: tabellen die je zonder programmeren kunt aanpassen. Elk bestand heeft een `toelichting`; het overzicht staat hieronder bij _Gegevens aanpassen_.
 - `docs/*.md` en `README.md`: de handleiding. Bij het uitrollen zet `tools/handleiding.mjs` ze om naar [warmtepomptekentafel.nl/handleiding](https://warmtepomptekentafel.nl/handleiding/), met een `sitemap.xml`.
-- `api/`: het PHP-script voor korte deellinks, met `schema.sql` voor de database. Wachtwoorden staan alleen op de server (zie `api/config.example.php`), nooit in de repo.
+- `api/`: de PHP-scripts voor korte deellinks (`share.php`) en de doorstuurlink voor _Mail sturen_ (`mail.php`), met `schema.sql` voor de database. Wachtwoorden staan alleen op de server (zie `api/config.example.php`), nooit in de repo.
 - `.github/workflows/deploy.yml`: zet de site na elke push naar `main` op de hosting.
 
 ## Gegevens aanpassen
