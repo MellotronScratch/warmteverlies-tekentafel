@@ -92,6 +92,12 @@ const DEFAULT_SETTINGS = {
   twSup: 35,
   twRet: 30,
   flow: 0, // l/h; 0 = flow follows from the supply/return difference
+  // annual use and costs (js/annual.js)
+  stook: 15, // °C outside: above this the house needs no heating (internal and solar gains)
+  pEl: 0.25, // € per kWh electricity
+  pGas: 1.35, // € per m³ gas
+  gasFix: 0, // € per year fixed costs of the gas connection, saved when the gas goes
+  etaGas: 0.9, // efficiency of the gas boiler (on the gross calorific value)
   trv: 'onbekend' // thermostatic radiator valve for the whole house (data/thermostaatkranen.json); per emitter em.trv
 };
 // improvement advice: constructions of this kind facing outside/ground/unheated with U above 'on' get the measure, to U 'to'
@@ -384,6 +390,7 @@ function normalizeProject(p) {
   if (!p || typeof p !== 'object') return null;
   p.id = String(p.id || 'p' + rid()).replace(/[^A-Za-z0-9_-]/g, '') || 'p' + rid();
   p.name = String(p.name || 'Project');
+  if (typeof p.shared !== 'string') delete p.shared; // fingerprint of the share link this copy came from (js/share.js)
   const legacy = p.settings && !p.settings.ventSys; // projects from before ventilation per room: keep their results
   p.settings = { ...DEFAULT_SETTINGS, ...(p.settings || {}) };
   const adv = p.settings.advice || {};

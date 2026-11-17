@@ -18,6 +18,9 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 - **Ventilatie en infiltratie**: systeem A, C of D met WTW, overstroom tussen ruimtes en infiltratie uit qv10.
 - **Afgifte**: radiatoren (vermogen zelf invullen of afleiden uit type, hoogte en lengte), convectoren (ook met ventilatoren), fancoils en vloerverwarming bij je eigen aanvoer- en retourtemperatuur. Met controle van de aansluitleiding (de getekende leiding naar het element) en de minimaal nodige aanvoertemperatuur.
 - **Verbeteradviezen** en **warmtepompkeuze**: vergelijk warmtepompen met het warmteverlies bij −10 °C (dekt het maximale vermogen het verlies?) en bij +10 °C (kan hij ver genoeg terugregelen, of gaat hij pendelen?). Per warmtepomp zie je vanaf welke buitentemperatuur hij pendelt. De lijst is gesorteerd op beide.
+- **Jaarverbruik en kosten**: warmtevraag per jaar, stroomverbruik en SCOP van de gekozen warmtepomp, en de kosten tegenover gas, met KNMI-uurtemperaturen van De Bilt.
+- **Inregelstaat**: per radiator de kraanstand of het debiet op één afdrukbaar overzicht, om mee langs de radiatoren te lopen.
+- **Delen via een link**: het hele project in een link, zonder server. Wie hem opent, krijgt een kopie.
 - **Export**: JSON, CSV en [heatlossjs](https://github.com/trystanLea/heatlossjs).
 
 ## Handleiding
@@ -69,9 +72,9 @@ Twijfel je of iets past, open dan eerst een issue om het te bespreken.
 
 ## Privacy en statistiek
 
-Je projecten, tekeningen en onderleggers blijven in je eigen browser. De app stuurt ze nergens naartoe.
+Je projecten, tekeningen en onderleggers blijven in je eigen browser. De app stuurt ze nergens naartoe. Ook een deellink gaat niet langs een server: het project zit in het deel na het `#`, dat de browser niet meestuurt.
 
-De site op GitHub Pages telt anoniem bezoeken met [GoatCounter](https://www.goatcounter.com): zonder cookies en zonder persoonsgegevens. Daarnaast telt hij hoe vaak een paar functies worden gebruikt: het rapport, het schema van het leidingnet, exporteren (JSON, CSV, heatlossjs) en het plaatsen van een onderlegger. Daarbij gaat alleen de naam van de functie mee, nooit de inhoud van een project. Er wordt niets geteld als je de app lokaal draait, als je browser "Do Not Track" aan heeft staan, of als je onder **Project → Statistiek** het vinkje uitzet.
+De site op GitHub Pages telt anoniem bezoeken met [GoatCounter](https://www.goatcounter.com): zonder cookies en zonder persoonsgegevens. Daarnaast telt hij hoe vaak een paar functies worden gebruikt: het rapport, de inregelstaat, het schema van het leidingnet, exporteren (JSON, CSV, heatlossjs), een deellink maken of openen en het plaatsen van een onderlegger. Daarbij gaat alleen de naam van de functie mee, nooit de inhoud van een project. Er wordt niets geteld als je de app lokaal draait, als je browser "Do Not Track" aan heeft staan, of als je onder **Project → Statistiek** het vinkje uitzet.
 
 ## Licentie
 

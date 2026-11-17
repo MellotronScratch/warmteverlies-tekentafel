@@ -1786,6 +1786,22 @@ label.chk input {
 .repdoc table.kv td:first-child {
   width: 45%;
 }
+.repdoc table.calc th.txt {
+  text-align: left;
+}
+.repdoc table.calc td.nw {
+  white-space: nowrap;
+}
+.repdoc small.warn {
+  color: var(--warn);
+}
+.repdoc .steps {
+  margin: 0 0 8px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .repdoc .sec {
   padding: 0;
   border: 0;

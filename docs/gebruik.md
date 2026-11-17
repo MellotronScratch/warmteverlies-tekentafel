@@ -37,6 +37,16 @@ Met **Rapport (PDF)** bovenaan *Resultaten* maak je een rapport van het hele pro
 
 Projecten worden in je browser opgeslagen (localStorage). Exporteer regelmatig een `.json` als reservekopie, want bij het wissen van browsergegevens ben je ze kwijt.
 
+### Delen via een link
+
+Onder **Project → Delen via een link** maak je met **Link maken** een link waarin het hele project zit. Hij staat meteen op je klembord. Zo laat je je berekening zien op een forum, of stuur je hem naar een installateur of iemand die meekijkt.
+
+- Het project zit gecomprimeerd in de link zelf, achter `#p=`. Dat deel van een link stuurt een browser nooit naar de server: er wordt nergens iets opgeslagen, ook niet bij GitHub of in de bezoekersstatistiek.
+- Wie de link opent, krijgt een **kopie** in de eigen browser. Wat die persoon verandert, komt niet bij jou terecht. Open je dezelfde link nog eens, dan opent de app de kopie die er al was.
+- Een onderlegger (afbeelding) gaat niet mee: die maakt de link te lang.
+- Iedereen met de link ziet alles in het project, ook de naam. Haal daar je adres uit als je dat niet wilt delen.
+- Een gemiddeld huis geeft een link van een paar duizend tekens. Knipt een forum of chat-app hem af, stuur dan het `.json`-bestand.
+
 ---
 
 [← Overzicht](../README.md) · Volgende: [Ruimtes en wanden tekenen](tekenen.md)

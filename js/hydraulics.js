@@ -382,7 +382,7 @@ function networkHtml(rep) {
     loose = N.ems.filter(o => !o.reach),
     fast = N.edges.filter(e => e.inTree && e.v > V_OK);
   h += `<div class="kcard"><div class="kh"><span>${N.dpFit > 0.05 ? 'Indexcircuit + appendages' : 'Indexcircuit'}</span><b>${N.index ? fmt(N.dpPump, 1) + ' kPa' : '–'}</b></div>
-    <div class="row"><button class="btn small" data-act="schema">Schema van het leidingnet</button></div>
+    <div class="row"><button class="btn small" data-act="schema">Schema van het leidingnet</button>${N.index ? '<button class="btn small" data-act="inregel">Inregelstaat (afdrukken)</button>' : ''}</div>
     <span class="note">${N.index ? `Naar ${esc(N.index.em.name)} in ${esc(N.index.room.name)}: leidingen ${fmt(N.index.dpPath, 1)} kPa + element ${fmt(N.index.dpEm, 1)} kPa${N.dpFit > 0.05 ? ` + appendages bij de warmtepomp ${fmt(N.dpFit, 1)} kPa` : ''}. Dit is het drukverlies dat de pomp moet overwinnen bij ${fmtW(N.total)} l/h (ΔT ${nv(N.dT, 1)} K).` : 'Nog geen aangesloten afgifte met een warmteverlies.'}</span>
     ${(() => {
       const hp = hpList && hpList.find(x => x.id === hpSel);

@@ -239,13 +239,75 @@ function reportHtml() {
         ''
       )}</tbody></table>${chosen.length ? `<p>Met de meegenomen maatregelen: ${fmt((c.total - adviceSaving(c, adv)) / 1000, 2)} kW in plaats van ${fmt(c.total / 1000, 2)} kW.</p>` : ''}</section>`;
   h += reportHpHtml(c);
+  const yr = annualHtml(c);
+  if (yr)
+    h += `<section class="rsec"><h2>Jaarverbruik en kosten</h2>${yr.replace('<h3>Jaarverbruik en kosten</h3>', '')}<p class="note">Gerekend met stroom € ${fmt(S.pEl, 3)} per kWh, gas € ${fmt(S.pGas, 3)} per m³${S.gasFix > 0 ? `, vaste kosten gas € ${fmt(S.gasFix, 0)} per jaar` : ''}, een cv-ketel met ${fmt(S.etaGas * 100, 0)}% rendement en een stookgrens van ${nv(S.stook, 1)} °C.</p></section>`;
   h += `<footer class="repfoot">Gemaakt met Warmteverlies Tekentafel · ${esc(date)}. Indicatieve berekening; controleer de uitkomst voordat je erop dimensioneert.</footer>`;
   return h;
 }
 
-function openReport() {
+/* ---------- inregelstaat: per element de voorinstelling en het debiet, om mee langs de radiatoren te lopen ---------- */
+function balanceSheetHtml() {
+  const S = P.settings,
+    N = network(),
+    date = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }),
+    kraan = (TRV.kranen[S.trv] || TRV.kranen.onbekend || {}).naam || '';
+  let h = `<header class="rephead"><h1>Inregelstaat · ${esc(P.name)}</h1><p>Waterzijdig inregelen · ${esc(date)}</p></header>`;
+  if (!N || !N.root || !N.index)
+    return (
+      h +
+      `<p>Er is nog geen leidingnet met een aangesloten warmtepomp en afgifte. Teken de leidingen en plaats de warmtepomp; dan rekent de app de voorinstellingen uit.</p>`
+    );
+  const reached = N.ems.filter(o => o.reach && o.lh > 0);
+  const hp = hpList && hpList.find(x => x.id === hpSel);
+  h += `<div class="repkpi"><div><span>Aanvoer / retour</span><b>${nv(S.twSup, 0)} / ${fmt(tRet(), 1)} °C</b></div><div><span>Totaal debiet</span><b>${fmtW(N.total)} l/h</b></div><div><span>Pomp moet leveren</span><b>${fmt(N.dpPump, 1)} kPa</b></div><div><span>Elementen</span><b>${reached.length}</b></div></div>
+  <section class="rsec"><h2>Zo werk je</h2><ol class="steps">
+    <li>Zet de warmtepomp op ${nv(S.twSup, 0)} °C aanvoer${+S.flow > 0 ? ` en een debiet van ${fmtW(+S.flow)} l/h` : ''}${hp ? ` (${esc(hp.merk)} ${esc(hp.model)})` : ''}. De pomp moet bij ${fmtW(N.total)} l/h nog ${fmt(N.dpPump, 1)} kPa overhouden.</li>
+    <li>Haal de thermostaatkoppen van de kranen en zet alle kranen open.</li>
+    <li>${
+      (TRV.kranen[S.trv] || {}).soort === 'debiet'
+        ? 'Stel per element het debiet uit de tabel in. De kranen houden dat debiet zelf vast.'
+        : `Stel per element de voorinstelling uit de tabel in. ${esc(N.index.em.name)} in ${esc(N.index.room.name)} is het indexcircuit: die kraan blijft helemaal open.`
+    }</li>
+    <li>Zet de thermostaatkoppen terug; de voorinstelling blijft staan.</li>
+    <li>Controleer na een paar dagen stoken de retourleidingen met een thermometer: bij ${nv(S.twSup, 0)} °C aanvoer hoort de retour ongeveer ${fmt(tRet(), 0)} °C te zijn. Is hij warmer, dan krijgt dat element te veel water: kraan een stand lager. Is hij kouder, een stand hoger.</li>
+  </ol><p class="note">Kranen: ${esc(kraan)}. Vloerverwarming stel je in op de verdeler, met het debiet per groep.</p></section>`;
+  P.floors.forEach(f => {
+    const rows = reached.filter(o => o.room.floorId === f.id);
+    if (!rows.length) return;
+    h += `<section class="rsec"><h2>${esc(f.name)}</h2><table class="calc"><thead><tr><th class="txt">Ruimte · element</th><th class="txt">Kraan</th><th class="txt">Instellen</th><th>Debiet</th><th>Vermogen</th><th>Gedaan</th></tr></thead><tbody>${rows
+      .slice()
+      .sort((a, b) => a.room.name.localeCompare(b.room.name, 'nl'))
+      .map(o => {
+        const vv = o.em.kind === 'vv';
+        const loops = vv ? Math.max(1, +o.em.loops || 1) : 1;
+        const isIndex = N.index === o;
+        const set = vv
+          ? `${fmtW(o.lh / loops)} l/h per groep${loops > 1 ? ` (${loops} groepen)` : ''}`
+          : isIndex && !(o.preset && o.preset.kind === 'debiet')
+            ? `helemaal open${o.preset && o.preset.kind === 'kv' ? ` (stand ${esc(String(o.preset.s))})` : ''}`
+            : presetText(o, N);
+        const valve = vv ? 'verdeler' : o.trv ? o.trv.naam : kraan;
+        const pr = o.preset;
+        const warn =
+          pr && pr.kind === 'debiet' && pr.over
+            ? `<small class="warn">vraagt ${fmtW(o.lh)} l/h: meer dan deze kraan doorlaat</small>`
+            : pr && pr.kind === 'debiet' && pr.under
+              ? '<small>minimum van deze kraan</small>'
+              : pr && pr.kind === 'kv' && pr.low
+                ? '<small>kleinste stand is nog te ruim</small>'
+                : '';
+        return `<tr><td class="txt">${esc(o.room.name)} · ${esc(o.em.name)}${isIndex ? '<small>indexcircuit</small>' : ''}</td><td class="txt">${esc(valve || '')}</td><td class="txt"><b>${set}</b>${warn}</td><td class="nw">${fmtW(o.lh)} l/h</td><td class="nw">${fmtW(o.W)} W</td><td>☐</td></tr>`;
+      })
+      .join('')}</tbody></table></section>`;
+  });
+  h += `<footer class="repfoot">Gemaakt met Warmteverlies Tekentafel · ${esc(date)}. De voorinstellingen volgen uit de berekende leidingen en kv-waarden; regel in de praktijk bij op de retourtemperatuur.</footer>`;
+  return h;
+}
+
+function openReport(kind) {
   const el = $('report');
-  el.innerHTML = `<div class="reptools"><button class="btn primary" id="rep-print">Afdrukken of bewaren als PDF</button><button class="btn" id="rep-close">Sluiten ✕</button></div><article class="repdoc">${reportHtml()}</article>`;
+  el.innerHTML = `<div class="reptools"><button class="btn primary" id="rep-print">Afdrukken of bewaren als PDF</button><button class="btn" id="rep-close">Sluiten ✕</button></div><article class="repdoc">${kind === 'inregel' ? balanceSheetHtml() : reportHtml()}</article>`;
   el.hidden = false;
   document.body.classList.add('rep-open');
   el.scrollTop = 0;

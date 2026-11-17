@@ -19,5 +19,6 @@ loadData()
     requestAnimationFrame(fit);
     initStore();
     loadHpList();
+    openSharedLink();
   })
   .catch(showDataError);

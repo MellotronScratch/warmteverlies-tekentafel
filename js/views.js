@@ -44,6 +44,7 @@ function viewInst() {
   ${shortageSummaryHtml(c)}
   ${curveHtml()}
   ${hpSectionHtml(c)}
+  ${annualHtml(c)}
   ${volumeHtml()}
   ${networkHtml()}`;
 }
@@ -234,6 +235,7 @@ function viewSet() {
     <p class="note">Het heatlossjs-bestand open je in <a href="https://github.com/trystanLea/heatlossjs" target="_blank" rel="noopener">heatlossjs</a> met Open. Daar kun je radiatoren, vloerverwarming en de warmtepomp doorrekenen. De tekening zit in het bestand: importeer je het hier weer, dan komt alles terug en worden in heatlossjs gewijzigde temperaturen en U-waarden overgenomen. Een heatlossjs-bestand zonder tekening levert alleen de constructietypen op.</p>
     <div class="row">${confirmDel ? `<span class="note">“${esc(P.name)}” definitief verwijderen?</span><button class="btn small danger" data-act="delproj-yes">Ja, verwijderen</button><button class="btn small" data-act="delproj-no">Annuleren</button>` : `<button class="btn small danger" data-act="delproj" ${list.length < 2 ? 'disabled title="Er moet minstens één project blijven"' : ''}>Project verwijderen</button>`}</div>
     <p class="note" id="store-note">${storeNote()}</p></div>
+  ${shareHtml()}
   ${
     GOATCOUNTER_CODE
       ? `<div class="sec"><h3>Statistiek</h3><label class="chk"><input type="checkbox" id="f-stats" data-f="stats.on" ${statsOptOut() ? '' : 'checked'}> Anoniem meetellen in de bezoekersstatistiek</label>
@@ -718,11 +720,16 @@ function applyField(el, final) {
         twSup: [20, 90],
         twRet: [15, 85],
         tMax: [30, 80],
-        flow: [0, 5000]
+        flow: [0, 5000],
+        stook: [5, 22],
+        pEl: [0, 5],
+        pGas: [0, 10],
+        gasFix: [0, 2000],
+        etaGas: [0.5, 1.1]
       };
       if (RANGE[k] && (n < RANGE[k][0] || n > RANGE[k][1])) {
         toast(
-          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${k === 'flow' ? 'l/h' : '°C'} en is niet overgenomen.`
+          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${{ flow: 'l/h', pEl: '€/kWh', pGas: '€/m³', gasFix: '€', etaGas: '' }[k] ?? '°C'} en is niet overgenomen.`
         );
         return;
       }
@@ -1161,6 +1168,10 @@ function act(a, b) {
       track('rapport');
       openReport();
       break;
+    case 'inregel':
+      track('inregelstaat');
+      openReport('inregel');
+      break;
     case 'addfloor':
       addFloor();
       break;
@@ -1528,6 +1539,10 @@ function act(a, b) {
     case 'export':
       track('export-json');
       exportJson();
+      break;
+    case 'share':
+      track('deellink');
+      makeShareLink();
       break;
     case 'export-hljs':
       track('export-heatlossjs');
