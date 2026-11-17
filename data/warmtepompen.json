@@ -103,6 +103,59 @@
       }
     },
     {
+      "id": "itho-amber-65-openamber",
+      "merk": "Itho Daalderop",
+      "model": "Amber 65 met OpenAmber (min. 20 Hz)",
+      "type": "lucht/water",
+      "aanvoer": 35,
+      "bron": "Maximum: Itho Daalderop, Handleiding Amber (01-06419-001, 2024). Minimum: OpenAmber laat de compressor terugmoduleren tot 20 Hz in plaats van 36 Hz. Gemeten op 20 Hz bij 9,3 °C buiten en 28 °C aanvoer: 1,44 kW (806 l/h, ΔT 1,54 K, 297 minuten, november 2026). De minimumlijn uit de handleiding is met dezelfde factor (0,605) geschaald.",
+      "minInhoud": 65,
+      "punten": [
+        {
+          "buiten": -10,
+          "min": 0.8,
+          "max": 3.4
+        },
+        {
+          "buiten": 2,
+          "min": 1.2,
+          "max": 5.1
+        },
+        {
+          "buiten": 7,
+          "min": 1.35,
+          "max": 6.7
+        },
+        {
+          "buiten": 12,
+          "min": 1.55,
+          "max": 7.2
+        }
+      ],
+      "punten55": [
+        {
+          "buiten": -10,
+          "min": 0.65,
+          "max": 2.8
+        },
+        {
+          "buiten": 2,
+          "min": 1.1,
+          "max": 5.0
+        },
+        {
+          "buiten": 7,
+          "min": 1.25,
+          "max": 6.2
+        },
+        {
+          "buiten": 12,
+          "min": 1.4,
+          "max": 6.6
+        }
+      ]
+    },
+    {
       "id": "itho-amber-95",
       "merk": "Itho Daalderop",
       "model": "Amber 95",
