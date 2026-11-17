@@ -1420,6 +1420,37 @@ label.chk input {
 .matrow .in {
   width: auto;
 }
+.tool-about {
+  margin-top: auto;
+}
+.about {
+  width: min(480px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--ink);
+}
+.about::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+.about-in {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+.about-in p {
+  margin: 0;
+}
+.about-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+a.linkrow {
+  text-decoration: none;
+}
 @media (max-width: 900px) {
   html,
   body {
@@ -1443,6 +1474,10 @@ label.chk input {
   }
   .tool {
     min-width: 58px;
+  }
+  .tool-about {
+    margin-top: 0;
+    margin-left: auto;
   }
   .panel {
     max-height: none;

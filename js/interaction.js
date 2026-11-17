@@ -1627,6 +1627,7 @@ $('btn-redo').onclick = redo;
 new ResizeObserver(() => renderCanvas()).observe(stage);
 
 document.addEventListener('keydown', e => {
+  if (document.querySelector('dialog[open]')) return; // the About window has its own keys (Esc closes)
   const tag = (e.target.tagName || '').toLowerCase();
   const typing = tag === 'input' || tag === 'select' || tag === 'textarea';
   if ((e.ctrlKey || e.metaKey) && !typing && e.key.toLowerCase() === 'z') {

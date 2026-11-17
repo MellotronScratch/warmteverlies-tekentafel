@@ -2,7 +2,7 @@
 
 # Aan de slag
 
-Gebruik de [online versie](https://mellotronscratch.github.io/warmteverlies-tekentafel/), of draai de app op je eigen computer. Installeren hoeft niet, maar je hebt wel een eenvoudige webserver nodig. De app laadt zijn gegevens uit de map `data/`, en browsers laden zulke bestanden niet als je `index.html` direct opent. Bijvoorbeeld:
+Gebruik de [online versie](https://warmtepomptekentafel.nl/), of draai de app op je eigen computer. Installeren hoeft niet, maar je hebt wel een eenvoudige webserver nodig. De app laadt zijn gegevens uit de map `data/`, en browsers laden zulke bestanden niet als je `index.html` direct opent. Bijvoorbeeld:
 
 ```sh
 cd warmteverlies-tekentafel
@@ -12,6 +12,8 @@ python3 -m http.server
 Open daarna http://localhost:8000. In VS Code kan het ook met de extensie *Live Server*.
 
 De kolom rechts met de eigenschappen maak je breder of smaller door de rand aan de linkerkant te verslepen. Dubbelklik op die rand zet hem terug op de standaardbreedte. Je browser onthoudt de breedte.
+
+Met **Over** onderaan de gereedschapsbalk links open je een venster met links naar deze handleiding en naar de pagina waar je een fout meldt of een idee deelt.
 
 Het paneel heeft zes tabbladen:
 - **Selectie**: wat je in de tekening hebt aangeklikt.

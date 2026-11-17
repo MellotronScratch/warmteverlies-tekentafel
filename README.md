@@ -2,7 +2,7 @@
 
 Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. Daarnaast rekent de app de afgifte van radiatoren en vloerverwarming door en laat zien welke warmtepomp past.
 
-**[Open de app →](https://mellotronscratch.github.io/warmteverlies-tekentafel/)**
+**[Open de app →](https://warmtepomptekentafel.nl/)**
 
 ![Schermafbeelding van de Warmtepomp Tekentafel](docs/screenshot.png)
 
@@ -39,7 +39,7 @@ Elke pagina heeft bovenaan en onderaan links naar de vorige en volgende pagina. 
 
 ## Snel beginnen
 
-Open de [app](https://mellotronscratch.github.io/warmteverlies-tekentafel/), of draai hem lokaal met een eenvoudige webserver (zie [Aan de slag](docs/gebruik.md)):
+Open de [app](https://warmtepomptekentafel.nl/), of draai hem lokaal met een eenvoudige webserver (zie [Aan de slag](docs/gebruik.md)):
 
 ```sh
 cd warmteverlies-tekentafel
@@ -74,7 +74,7 @@ Twijfel je of iets past, open dan eerst een issue om het te bespreken.
 
 Je projecten, tekeningen en onderleggers blijven in je eigen browser. De app stuurt ze nergens naartoe, behalve als je een korte deellink maakt: dan gaat een kopie van het project naar de server, maar alleen versleuteld. De sleutel zit in het deel van de link na het `#`, dat de browser nooit meestuurt, dus de server kan het project niet lezen. Een lange deellink gaat helemaal niet langs een server.
 
-De site op GitHub Pages telt anoniem bezoeken met [GoatCounter](https://www.goatcounter.com): zonder cookies en zonder persoonsgegevens. Daarnaast telt hij hoe vaak een paar functies worden gebruikt: het rapport, de inregelstaat, het schema van het leidingnet, exporteren (JSON, CSV, heatlossjs), een deellink maken of openen en het plaatsen van een onderlegger. Daarbij gaat alleen de naam van de functie mee, nooit de inhoud van een project. Er wordt niets geteld als je de app lokaal draait, als je browser "Do Not Track" aan heeft staan, of als je onder **Project → Statistiek** het vinkje uitzet.
+De site telt anoniem bezoeken met [GoatCounter](https://www.goatcounter.com): zonder cookies en zonder persoonsgegevens. Daarnaast telt hij hoe vaak een paar functies worden gebruikt: het rapport, de inregelstaat, het schema van het leidingnet, exporteren (JSON, CSV, heatlossjs), een deellink maken of openen en het plaatsen van een onderlegger. Daarbij gaat alleen de naam van de functie mee, nooit de inhoud van een project. Er wordt niets geteld als je de app lokaal draait, als je browser "Do Not Track" aan heeft staan, of als je onder **Project → Statistiek** het vinkje uitzet.
 
 ## Licentie
 
