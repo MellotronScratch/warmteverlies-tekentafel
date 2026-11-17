@@ -5,6 +5,9 @@
 #   FTP_PASSWORD
 #   FTP_DIR       map op de server, bijv. public_html/ (of ./ als je direct in de webroot uitkomt)
 # Zonder FTP_SERVER slaat de workflow het uitrollen over.
+# Het FTP-certificaat van de hoster is zelf ondertekend: alleen dat ene certificaat wordt vertrouwd, op zijn
+# vingerafdruk (FTP_CERT). Vernieuwt de hoster het certificaat, dan stopt het uitrollen met "certificate is NOT
+# trusted" en de nieuwe vingerafdruk; zet die dan hieronder.
 # Bestanden die niet in de repo staan (zoals api/config.php) worden niet overschreven of verwijderd.
 name: Uitrollen naar hosting
 
@@ -34,11 +37,13 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           LFTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
           FTP_DIR: ${{ secrets.FTP_DIR }}
+          FTP_CERT: '9D:C7:0E:76:4C:D7:1C:BD:CA:76:F9:DB:AD:3F:D1:2C:A7:DA:C8:13'
         run: |
           lftp -c "
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set ftp:passive-mode true;
+            set ssl:verify-certificate/$FTP_CERT no;
             set net:timeout 30;
             set net:max-retries 3;
             set net:reconnect-interval-base 5;
