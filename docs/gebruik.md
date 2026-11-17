@@ -39,6 +39,8 @@ Met **Rapport (PDF)** bovenaan *Resultaten* maak je een rapport van het hele pro
 
 Projecten worden in je browser opgeslagen (localStorage). Exporteer regelmatig een `.json` als reservekopie, want bij het wissen van browsergegevens ben je ze kwijt.
 
+Met de keuzelijst bovenaan, naast de naam van de app, wissel je van project. Onderaan die lijst staan ook **+ Leeg project** en **Importeren (.json)…**, om een opgeslagen project te openen. Dezelfde knoppen staan onder *Project*.
+
 ### Delen via een link
 
 Onder **Project → Delen via een link** maak je met **Link maken** een korte link naar een kopie van het project. Hij staat meteen op je klembord. Zo laat je je berekening zien op een forum, of stuur je hem naar een installateur of iemand die meekijkt.

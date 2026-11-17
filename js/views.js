@@ -292,7 +292,10 @@ function renderHeader() {
   const list = Object.values(all).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   sel_.innerHTML = list
     .map(p => `<option value="${p.id}" ${p.id === P.id ? 'selected' : ''}>${esc(p.name)}</option>`)
-    .join('');
+    .join('')
+    .concat(
+      `<option disabled>──────────</option><option value="act:newproj">+ Leeg project</option><option value="act:import">Importeren (.json)…</option>`
+    );
   updateUndoBtns();
 }
 function renderAll() {
@@ -1623,7 +1626,13 @@ function act(a, b) {
   }
 }
 $('proj-sel').onchange = e => {
-  openProject(e.target.value);
+  const v = e.target.value;
+  if (v.startsWith('act:')) {
+    e.target.value = P.id; // the list keeps showing the open project; the action decides what comes next
+    act(v.slice(4));
+    return;
+  }
+  openProject(v);
   renderAll();
 };
 function openProject(id) {
