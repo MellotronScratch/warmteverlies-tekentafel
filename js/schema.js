@@ -3,6 +3,8 @@
 'use strict';
 const SCH = { col: 210, row: 52, box: 300, pad: 24, bus: 22 };
 
+// a run counts as hidden when all its pipes are hidden
+const segState = sg => vState(sg.v, { hidden: sg.pipes.length > 0 && sg.pipes.every(pipeHidden) });
 function pipeShort(pp) {
   if (!pp) return 'leiding';
   const m = PIPES[pp.mat] || PIPES.koper;
@@ -56,7 +58,7 @@ function schemaSvg(N) {
   const fname = id => (P.floors.find(f => f.id === id) || {}).name || '';
   const label = sg => `${sg.pipes.map(pipeShort).join(' + ') || 'leiding'} · ${fmt(sg.L, 1)} m`,
     sub = sg =>
-      `${fmtW(sg.lh)} l/h · ${fmt(sg.v, 2)} m/s${sg.v > V_OK ? ' ⚠' : ''}${sg.floors.length ? ' · ↕ ' + sg.floors.map(fname).join(', ') : ''}`;
+      `${fmtW(sg.lh)} l/h · ${fmt(sg.v, 2)} m/s${segState(sg) !== 'ok' ? ' ⚠' : ''}${sg.floors.length ? ' · ↕ ' + sg.floors.map(fname).join(', ') : ''}`;
   const colW = [],
     meas = { box: SCH.box };
   const measure = t => {
@@ -97,7 +99,7 @@ function schemaSvg(N) {
       const c = sg.to,
         xc = X(c.d),
         yc = Y(c.y),
-        warn = sg.v > V_OK;
+        warn = segState(sg) !== 'ok';
       s += line(
         [
           [x, y],

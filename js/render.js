@@ -918,9 +918,10 @@ function renderCanvas() {
       if (e.a.f !== curFloor) return;
       const a = S(e.a),
         b = S(e.b);
-      // pipes that are too small: purple, bright above V_MAX, faint between V_OK and V_MAX
-      if (e.inTree && e.v > V_OK)
-        out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${PIPE_FAST}" stroke-opacity="${e.v > V_MAX ? 0.75 : 0.35}" stroke-width="22" stroke-linecap="round" pointer-events="none"><title>${fmt(e.v, 2)} m/s: ${e.v > V_MAX ? 'leiding te klein' : 'leiding krap'}</title></line>`;
+      // pipes that are too small: purple, bright above V_MAX, faint for flow noise in a visible pipe
+      const vs = e.inTree ? vState(e.v, e.pp) : 'ok';
+      if (vs !== 'ok')
+        out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${PIPE_FAST}" stroke-opacity="${vs === 'bad' ? 0.75 : 0.35}" stroke-width="22" stroke-linecap="round" pointer-events="none"><title>${fmt(e.v, 2)} m/s: ${vs === 'bad' ? 'leiding te klein' : 'stromingsgeluid'}</title></line>`;
       if (!NET.indexEdges.has(e)) return;
       out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#F59E0B" stroke-opacity=".55" stroke-width="15" stroke-linecap="round" pointer-events="none"/>`;
     });
@@ -937,7 +938,8 @@ function renderCanvas() {
         isSel = sel && sel.t === 'pipe' && sel.p === pp.id;
       if (isSel)
         out += `<polyline points="${pts}" fill="none" stroke="var(--heat)" stroke-opacity=".35" stroke-width="16" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>`;
-      out += `<polyline points="${pts}" fill="none" stroke="#2563EB" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/><polyline points="${pts}" fill="none" stroke="#DC2626" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>`;
+      const dash = pp.hidden ? ' stroke-dasharray="9 6"' : ''; // hidden in floor, wall or boxing: dashed, as on a building drawing
+      out += `<polyline points="${pts}" fill="none" stroke="#2563EB" stroke-width="7" stroke-linejoin="round" stroke-linecap="${pp.hidden ? 'butt' : 'round'}"${dash} pointer-events="none"/><polyline points="${pts}" fill="none" stroke="#DC2626" stroke-width="3" stroke-linejoin="round" stroke-linecap="${pp.hidden ? 'butt' : 'round'}"${dash} pointer-events="none"/>`;
       if (tool === 'select')
         out += `<polyline class="hit" data-k="pipe" data-p="${pp.id}" points="${pts}" fill="none" stroke-width="14"/>`;
       let bi = 1,
@@ -966,7 +968,7 @@ function renderCanvas() {
         });
         const at = lbPlace(cands, txtW(ptxt, 10), 13, isSel);
         if (at)
-          out += `<text x="${at.x}" y="${at.y}" text-anchor="middle" class="dim" font-size="10" pointer-events="none" ${mv > V_OK ? 'style="fill:var(--warn)"' : ''}>${esc(ptxt)}</text>`;
+          out += `<text x="${at.x}" y="${at.y}" text-anchor="middle" class="dim" font-size="10" pointer-events="none" ${vState(mv, pp) !== 'ok' ? 'style="fill:var(--warn)"' : ''}>${esc(ptxt)}</text>`;
       });
       if (isSel && tool === 'select') {
         pp.pts.forEach((p, i) => {
@@ -1443,10 +1445,12 @@ function pipeLegendHtml() {
   const row = (st, txt) => `<div><span class="sw" style="${st}"></span><span>${txt}</span></div>`;
   let h = '';
   if (es.some(e => N.indexEdges.has(e))) h += row('background:#F59E0B;opacity:.7', 'Indexcircuit');
-  if (es.some(e => e.inTree && e.v > V_MAX))
+  if (es.some(e => e.inTree && vState(e.v, e.pp) === 'bad'))
     h += row(`background:${PIPE_FAST};opacity:.8`, `Leiding te klein (boven ${nv(V_MAX, 1)} m/s)`);
-  if (es.some(e => e.inTree && e.v > V_OK && e.v <= V_MAX))
-    h += row(`background:${PIPE_FAST};opacity:.4`, `Leiding krap (${nv(V_OK, 1)} tot ${nv(V_MAX, 1)} m/s)`);
+  if (es.some(e => e.inTree && vState(e.v, e.pp) === 'warn'))
+    h += row(`background:${PIPE_FAST};opacity:.4`, `Stromingsgeluid (${nv(V_OK, 1)}–${nv(V_MAX, 1)} m/s)`);
+  if ((P.pipes || []).some(pp => pp.hidden && pp.floorId === curFloor))
+    h += row('background:none;height:0;border-top:3px dashed #DC2626', 'Leiding weggewerkt');
   return h;
 }
 function renderLegend() {

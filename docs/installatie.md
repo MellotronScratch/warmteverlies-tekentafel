@@ -29,7 +29,17 @@ Staat bij de gekozen warmtepomp in `data/warmtepompen.json` een `minDebiet`, dan
 
 ## Leidingen en systeeminhoud
 
-Met **Leiding** (`L`) teken je een eenvoudig leidingnetwerk, bijvoorbeeld van de warmtepomp naar de verdeler en de radiatoren. Eén lijn staat voor aanvoer en retour samen. Klik de punten en rond af met dubbelklik of Enter. Per leiding kies je het materiaal (koper, (alu)pex of staal) en de diameter, bijvoorbeeld alupex 32×3 mm. Bij **Extra lengte** vul je stukken in die je niet tekent, zoals een stijgleiding naar een andere verdieping. Je ziet de inhoud van de leiding en hoeveel vermogen hij bij 0,5 m/s kan transporteren.
+Met **Leiding** (`L`) teken je een eenvoudig leidingnetwerk, bijvoorbeeld van de warmtepomp naar de verdeler en de radiatoren. Eén lijn staat voor aanvoer en retour samen. Klik de punten en rond af met dubbelklik of Enter. Per leiding kies je het materiaal (koper, (alu)pex of staal) en de diameter, bijvoorbeeld alupex 32×3 mm. Bij **Extra lengte** vul je stukken in die je niet tekent, zoals een stijgleiding naar een andere verdieping. Je ziet de inhoud van de leiding en hoeveel vermogen hij kan transporteren zonder waarschuwing.
+
+Vink **Weggewerkt** aan bij een leiding die in de vloer, een muur, een koof of de kruipruimte zit. Stromingsgeluid hoor je alleen bij een leiding die in het zicht loopt. Daarom gelden twee grenzen:
+
+| Snelheid | Zichtbare leiding | Weggewerkte leiding |
+| --- | --- | --- |
+| tot 0,5 m/s | goed | goed |
+| 0,5 tot 0,8 m/s | *stromingsgeluid* | goed |
+| boven 0,8 m/s | *te klein*: geluid en veel drukverlies | *te klein*: veel drukverlies, geluid hoor je niet |
+
+Boven 0,8 m/s loopt het drukverlies snel op, ook als je de leiding niet hoort: de pomp moet harder werken en elementen verderop krijgen minder water. Een weggewerkte leiding is in de tekening gestreept.
 
 <img src="img/leidingen.png" width="600" alt="Leidingen op de 1e verdieping met de begane grond als ondergrond">
 
@@ -53,10 +63,10 @@ Plaats met **Warmtepomp** (`K`) de warmtepomp, of de plek waar de leidingen van 
 
 Vanaf de warmtepomp rekent de app per leidingstuk het debiet (de som van alles erachter), de stroomsnelheid en het drukverlies (Darcy-Weisbach, aanvoer + retour, met een instelbare opslag voor bochten en koppelingen). Het debiet per element is zijn aandeel in het warmteverlies van de ruimte, bij de ΔT tussen aanvoer en retour.
 
-Het **indexcircuit** is de route naar het element met het grootste totale drukverlies: leidingen plus het element zelf. Het licht oranje op in de plattegrond. Leidingen die te klein zijn, lichten paars op: fel boven 0,8 m/s (*te klein*), lichter tussen 0,5 en 0,8 m/s (*krap*). Ga met de muis over zo'n stuk om de snelheid te zien. De legenda rechtsonder legt de kleuren uit. Onder **Installatie → Leidingnet en indexcircuit** zie je:
+Het **indexcircuit** is de route naar het element met het grootste totale drukverlies: leidingen plus het element zelf. Het licht oranje op in de plattegrond. Leidingen die te klein zijn, lichten paars op: fel boven 0,8 m/s (*te klein*), lichter tussen 0,5 en 0,8 m/s in een zichtbare leiding (*stromingsgeluid*). Ga met de muis over zo'n stuk om de snelheid te zien. De legenda rechtsonder legt de kleuren uit. Onder **Installatie → Leidingnet en indexcircuit** zie je:
 
 - per element het debiet, het drukverlies en hoeveel extra weerstand het nodig heeft om goed ingeregeld te zijn ten opzichte van het indexcircuit;
-- leidingstukken waar het water sneller stroomt dan 0,5 m/s;
+- leidingstukken die te klein zijn (boven 0,8 m/s), en zichtbare leidingstukken met stromingsgeluid (0,5 tot 0,8 m/s);
 - elementen die niet zijn aangesloten, en lussen in het net.
 
 Met **Schema van het leidingnet** (onder Installatie of bij de warmtepomp) zie je het hele circuit als schema: van de warmtepomp naar alle aangesloten elementen. Rechte stukken zonder aftakking zijn samengevoegd. Per stuk zie je de maat, de lengte, het debiet, de snelheid en waar een stijgleiding naar een andere verdieping gaat. Per element zie je het vermogen, het debiet, het drukverlies en het inregeladvies. Het indexcircuit is oranje. Een leiding die nergens heen gaat, staat er als *loos eind* in. Klik op een element om het te openen, of druk het schema af.

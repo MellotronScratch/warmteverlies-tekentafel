@@ -315,9 +315,6 @@ function viewHp() {
   <div class="det">${N.root ? `Aangesloten op het leidingnet · ${fmtW(N.total)} l/h${N.index ? ` · indexcircuit ${fmt(N.index.dpTot, 1)} kPa${N.dpFit > 0.05 ? ` + appendages ${fmt(N.dpFit, 1)} kPa` : ''}` : ''}` : 'Nog niet aangesloten: laat een leiding hier beginnen.'}</div>
   <div class="row">${N.root ? '<button class="btn" data-act="schema">Schema van het leidingnet</button>' : ''}<button class="btn danger" data-act="delhp">Warmtepomp weghalen</button></div>`;
 }
-function vState(v) {
-  return v > V_MAX ? 'bad' : v > V_OK ? 'warn' : 'ok';
-}
 function netEmHtml(em) {
   if (!(P.pipes || []).length) return '';
   const N = network(),
@@ -356,11 +353,15 @@ function netPipeHtml(pp) {
   const maxQ = Math.max(...tr.map(e => e.lh)),
     maxV = Math.max(...tr.map(e => e.v)),
     dp = tr.reduce((a, e) => a + e.dp, 0),
-    st = vState(maxV);
+    st = vState(maxV, pp);
   return `<div class="det">Debiet tot ${fmtW(maxQ)} l/h · snelheid tot ${fmt(maxV, 2)} m/s · drukverlies ${fmt(dp, 2)} kPa (aanvoer + retour)</div>${
     st === 'ok'
       ? ''
-      : `<p class="note" style="color:var(--warn)">⚠ ${st === 'bad' ? 'Te hoge snelheid' : 'Vrij hoge snelheid'}: kies een grotere diameter (richtwaarde tot ${nv(V_OK, 1)} m/s).</p>`
+      : st === 'warn'
+        ? `<p class="note" style="color:var(--warn)">⚠ Stromingsgeluid: boven ${nv(V_OK, 1)} m/s hoor je het water in een zichtbare leiding. Kies een grotere diameter, of vink <i>Weggewerkt</i> aan als de leiding in de vloer, een muur of een koof zit.</p>`
+        : pipeHidden(pp)
+          ? `<p class="note" style="color:var(--warn)">⚠ Te klein: boven ${nv(V_MAX, 1)} m/s loopt het drukverlies snel op. Je hoort het niet, want de leiding is weggewerkt, maar de pomp moet harder werken en de radiatoren verderop krijgen minder water. Kies een grotere diameter als dat kan.</p>`
+          : `<p class="note" style="color:var(--warn)">⚠ Te klein: boven ${nv(V_MAX, 1)} m/s geeft de leiding stromingsgeluid en loopt het drukverlies snel op. Kies een grotere diameter.</p>`
   }`;
 }
 function networkHtml(rep) {
@@ -380,7 +381,12 @@ function networkHtml(rep) {
     );
   const reached = N.ems.filter(o => o.reach),
     loose = N.ems.filter(o => !o.reach),
-    fast = N.edges.filter(e => e.inTree && e.v > V_OK);
+    small = N.edges.filter(e => e.inTree && vState(e.v, e.pp) === 'bad'),
+    noisy = N.edges.filter(e => e.inTree && vState(e.v, e.pp) === 'warn'),
+    pipeNames = es =>
+      [...new Set(es.map(e => (e.pp ? e.pp.name + (e.vert ? ' (stijgleiding)' : '') : 'stijgleiding')))]
+        .map(esc)
+        .join(', ');
   h += `<div class="kcard"><div class="kh"><span>${N.dpFit > 0.05 ? 'Indexcircuit + appendages' : 'Indexcircuit'}</span><b>${N.index ? fmt(N.dpPump, 1) + ' kPa' : '–'}</b></div>
     <div class="row"><button class="btn small" data-act="schema">Schema van het leidingnet</button>${N.index ? '<button class="btn small" data-act="inregel">Inregelstaat (afdrukken)</button>' : ''}</div>
     <span class="note">${N.index ? `Naar ${esc(N.index.em.name)} in ${esc(N.index.room.name)}: leidingen ${fmt(N.index.dpPath, 1)} kPa + element ${fmt(N.index.dpEm, 1)} kPa${N.dpFit > 0.05 ? ` + appendages bij de warmtepomp ${fmt(N.dpFit, 1)} kPa` : ''}. Dit is het drukverlies dat de pomp moet overwinnen bij ${fmtW(N.total)} l/h (ΔT ${nv(N.dT, 1)} K).` : 'Nog geen aangesloten afgifte met een warmteverlies.'}</span>
@@ -394,8 +400,10 @@ function networkHtml(rep) {
     h += `<p class="note" style="color:var(--warn)">⚠ Het leidingnet bevat een rondgaande verbinding (lus). De app rekent met een boom en slaat ${N.loops} verbinding(en) over.</p>`;
   if (loose.length)
     h += `<p class="note" style="color:var(--warn)">⚠ Niet aangesloten: ${loose.map(o => esc(o.room.name) + ' · ' + esc(o.em.name)).join(', ')}.</p>`;
-  if (fast.length)
-    h += `<p class="note" style="color:var(--warn)">⚠ ${fast.length} leidingstuk(ken) boven ${nv(V_OK, 1)} m/s: ${[...new Set(fast.map(e => (e.pp ? e.pp.name : 'stijgleiding')))].map(esc).join(', ')}.</p>`;
+  if (small.length)
+    h += `<p class="note" style="color:var(--warn)">⚠ Te klein, boven ${nv(V_MAX, 1)} m/s (veel drukverlies${small.some(e => !pipeHidden(e.pp)) ? ', en stromingsgeluid waar de leiding zichtbaar is' : ''}): ${pipeNames(small)}.</p>`;
+  if (noisy.length)
+    h += `<p class="note" style="color:var(--warn)">⚠ Stromingsgeluid, ${nv(V_OK, 1)} tot ${nv(V_MAX, 1)} m/s in een zichtbare leiding: ${pipeNames(noisy)}. Zit zo'n leiding in de vloer, een muur of een koof, vink dan <i>Weggewerkt</i> aan bij die leiding.</p>`;
   if (reached.length) {
     h += `<div class="tablewrap"><table class="calc"><thead><tr><th>Element</th><th>l/h</th><th>Δp kPa</th><th>Inregelen</th></tr></thead><tbody>`;
     reached

@@ -537,7 +537,8 @@ function normalizeProject(p) {
         mat,
         dn,
         extra: Math.max(0, +x.extra || 0),
-        name: String(x.name || 'Leiding')
+        name: String(x.name || 'Leiding'),
+        ...(x.hidden ? { hidden: true } : {}) // in floor, wall or boxing: flow noise not audible
       };
     });
   p.rooms.forEach(r => {

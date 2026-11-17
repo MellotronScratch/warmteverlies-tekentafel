@@ -77,16 +77,17 @@ function systemVolume() {
   const pipes = (P.pipes || []).reduce((a, x) => a + (pipeLen(x) + x.extra) * 2 * pipeLpm(x.mat, x.dn), 0);
   return { pipes, rad, vv, hp: S.hpVol, buf: S.bufVol, total: pipes + rad + vv + S.hpVol + S.bufVol };
 }
-function pipeCapacity(mat, dn) {
+function pipeCapacity(mat, dn, v = V_OK) {
   const d = ((PIPES[mat] || PIPES.koper).d[dn] || 13) / 1000,
     dT = sysDT();
-  return ((V_OK * Math.PI * d * d) / 4) * 1000 * 4.19 * dT;
-} // kW at 0,5 m/s
+  return ((v * Math.PI * d * d) / 4) * 1000 * 4.19 * dT;
+} // kW at speed v (m/s)
 function viewPipe(pp) {
   const len = pipeLen(pp),
     tot = len + pp.extra,
     vol = tot * 2 * pipeLpm(pp.mat, pp.dn),
-    cap = pipeCapacity(pp.mat, pp.dn),
+    vl = vLimit(pp),
+    cap = pipeCapacity(pp.mat, pp.dn, vl),
     need = calcAll().total / 1000,
     S = P.settings;
   return `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-pipe-name" data-f="pipe.name" value="${esc(pp.name)}" aria-label="Naam leiding"></div>
@@ -105,9 +106,11 @@ function viewPipe(pp) {
       )
       .join('')}</select></label>
     ${numField('f-pipe-x', 'pipe.extra', 'Extra lengte', 'm', pp.extra, 1)}</div>
+  <label class="chk"><input type="checkbox" id="f-pipe-hid" data-f="pipe.hidden" ${pp.hidden ? 'checked' : ''}> Weggewerkt: in de vloer, een muur, een koof of de kruipruimte</label>
+  <p class="note">Stromingsgeluid hoor je alleen bij een leiding die in een kamer in het zicht loopt. Een weggewerkte leiding mag daarom sneller stromen: tot ${nv(V_MAX, 1)} m/s in plaats van ${nv(V_OK, 1)} m/s. Daarboven is ook een weggewerkte leiding te klein, omdat het drukverlies snel oploopt. In de tekening is een weggewerkte leiding gestreept.</p>
   ${netPipeHtml(pp)}
-  <div class="det">Getekend ${fmt(len)} m + extra ${fmt(pp.extra)} m = ${fmt(tot)} m<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b><br>Draagt bij ${nv(V_OK, 1)} m/s ongeveer ${fmt(cap, 1)} kW (ΔT ${fmt(sysDT(), 1)} K)</div>
-  ${cap < need ? `<p class="note" style="color:var(--warn)">⚠ Is dit de hoofdleiding, dan is hij te klein voor het hele huis (${fmt(need, 2)} kW): het water stroomt dan sneller dan ${nv(V_OK, 1)} m/s.</p>` : ''}
+  <div class="det">Getekend ${fmt(len)} m + extra ${fmt(pp.extra)} m = ${fmt(tot)} m<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b><br>Draagt bij ${nv(vl, 1)} m/s ongeveer ${fmt(cap, 1)} kW (ΔT ${fmt(sysDT(), 1)} K)</div>
+  ${cap < need ? `<p class="note" style="color:var(--warn)">⚠ Is dit de hoofdleiding, dan is hij te klein voor het hele huis (${fmt(need, 2)} kW): het water stroomt dan sneller dan ${nv(vl, 1)} m/s.</p>` : ''}
   <p class="note">Eén lijn staat voor aanvoer én retour. Vul bij <i>Extra lengte</i> stijgleidingen naar een andere verdieping in, en stukken die je niet tekent. Koppelingen en bochten tellen niet mee. De inhoud gaat mee in de systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button>.</p>
   <p class="note">Hoekpunt verslepen: sleep het. Klik op een + om een punt toe te voegen, en dubbelklik op een punt om het weg te halen.</p>
   <div class="row"><button class="btn danger" data-act="delpipe">Leiding verwijderen</button></div>`;
@@ -134,8 +137,15 @@ function volumeHtml() {
     <p class="note">Een warmtepomp heeft genoeg water in het systeem nodig om te kunnen ontdooien en niet te vaak aan en uit te gaan. Tel alleen kringen mee die altijd open staan. Hebben radiatoren thermostaatkranen of heeft de vloerverwarming ruimteregeling, dan is de werkelijke inhoud lager. Is de inhoud te klein, dan vergroot een <b>schakelvat</b> de systeeminhoud. Een <b>buffervat</b> tussen aanvoer en retour (hydraulische scheiding) is iets anders: dat heb je nodig als de warmtepomp meer water moet rondpompen dan het afgiftesysteem aankan, of bij meerdere pompgroepen, zoals vloerverwarming met een eigen mengpomp. Dat volgt niet uit de inhoud maar uit het debiet. Overleg het met de installateur.</p>
     <p class="note">Indicatieve inhoud: paneelradiatoren per meter (bij 600 mm hoog: T11 3 l, T22 5,8 l, T33 8,5 l), andere radiatoren 3,4 l per kW, convectoren een of meer lussen koperbuis 15 mm over de lengte min 15 cm (een lus is twee buizen), fancoils 0,5 l per kW. Aansluitleidingen naar de radiatoren tellen alleen mee als je ze tekent.</p></div>`;
 }
-const V_OK = 0.5,
-  V_MAX = 0.8; // m/s in connection pipes
+const V_OK = 0.5, // m/s: above this a visible pipe gives audible flow noise
+  V_MAX = 0.8; // m/s: above this a pipe is too small (much pressure drop), also when it is hidden away
+// hidden: in the floor, a wall, a boxing or the crawl space. Flow noise is not heard there, so up to V_MAX is fine.
+const pipeHidden = pp => !!(pp && pp.hidden);
+const vLimit = pp => (pipeHidden(pp) ? V_MAX : V_OK); // highest speed without a warning
+// 'ok', 'warn' (visible pipe between V_OK and V_MAX: flow noise) or 'bad' (too small: pressure drop, and noise if visible)
+function vState(v, pp) {
+  return v > V_MAX ? 'bad' : v > V_OK && !pipeHidden(pp) ? 'warn' : 'ok';
+}
 function lmtd(ts, tr, ti) {
   if (ts <= ti || tr <= ti) return 0;
   if (Math.abs(ts - tr) < 1e-6) return ts - ti;
@@ -248,10 +258,10 @@ function pipeCheck(em, W, N) {
   return {
     lh: Q * 3.6e6,
     v,
-    pmax: V_OK * Ar * 1000 * 4190 * dT,
+    pmax: vLimit(pp) * Ar * 1000 * 4190 * dT,
     di: di * 1000,
     pp,
-    state: v <= V_OK ? 'ok' : v <= V_MAX ? 'krap' : 'te klein'
+    state: { ok: 'ok', warn: 'krap', bad: 'te klein' }[vState(v, pp)]
   };
 }
 const pipeBad = pc => pc.state === 'krap' || pc.state === 'te klein';
@@ -439,8 +449,10 @@ function pipeChip(pc) {
   return pc.state === 'ok'
     ? `<span class="chip ok">✓ ${fmt(pc.v, 2)} m/s: leiding is ruim genoeg</span>`
     : pc.state === 'krap'
-      ? `<span class="chip bad">⚠ ${fmt(pc.v, 2)} m/s: krap, kans op geluid en drukval</span>`
-      : `<span class="chip bad">⚠ ${fmt(pc.v, 2)} m/s: leiding te klein</span>`;
+      ? `<span class="chip bad">⚠ ${fmt(pc.v, 2)} m/s: hoorbaar stromingsgeluid</span>`
+      : pipeHidden(pc.pp)
+        ? `<span class="chip bad">⚠ ${fmt(pc.v, 2)} m/s: te klein, veel drukverlies (geluid hoor je niet)</span>`
+        : `<span class="chip bad">⚠ ${fmt(pc.v, 2)} m/s: te klein, stromingsgeluid en veel drukverlies</span>`;
 }
 function roomEmitHtml(room, c) {
   c = c || calcRoom(room);
@@ -662,7 +674,7 @@ function viewEm(room, em) {
     pc.pp
       ? `<button class="linkrow" data-act="selpipe" data-p="${pc.pp.id}"><span>${esc(pc.pp.name)} <span class="note">· ${esc((PIPES[pc.pp.mat] || PIPES.koper).label)} ${esc(dnLabel(pc.pp.mat, pc.pp.dn))}</span></span><span>›</span></button>
     <div class="row">${pipeChip(pc)}</div>
-    <p class="note">De aansluitleiding is de getekende leiding waar dit element aan hangt. Waterdebiet ${fmtW(pc.lh)} l/h bij ΔT ${fmt(sysDT(), 1)} K. Deze leiding transporteert bij ${nv(V_OK, 1)} m/s ongeveer ${fmt(pc.pmax / 1000, 2)} kW. Boven ${nv(V_OK, 1)} m/s nemen geluid en drukval toe; boven ${nv(V_MAX, 1)} m/s is de leiding te klein. Een andere maat kies je bij de leiding zelf.</p>`
+    <p class="note">De aansluitleiding is de getekende leiding waar dit element aan hangt. Waterdebiet ${fmtW(pc.lh)} l/h bij ΔT ${fmt(sysDT(), 1)} K. Deze leiding transporteert bij ${nv(vLimit(pc.pp), 1)} m/s ongeveer ${fmt(pc.pmax / 1000, 2)} kW. In een zichtbare leiding hoor je boven ${nv(V_OK, 1)} m/s stromingsgeluid; boven ${nv(V_MAX, 1)} m/s is een leiding te klein, ook als hij is weggewerkt, omdat het drukverlies snel oploopt. Een andere maat, of <i>Weggewerkt</i>, kies je bij de leiding zelf.</p>`
       : `<p class="note">Nog geen leiding aangesloten. Teken met <b>Leiding</b> (L) een leiding die eindigt bij dit element (binnen ${nv(ATTACH * 100, 0)} cm). Daarna kiest de app de aansluitleiding zelf en rekent hij debiet, snelheid en drukverlies uit. Waterdebiet nu: ${fmtW(pc.lh)} l/h.</p>`
   }</div>
   ${twFieldsHtml()}

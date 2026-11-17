@@ -500,7 +500,10 @@ function applyField(el, final) {
         return;
       }
       if (k === 'name') pp.name = v;
-      else if (k === 'mat') {
+      else if (k === 'hidden') {
+        if (el.checked) pp.hidden = true;
+        else delete pp.hidden;
+      } else if (k === 'mat') {
         if (!PIPES[v]) return;
         pp.mat = v;
         if (!PIPES[v].d[pp.dn]) pp.dn = v === 'pex' ? '26' : '22';
