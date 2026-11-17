@@ -55,6 +55,12 @@
       "rpmMin": 300,
       "rpmMax": 1500
     },
+    "upsiren-ul8015b": {
+      "naam": "Upsiren UL-8015B (80 mm, 15 mm dun)",
+      "m3h": 49.6,
+      "rpmMin": 1200,
+      "rpmMax": 3000
+    },
     "anders": {
       "naam": "Andere ventilator (zelf invullen)",
       "m3h": 100,
