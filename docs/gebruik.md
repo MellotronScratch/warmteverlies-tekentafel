@@ -2,14 +2,7 @@
 
 # Aan de slag
 
-Gebruik de [online versie](https://warmtepomptekentafel.nl/), of draai de app op je eigen computer. Installeren hoeft niet, maar je hebt wel een eenvoudige webserver nodig. De app laadt zijn gegevens uit de map `data/`, en browsers laden zulke bestanden niet als je `index.html` direct opent. Bijvoorbeeld:
-
-```sh
-cd warmteverlies-tekentafel
-python3 -m http.server
-```
-
-Open daarna http://localhost:8000. In VS Code kan het ook met de extensie *Live Server*.
+Open de app op [warmtepomptekentafel.nl](https://warmtepomptekentafel.nl/). Installeren of een account aanmaken hoeft niet. Bij de eerste keer staat er een voorbeeldproject klaar, zodat je meteen ziet hoe alles werkt.
 
 De kolom rechts met de eigenschappen maak je breder of smaller door de rand aan de linkerkant te verslepen. Dubbelklik op die rand zet hem terug op de standaardbreedte. Je browser onthoudt de breedte.
 

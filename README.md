@@ -25,7 +25,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 
 ## Handleiding
 
-1. **[Aan de slag](docs/gebruik.md)**: online of lokaal draaien, de tabbladen, lagen en ondergrond, het rapport en opslaan.
+1. **[Aan de slag](docs/gebruik.md)**: de app openen, de tabbladen, lagen en ondergrond, het rapport en opslaan.
 2. **[Ruimtes en wanden tekenen](docs/tekenen.md)**: onderlegger, ruimtes en binnenwanden, binnenmaat of buitenmaat, wanden splitsen, ramen en deuren, 2,5D-weergave en warmtebeeld.
 3. **[Wat grenst waaraan](docs/grenzen.md)**: wat er achter een wand, vloer of plafond ligt, buren, gedeelde wanden, open verbindingen en verwarmingszones.
 4. **[Daken, vides en verdiepingen](docs/daken-en-verdiepingen.md)**: vides en trappenhuizen, schuine daken, knieschot, dakramen en dakkapellen, kruipruimte en kelder.
@@ -35,18 +35,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 8. **[Stooklijn, leidingen en warmtepomp](docs/installatie.md)**: stooklijn, debiet, systeeminhoud, leidingnet en indexcircuit, thermostaatkranen, appendages en warmtepompkeuze.
 9. **[Rekenmethode, woonoppervlak en gegevens](docs/rekenmethode.md)**: hoe er gerekend wordt, het woonoppervlak en de tabellen in `data/`.
 
-De handleiding staat ook als website op [warmtepomptekentafel.nl/handleiding](https://warmtepomptekentafel.nl/handleiding/). Elke pagina heeft bovenaan en onderaan links naar de vorige en volgende pagina. GitHub toont rechtsboven bij elke pagina ook een inhoudsopgave van de koppen.
-
-## Snel beginnen
-
-Open de [app](https://warmtepomptekentafel.nl/), of draai hem lokaal met een eenvoudige webserver (zie [Aan de slag](docs/gebruik.md)):
-
-```sh
-cd warmteverlies-tekentafel
-python3 -m http.server
-```
-
-en open http://localhost:8000. Het voorbeeldproject laat meteen zien hoe alles werkt.
+De handleiding staat ook als website op [warmtepomptekentafel.nl/handleiding](https://warmtepomptekentafel.nl/handleiding/). Elke pagina heeft bovenaan en onderaan links naar de vorige en volgende pagina.
 
 ## Waarom deze tool
 
@@ -65,16 +54,7 @@ Een paar tips voor een goede melding:
 - Gaat het om een berekening, voeg dan een export van je project toe (**Project → Exporteren (.json)**). Haal eerst namen en adressen eruit als je die niet openbaar wilt maken: issues zijn voor iedereen zichtbaar.
 - Heb je fabrieksgegevens van een warmtepomp, radiator, thermostaatkraan of ventilator die nog ontbreekt? Zet ze in een issue, met de bron erbij.
 
-**Zelf bijdragen** mag ook graag. Maak een fork, breng je wijziging aan en stuur een *pull request*. Een paar afspraken:
-
-- De app heeft geen build-stap: gewone HTML, CSS en JavaScript in `js/`, zonder bundler of frameworks. Draai hem lokaal zoals onder *Snel beginnen*.
-- Tabellen die gebruikers zelf willen beheren, zoals warmtepompen of radiatoren, horen in `data/*.json`, met een `toelichting` en de bron van de gegevens.
-- Oude projectbestanden moeten blijven werken.
-- Teksten in de app en de handleiding zijn in begrijpelijk Nederlands. Beschrijf een nieuwe functie op de bijbehorende pagina in `docs/`.
-- Controleer of het voorbeeldproject nog op 5,24 kW totaal uitkomt.
-- Code wordt opgemaakt met [Prettier](https://prettier.io) (`.prettierrc.json`).
-
-Twijfel je of iets past, open dan eerst een issue om het te bespreken.
+Wil je de app zelf draaien, gegevens toevoegen of meebouwen? Lees dan [Bijdragen en zelf aanpassen](CONTRIBUTING.md).
 
 ## Privacy en statistiek
 
