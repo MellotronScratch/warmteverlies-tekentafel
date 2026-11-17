@@ -8,6 +8,8 @@
 # Het FTP-certificaat van de hoster is zelf ondertekend: alleen dat ene certificaat wordt vertrouwd, op zijn
 # vingerafdruk (FTP_CERT). Vernieuwt de hoster het certificaat, dan stopt het uitrollen met "certificate is NOT
 # trusted" en de nieuwe vingerafdruk; zet die dan hieronder.
+# De handleiding (warmtepomptekentafel.nl/handleiding/) en sitemap.xml maakt tools/handleiding.mjs bij het uitrollen
+# uit README.md en docs/*.md; ze staan niet in git.
 # Bestanden die niet in de repo staan (zoals api/config.php) worden niet overschreven of verwijderd.
 name: Uitrollen naar hosting
 
@@ -28,6 +30,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         if: env.FTP_SERVER != ''
+        with:
+          fetch-depth: 0 # git history for the lastmod dates in sitemap.xml
+      - name: Handleiding en sitemap maken
+        if: env.FTP_SERVER != ''
+        run: |
+          npm install --no-save --no-package-lock --silent marked@15.0.12
+          node tools/handleiding.mjs
       - name: Installeer lftp
         if: env.FTP_SERVER != ''
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
@@ -48,5 +57,5 @@ jobs:
             set net:max-retries 3;
             set net:reconnect-interval-base 5;
             open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\";
-            mirror --reverse --verbose --parallel=3 -x '^\.git' -x '^\.prettierrc\.json$' . \"${FTP_DIR:-./}\"
+            mirror --reverse --verbose --parallel=3 -x '^\.git' -x '^\.prettierrc\.json$' -x '^tools/' -x '^docs/' -x '^node_modules/' . \"${FTP_DIR:-./}\"
           "

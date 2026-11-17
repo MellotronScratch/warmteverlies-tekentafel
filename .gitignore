@@ -10,3 +10,8 @@ wpt-config.php
 # eigen projecten en bestanden
 KPC9*.json
 *.xlsx
+
+# gemaakt bij het uitrollen (tools/handleiding.mjs)
+handleiding/
+sitemap.xml
+node_modules/

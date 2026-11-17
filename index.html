@@ -8,10 +8,32 @@
       name="description"
       content="Teken je plattegrond en bereken het warmteverlies per ruimte, de afgifte van radiatoren en vloerverwarming, en welke warmtepomp past."
     />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2316353F'/%3E%3Cpath d='M7 25V11l9-5 9 5v14z' fill='none' stroke='%23E06A12' stroke-width='2.5' stroke-linejoin='round'/%3E%3C/svg%3E"
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://warmtepomptekentafel.nl/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Warmtepomp Tekentafel" />
+    <meta property="og:locale" content="nl_NL" />
+    <meta property="og:title" content="Warmtepomp Tekentafel: warmteverlies per ruimte en welke warmtepomp past" />
+    <meta
+      property="og:description"
+      content="Gratis en zonder account: teken je plattegrond en bereken het warmteverlies per ruimte, de afgifte van radiatoren en vloerverwarming, de stooklijn en welke warmtepomp past."
     />
+    <meta property="og:url" content="https://warmtepomptekentafel.nl/" />
+    <meta property="og:image" content="https://warmtepomptekentafel.nl/handleiding/img/screenshot.png" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Warmtepomp Tekentafel",
+        "url": "https://warmtepomptekentafel.nl/",
+        "description": "Teken je plattegrond en bereken het warmteverlies per ruimte (vereenvoudigde NEN-EN 12831 / ISSO 51), de afgifte van radiatoren en vloerverwarming, de stooklijn en welke warmtepomp past.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Webbrowser",
+        "inLanguage": "nl",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       rel="stylesheet"
@@ -31,6 +53,29 @@
     <link rel="stylesheet" href="css/app.css" />
   </head>
   <body>
+    <noscript>
+      <main style="max-width: 720px; margin: 0 auto; padding: 24px 16px">
+        <h1>Warmtepomp Tekentafel</h1>
+        <p>
+          Gratis en zonder account: teken de plattegrond van je woning en bereken het warmteverlies per ruimte, de
+          afgifte van radiatoren, convectoren en vloerverwarming, de stooklijn en welke warmtepomp past. Met
+          jaarverbruik en kosten, leidingnet en inregelstaat.
+        </p>
+        <p>
+          Deze app heeft JavaScript nodig. Lees intussen de
+          <a href="handleiding/">handleiding</a>
+          :
+        </p>
+        <ul>
+          <li><a href="handleiding/gebruik/">Aan de slag</a></li>
+          <li><a href="handleiding/tekenen/">Ruimtes en wanden tekenen</a></li>
+          <li><a href="handleiding/constructies/">Constructies en isolatiewaarde</a></li>
+          <li><a href="handleiding/afgifte/">Radiatoren, convectoren en vloerverwarming</a></li>
+          <li><a href="handleiding/installatie/">Stooklijn, leidingen en warmtepomp</a></li>
+          <li><a href="handleiding/rekenmethode/">Rekenmethode, woonoppervlak en gegevens</a></li>
+        </ul>
+      </main>
+    </noscript>
     <div class="app">
       <header class="top">
         <div class="brand">

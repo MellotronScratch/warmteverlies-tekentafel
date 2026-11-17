@@ -35,7 +35,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 8. **[Stooklijn, leidingen en warmtepomp](docs/installatie.md)**: stooklijn, debiet, systeeminhoud, leidingnet en indexcircuit, thermostaatkranen, appendages en warmtepompkeuze.
 9. **[Rekenmethode, woonoppervlak en gegevens](docs/rekenmethode.md)**: hoe er gerekend wordt, het woonoppervlak en de tabellen in `data/`.
 
-Elke pagina heeft bovenaan en onderaan links naar de vorige en volgende pagina. GitHub toont rechtsboven bij elke pagina ook een inhoudsopgave van de koppen.
+De handleiding staat ook als website op [warmtepomptekentafel.nl/handleiding](https://warmtepomptekentafel.nl/handleiding/). Elke pagina heeft bovenaan en onderaan links naar de vorige en volgende pagina. GitHub toont rechtsboven bij elke pagina ook een inhoudsopgave van de koppen.
 
 ## Snel beginnen
 

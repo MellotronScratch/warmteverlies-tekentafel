@@ -1,0 +1,230 @@
+/* Handleiding op warmtepomptekentafel.nl/handleiding/ (gemaakt door tools/handleiding.mjs).
+   Dezelfde rustige vormgeving als de app: wit en lichtgrijs, donkerblauw als enige interfacekleur, Source Sans 3. */
+:root {
+  --bg: #ffffff;
+  --surface-2: #f3f3f3;
+  --ink: #1e1e1e;
+  --muted: #535353;
+  --line: #cccccc;
+  --accent: #154273;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(21, 66, 115, 0.06);
+  --link: #01689b;
+  --r: 4px;
+  --font: 'Source Sans 3', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #1b1b1b;
+    --surface-2: #262626;
+    --ink: #ececec;
+    --muted: #b0b0b0;
+    --line: #3a3a3a;
+    --accent: #8db6e2;
+    --accent-ink: #0d1f33;
+    --accent-soft: rgba(141, 182, 226, 0.08);
+    --link: #8db6e2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --bg: #1b1b1b;
+  --surface-2: #262626;
+  --ink: #ececec;
+  --muted: #b0b0b0;
+  --line: #3a3a3a;
+  --accent: #8db6e2;
+  --accent-ink: #0d1f33;
+  --accent-soft: rgba(141, 182, 226, 0.08);
+  --link: #8db6e2;
+  color-scheme: dark;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 17px/1.6 var(--font);
+}
+a {
+  color: var(--link);
+}
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.2;
+  text-decoration: none;
+}
+.brand small {
+  display: block;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 14px;
+}
+.btn {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: var(--r);
+  padding: 6px 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:hover {
+  opacity: 0.9;
+}
+a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.wrap {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.toc ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: sticky;
+  top: 16px;
+  border-left: 1px solid var(--line);
+}
+.toc a {
+  display: block;
+  padding: 5px 12px;
+  font-size: 15px;
+  line-height: 1.35;
+  text-decoration: none;
+  border-left: 4px solid transparent;
+  margin-left: -1px;
+}
+.toc a:hover {
+  text-decoration: underline;
+}
+.toc a[aria-current='page'] {
+  color: var(--ink);
+  font-weight: 700;
+  border-left-color: var(--accent);
+}
+.doc {
+  min-width: 0;
+  max-width: 760px;
+}
+.doc h1 {
+  font-size: 34px;
+  line-height: 1.2;
+  margin: 8px 0 18px;
+}
+.doc h2 {
+  font-size: 26px;
+  line-height: 1.25;
+  margin: 36px 0 12px;
+}
+.doc h3 {
+  font-size: 20px;
+  margin: 28px 0 8px;
+}
+.doc img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+.doc code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--surface-2);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+.doc pre {
+  background: var(--surface-2);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.doc pre code {
+  padding: 0;
+  background: none;
+}
+.doc table {
+  border-collapse: collapse;
+  width: 100%;
+  display: block;
+  overflow-x: auto;
+  font-size: 15px;
+  margin: 12px 0;
+}
+.doc th,
+.doc td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 10px 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.doc th {
+  border-bottom: 2px solid var(--ink);
+}
+.doc blockquote {
+  margin: 12px 0;
+  padding: 4px 14px;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+}
+.doc hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 28px 0;
+}
+.foot {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 18px 24px 32px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+@media (max-width: 800px) {
+  .wrap {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 16px;
+  }
+  .top {
+    padding: 10px 16px;
+  }
+  .toc ol {
+    position: static;
+    border-left: none;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 10px;
+    columns: 2;
+  }
+  .toc li {
+    break-inside: avoid;
+  }
+  .toc a {
+    border-left: none;
+    padding: 3px 0;
+  }
+  .doc h1 {
+    font-size: 28px;
+  }
+}

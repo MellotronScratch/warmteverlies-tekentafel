@@ -10,7 +10,7 @@ function aboutHtml() {
     <p>Teken je huis en bereken per ruimte het warmteverlies, de afgifte van radiatoren en vloerverwarming, en welke warmtepomp past. Gratis en zonder account: je projecten blijven in je eigen browser.</p>
     <p class="note">De berekening is een vereenvoudigde versie van NEN-EN 12831 en ISSO 51. Goed om te vergelijken en je huis te leren kennen, maar geen vervanging van een berekening door een installateur.</p>
     <div class="about-links">
-      <a class="linkrow" href="${REPO_URL}#readme" ${ext}><span>Handleiding</span><span>GitHub</span></a>
+      <a class="linkrow" href="https://warmtepomptekentafel.nl/handleiding/" ${ext}><span>Handleiding</span><span>warmtepomptekentafel.nl</span></a>
       <a class="linkrow" href="${REPO_URL}/issues" ${ext}><span>Fout melden of idee delen</span><span>GitHub</span></a>
       ${CONTACT_MAIL ? `<a class="linkrow" href="mailto:${esc(CONTACT_MAIL)}?subject=${encodeURIComponent('Warmtepomp Tekentafel')}"><span>Mail sturen</span><span>${esc(CONTACT_MAIL)}</span></a>` : ''}
     </div>
