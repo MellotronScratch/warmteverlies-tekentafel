@@ -97,6 +97,7 @@ const DEFAULT_SETTINGS = {
   pEl: 0.25, // € per kWh electricity
   pGas: 1.35, // € per m³ gas
   gasFix: 0, // € per year fixed costs of the gas connection, saved when the gas goes
+  gasNet: '', // id in data/netbeheer.json whose amount was put in gasFix ('' = own amount)
   etaGas: 0.9, // efficiency of the gas boiler (on the gross calorific value)
   trv: 'onbekend' // thermostatic radiator valve for the whole house (data/thermostaatkranen.json); per emitter em.trv
 };
@@ -393,6 +394,7 @@ function normalizeProject(p) {
   if (typeof p.shared !== 'string') delete p.shared; // fingerprint of the share link this copy came from (js/share.js)
   const legacy = p.settings && !p.settings.ventSys; // projects from before ventilation per room: keep their results
   p.settings = { ...DEFAULT_SETTINGS, ...(p.settings || {}) };
+  if (typeof p.settings.gasNet !== 'string') p.settings.gasNet = '';
   const adv = p.settings.advice || {};
   p.settings.advice = {};
   Object.keys(ADVICE_DEFAULT).forEach(k => {

@@ -103,6 +103,18 @@ function annualCalc(c, hp) {
   return R;
 }
 
+// choice of the gas network operator (data/netbeheer.json); fills in the fixed costs of the gas connection
+function gridField(S) {
+  const ops = Object.entries(GRID.gas || {});
+  if (!ops.length) return '';
+  return `<label class="f" for="f-s-gnet">Netbeheerder gas <span class="u">vult vaste kosten in</span><select class="in" id="f-s-gnet" data-f="set.gasNet"><option value="">Zelf invullen</option>${ops
+    .map(
+      ([k, g]) =>
+        `<option value="${esc(k)}" ${S.gasNet === k ? 'selected' : ''}>${esc(g.naam)} (€ ${fmt(+g.perJaar, 0)})</option>`
+    )
+    .join('')}</select></label>`;
+}
+
 function annualHtml(c) {
   if (c.total <= 0 || !CLIMATE.uren || !Object.keys(CLIMATE.uren).length) return '';
   const S = P.settings,
@@ -142,10 +154,11 @@ function annualHtml(c) {
       ${numField('f-s-stook', 'set.stook', 'Stookgrens', '°C buiten', S.stook, 1)}
       ${numField('f-s-pel', 'set.pEl', 'Stroomprijs', '€ per kWh', S.pEl, 3)}
       ${numField('f-s-pgas', 'set.pGas', 'Gasprijs', '€ per m³', S.pGas, 3)}
-      ${numField('f-s-gfix', 'set.gasFix', 'Vaste kosten gas', '€ per jaar', S.gasFix, 0)}
+      ${gridField(S)}
+      ${numField('f-s-gfix', 'set.gasFix', 'Vaste kosten gas', '€ per jaar', S.gasFix, 2)}
       ${numField('f-s-eta', 'set.etaGas', 'Rendement cv-ketel', '0 tot 1', S.etaGas, 2)}
     </div>
-    <p class="note">Vul de prijzen van je eigen contract in, inclusief belastingen. De stookgrens is de buitentemperatuur waarboven je huis geen verwarming meer nodig heeft door warmte van mensen, apparaten en zon: in een goed geïsoleerd huis lager (13–15 °C), in een oud huis hoger (16–18 °C). Bij <i>Vaste kosten gas</i> vul je in wat je bespaart als de gasaansluiting eruit gaat (vastrecht en netbeheer).</p>
+    <p class="note">Vul de prijzen van je eigen contract in, inclusief belastingen. De stookgrens is de buitentemperatuur waarboven je huis geen verwarming meer nodig heeft door warmte van mensen, apparaten en zon: in een goed geïsoleerd huis lager (13–15 °C), in een oud huis hoger (16–18 °C). Bij <i>Vaste kosten gas</i> vul je in wat je bespaart als de gasaansluiting eruit gaat. Kies je je netbeheerder, dan vult de app de netbeheerkosten voor gas${GRID.jaar ? ` van ${GRID.jaar}` : ''} in (gewone huisaansluiting, 500 tot 4.000 m³ per jaar, inclusief btw). Tel daar de vaste leveringskosten van je energieleverancier bij op: die vervallen ook. Beide staan op je energierekening.</p>
     <p class="note">De COP volgt uit het verschil tussen de aanvoertemperatuur van de stooklijn hierboven en de buitenlucht${R.cf.own ? `, geschaald naar de opgegeven COP-waarden van deze warmtepomp (factor ${fmt(R.cf.f, 2)})` : ', met een gemiddelde lijn voor lucht/water-warmtepompen. Staan er COP-waarden van de fabrikant bij de warmtepomp in data/warmtepompen.json, dan rekent de app daarmee'}. Een lagere stooklijn geeft een hogere COP.</p></div>`;
   return h;
 }

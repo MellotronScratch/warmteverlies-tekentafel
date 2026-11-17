@@ -703,6 +703,12 @@ function applyField(el, final) {
         changed = true;
         break;
       }
+      if (k === 'gasNet') {
+        P.settings.gasNet = GRID.gas[v] ? v : '';
+        if (GRID.gas[v]) P.settings.gasFix = +GRID.gas[v].perJaar || 0;
+        changed = true;
+        break;
+      }
       if (k === 'ventSys' || k === 'infMode') {
         P.settings[k] = v;
         changed = true;
@@ -737,6 +743,9 @@ function applyField(el, final) {
         return;
       }
       P.settings[k] = n;
+      // an own amount: the network operator choice no longer applies
+      if (k === 'gasFix' && GRID.gas[P.settings.gasNet] && Math.abs(n - GRID.gas[P.settings.gasNet].perJaar) > 0.005)
+        P.settings.gasNet = '';
       changed = true;
       break;
     }

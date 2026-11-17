@@ -13,6 +13,7 @@ let TRV = { lichaam: 0.5, kranen: {} }; // data/thermostaatkranen.json: kv per v
 let FITTINGS = {}; // data/appendages.json: {vuilfilter: {naam, kv}, ...}
 let FANS = { doorlaat: 0.7, ijking: {}, modellen: {} }; // data/ventilatoren.json: pc-ventilatoren als booster
 let CLIMATE = { bron: '', uren: {} }; // data/klimaat.json: uren per jaar per buitentemperatuur (°C), voor het jaarverbruik
+let GRID = { jaar: null, gas: {} }; // data/netbeheer.json: vaste kosten gasaansluiting per netbeheerder
 
 async function loadData() {
   const get = f =>
@@ -20,7 +21,7 @@ async function loadData() {
       if (!r.ok) throw new Error(f + ' (' + r.status + ')');
       return r.json();
     });
-  const [hp, mat, pipes, rad, vv, trv, fit, fans, klimaat] = await Promise.all([
+  const [hp, mat, pipes, rad, vv, trv, fit, fans, klimaat, netbeheer] = await Promise.all([
     get('warmtepompen.json'),
     get('materialen.json'),
     get('leidingen.json'),
@@ -29,7 +30,8 @@ async function loadData() {
     get('thermostaatkranen.json'),
     get('appendages.json'),
     get('ventilatoren.json'),
-    get('klimaat.json')
+    get('klimaat.json'),
+    get('netbeheer.json')
   ]);
   HP_DEFAULT = hp;
   MAT_PRESETS = mat.materialen.map(m => [m.id, m.naam, m.soort, +m.waarde || 0, m.kleur]);
@@ -46,6 +48,7 @@ async function loadData() {
   FITTINGS = fit.appendages;
   FANS = fans;
   CLIMATE = klimaat;
+  GRID = { jaar: netbeheer.jaar, gas: netbeheer.gas || {} };
 }
 
 function showDataError(err) {

@@ -37,6 +37,7 @@ De tabellen waar de app mee rekent, staan als JSON in de map `data/`. Je kunt ze
 | [`appendages.json`](../data/appendages.json) | Appendages in de hoofdleiding (vuilfilter, afsluiter, driewegklep, …) met een typische kv-waarde. |
 | [`ventilatoren.json`](../data/ventilatoren.json) | Ventilatoren voor boosters (luchtdebiet en toerental) en de ijking van de ventilatorberekening. |
 | [`klimaat.json`](../data/klimaat.json) | Uren per jaar per buitentemperatuur (KNMI De Bilt, 2011–2025), voor het jaarverbruik. |
+| [`netbeheer.json`](../data/netbeheer.json) | Vaste kosten per jaar van de gasaansluiting per netbeheerder (inclusief btw), voor de kostenvergelijking met gas. Elk jaar bijwerken. |
 
 Verander de sleutels en id's van bestaande regels niet, want projecten verwijzen ernaar. Voeg je een regel toe, geef die dan een nieuwe, unieke id. Na een wijziging ververs je de pagina. Is een bestand geen geldige JSON meer, dan meldt de app dat bij het opstarten.
 

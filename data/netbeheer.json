@@ -1,0 +1,55 @@
+{
+  "versie": 1,
+  "jaar": 2026,
+  "toelichting": "Vaste kosten per jaar van de gasaansluiting per regionale netbeheerder, inclusief 21% btw, voor een G6-aansluiting (tot 6 m³ per uur, de gewone huisaansluiting) met een verbruik van 500 tot 4.000 m³ per jaar. 'perJaar' is het totaal van jaarlijkse aansluitvergoeding, vastrecht transport, meterhuur en capaciteitstarief. Deze kosten vervallen als de gasaansluiting wordt verwijderd; de app vult ze in bij Vaste kosten gas als je de netbeheerder kiest. De vaste leveringskosten van de energieleverancier zitten er niet in. Bron: tarieven 2026 van de netbeheerders (overzicht op easyswitch.nl); de meterhuur van € 33,73 is het ACM-maximum van € 27,88 exclusief btw. Werk de bedragen elk jaar bij; ze gaan op 1 januari in.",
+  "gas": {
+    "coteq": {
+      "naam": "Coteq",
+      "perJaar": 258.63,
+      "aansluiting": 58.67,
+      "vastrecht": 21.78,
+      "meter": 33.73,
+      "capaciteit": 144.45
+    },
+    "enexis": {
+      "naam": "Enexis",
+      "perJaar": 266.4,
+      "aansluiting": 60.74,
+      "vastrecht": 21.78,
+      "meter": 24.38,
+      "capaciteit": 159.5
+    },
+    "liander": {
+      "naam": "Liander",
+      "perJaar": 266.62,
+      "aansluiting": 58.78,
+      "vastrecht": 21.78,
+      "meter": 33.7,
+      "capaciteit": 152.37
+    },
+    "rendo": {
+      "naam": "Rendo",
+      "perJaar": 262.88,
+      "aansluiting": 61.23,
+      "vastrecht": 21.78,
+      "meter": 21.96,
+      "capaciteit": 157.91
+    },
+    "stedin": {
+      "naam": "Stedin",
+      "perJaar": 274.45,
+      "aansluiting": 57.5,
+      "vastrecht": 21.78,
+      "meter": 33.73,
+      "capaciteit": 161.45
+    },
+    "westland": {
+      "naam": "Westland Infra",
+      "perJaar": 230.84,
+      "aansluiting": 56.75,
+      "vastrecht": 21.78,
+      "meter": 33.73,
+      "capaciteit": 118.58
+    }
+  }
+}
