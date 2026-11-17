@@ -7,7 +7,8 @@ function aboutHtml() {
   const ext = 'target="_blank" rel="noopener"';
   return `<div class="about-in">
     <h2 id="about-h">Warmtepomp Tekentafel</h2>
-    <p>Teken je huis en bereken per ruimte het warmteverlies, de afgifte van radiatoren en vloerverwarming, en welke warmtepomp past. Gratis en zonder account: je projecten blijven in je eigen browser.</p>
+    <p>Teken je huis en bereken per ruimte het warmteverlies, de afgifte van radiatoren en vloerverwarming, en welke warmtepomp past. Je projecten blijven in je eigen browser.</p>
+    <p>Ik rekende het warmteverlies van mijn eigen huis eerst uit in Excel en AutoCAD, en miste een gratis tool die tekenen en rekenen samen doet. Daarom heb ik de Warmtepomp Tekentafel gebouwd met AI. De app is gratis, zonder account, en de broncode staat open op GitHub. <a href="https://warmtepomptekentafel.nl/handleiding/#waarom-deze-tool" target="_blank" rel="noopener">Waarom deze tool</a></p>
     <p class="note">De berekening is een vereenvoudigde versie van NEN-EN 12831 en ISSO 51. Goed om te vergelijken en je huis te leren kennen, maar geen vervanging van een berekening door een installateur.</p>
     <div class="about-links">
       <a class="linkrow" href="https://warmtepomptekentafel.nl/handleiding/" ${ext}><span>Handleiding</span><span>warmtepomptekentafel.nl</span></a>

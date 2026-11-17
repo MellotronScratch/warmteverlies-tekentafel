@@ -48,6 +48,12 @@ python3 -m http.server
 
 en open http://localhost:8000. Het voorbeeldproject laat meteen zien hoe alles werkt.
 
+## Waarom deze tool
+
+Het warmteverlies van mijn eigen huis rekende ik eerst uit in Excel, en de plattegronden tekende ik in AutoCAD. Dat werkt, maar alles staat dan op twee plekken: elke wand, elk raam en elke radiator. Verander je iets, dan moet je het overal aanpassen. Ik zocht een goede, gratis tool die het tekenen en het rekenen samen doet: van het warmteverlies per ruimte tot de radiatoren, de stooklijn en de keuze van de warmtepomp. Die kon ik niet vinden.
+
+Toen ik met mijn eigen berekening begon, kon een AI-taalmodel zo'n programma nog niet voor me schrijven. Nu wel. Daarom heb ik de Warmtepomp Tekentafel gebouwd met AI. De app is gratis, zonder account, en de broncode staat open op GitHub.
+
 ## Fouten, suggesties en bijdragen
 
 Zie je een fout in de berekening, werkt iets niet zoals je verwacht, of heb je een idee om de app beter te maken? Meld het als [Issue](https://github.com/MellotronScratch/warmteverlies-tekentafel/issues) op GitHub. Kijk eerst even of er al een melding over is; dan kun je daar reageren.
