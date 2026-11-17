@@ -3,3 +3,10 @@ Thumbs.db
 .vscode/
 *.tmp
 CLAUDE.md
+
+# instellingen met wachtwoorden: alleen op de server (zie api/config.example.php)
+api/config.php
+wpt-config.php
+# eigen projecten en bestanden
+KPC9*.json
+*.xlsx

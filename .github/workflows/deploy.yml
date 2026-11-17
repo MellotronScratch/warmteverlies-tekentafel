@@ -1,0 +1,40 @@
+# Zet de site na elke push naar main op de eigen hosting (FTPS).
+# Inloggegevens staan als secrets in GitHub (Settings → Secrets and variables → Actions), nooit in de repo:
+#   FTP_SERVER    bijv. ftp.warmtepomptekentafel.nl
+#   FTP_USERNAME
+#   FTP_PASSWORD
+#   FTP_DIR       map op de server, met / aan het eind, bijv. public_html/ (of ./ als je direct in de webroot uitkomt)
+# Zonder FTP_SERVER slaat de workflow het uitrollen over.
+# api/config.php staat niet in de repo en wordt dus niet overschreven of verwijderd: die zet je één keer zelf op de server.
+name: Uitrollen naar hosting
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.FTP_SERVER != ''
+      - uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        if: env.FTP_SERVER != ''
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: ${{ secrets.FTP_DIR }}
+          protocol: ftps
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            .prettierrc.json

@@ -1544,6 +1544,10 @@ function act(a, b) {
       track('deellink');
       makeShareLink();
       break;
+    case 'share-long':
+      track('deellink-lang');
+      makeShareLink(true);
+      break;
     case 'export-hljs':
       track('export-heatlossjs');
       exportHeatlossjs();

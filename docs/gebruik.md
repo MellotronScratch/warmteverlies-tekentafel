@@ -39,13 +39,14 @@ Projecten worden in je browser opgeslagen (localStorage). Exporteer regelmatig e
 
 ### Delen via een link
 
-Onder **Project → Delen via een link** maak je met **Link maken** een link waarin het hele project zit. Hij staat meteen op je klembord. Zo laat je je berekening zien op een forum, of stuur je hem naar een installateur of iemand die meekijkt.
+Onder **Project → Delen via een link** maak je met **Link maken** een korte link naar een kopie van het project. Hij staat meteen op je klembord. Zo laat je je berekening zien op een forum, of stuur je hem naar een installateur of iemand die meekijkt.
 
-- Het project zit gecomprimeerd in de link zelf, achter `#p=`. Dat deel van een link stuurt een browser nooit naar de server: er wordt nergens iets opgeslagen, ook niet bij GitHub of in de bezoekersstatistiek.
+- Je browser comprimeert en **versleutelt** het project voordat het naar de server van warmtepomptekentafel.nl gaat. De sleutel staat alleen in de link, achter het `#`, en dat deel stuurt een browser nooit mee. De server bewaart dus alleen onleesbare gegevens: zonder de link kan niemand het project lezen, ook de beheerder van de site niet.
+- Een link die meer dan een jaar niet is geopend, wordt verwijderd.
+- Wil je helemaal niets op een server, kies dan **Lange link zonder server**. Dan zit het hele project gecomprimeerd in de link zelf, achter `#p=`. Een gemiddeld huis geeft een link van een paar duizend tekens; knipt een forum of chat-app hem af, stuur dan het `.json`-bestand. Is de server voor korte links niet bereikbaar, dan maakt de app vanzelf zo'n lange link.
 - Wie de link opent, krijgt een **kopie** in de eigen browser. Wat die persoon verandert, komt niet bij jou terecht. Open je dezelfde link nog eens, dan opent de app de kopie die er al was.
-- Een onderlegger (afbeelding) gaat niet mee: die maakt de link te lang.
+- Een onderlegger (afbeelding) gaat niet mee.
 - Iedereen met de link ziet alles in het project, ook de naam. Haal daar je adres uit als je dat niet wilt delen.
-- Een gemiddeld huis geeft een link van een paar duizend tekens. Knipt een forum of chat-app hem af, stuur dan het `.json`-bestand.
 
 ---
 
