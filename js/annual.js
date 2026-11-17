@@ -53,6 +53,8 @@ function annualCalc(c, hp) {
     heat: 0,
     el: 0,
     backup: 0,
+    backupCold: 0, // the part in the hours colder than the design temperature θe: expected, not a sign of a too small heat pump
+    coldHours: 0,
     hpHeat: 0,
     hours: 0,
     cycHours: 0,
@@ -82,6 +84,10 @@ function annualCalc(c, hp) {
       }
       el = (byHp / cop + backup) * hours;
       R.backup += backup * hours;
+      if (t < S.te) {
+        R.backupCold += backup * hours;
+        R.coldHours += hours;
+      }
       R.hpHeat += byHp * hours;
     }
     R.heat += heat;
@@ -129,7 +135,13 @@ function annualHtml(c) {
   h += `<div class="tablewrap"><table class="calc"><tbody>`;
   if (hp) {
     h += `<tr><td>Stroom voor de warmtepomp</td><td>${kwh(R.el)}</td></tr>
-      ${R.backup > 0.5 ? `<tr class="miss"><td>Waarvan elektrische bijverwarming<small>de warmtepomp is te klein op de koudste dagen</small></td><td>${kwh(R.backup)}</td></tr>` : ''}
+      ${
+        R.backup - R.backupCold > 0.5
+          ? `<tr class="miss"><td>Waarvan elektrische bijverwarming<small>de warmtepomp is te klein op de koudste dagen</small></td><td>${kwh(R.backup)}</td></tr>`
+          : R.backup > 0.5
+            ? `<tr><td>Waarvan elektrische bijverwarming<small>alleen in de ${R.coldHours >= 0.5 ? `ongeveer ${fmt(R.coldHours, 0)} ` : 'enkele '}uur per jaar dat het kouder is dan ${fmtT(S.te)} (de ontwerptemperatuur)</small></td><td>${kwh(R.backup)}</td></tr>`
+            : ''
+      }
       <tr><td>Seizoensrendement (SCOP)<small>warmte gedeeld door stroom over het hele jaar</small></td><td>${fmt(R.scop, 1)}</td></tr>
       <tr><td>Gemiddelde aanvoertemperatuur<small>gewogen naar de geleverde warmte</small></td><td>${fmt(R.tsAvg, 0)} °C</td></tr>
       ${R.cycHours > 0 ? `<tr><td>Uren waarin hij pendelt<small>vraag onder het minimale vermogen</small></td><td>${fmt(R.cycHours, 0)} uur</td></tr>` : ''}
