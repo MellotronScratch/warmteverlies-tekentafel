@@ -947,9 +947,9 @@ pbody.addEventListener('keydown', e => {
   const handle = $('panel-resize'),
     main = document.querySelector('.main'),
     KEY = 'wvt.panelw',
-    DEF = 390;
+    DEF = 420;
   if (!handle || !main) return;
-  const clampW = w => Math.round(Math.max(320, Math.min(w, Math.min(1000, main.clientWidth - 64 - 20 - 320))));
+  const clampW = w => Math.round(Math.max(320, Math.min(w, Math.min(1000, main.clientWidth - 84 - 320))));
   const setW = (w, save) => {
     const v = clampW(w);
     main.style.setProperty('--panel-w', v + 'px');

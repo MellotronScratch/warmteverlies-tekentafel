@@ -1329,7 +1329,7 @@ function renderCanvas() {
         <line x1="${d0.x}" y1="${d0.y}" x2="${d1.x}" y2="${d1.y}" stroke-width="1.3"/><line x1="${d0.x - nx}" y1="${d0.y - ny}" x2="${d0.x + nx}" y2="${d0.y + ny}" stroke-width="1.3"/><line x1="${d1.x - nx}" y1="${d1.y - ny}" x2="${d1.x + nx}" y2="${d1.y + ny}" stroke-width="1.3"/></g>`;
       const txt = `${fmt(e.L)} m`,
         tw = txt.length * 6.6 + 22;
-      out += `<g pointer-events="none"><rect x="${m.x - tw / 2}" y="${m.y - 9}" width="${tw}" height="18" rx="9" fill="var(--surface)" stroke="var(--heat)" stroke-width="1"/><text x="${m.x}" y="${m.y + 3.8}" text-anchor="middle" class="pilltxt"><tspan fill="var(--muted)">${i + 1}</tspan>  ${txt}</text></g>`;
+      out += `<g pointer-events="none"><rect x="${m.x - tw / 2}" y="${m.y - 9}" width="${tw}" height="18" rx="2" fill="var(--surface)" stroke="var(--heat)" stroke-width="1"/><text x="${m.x}" y="${m.y + 3.8}" text-anchor="middle" class="pilltxt"><tspan fill="var(--muted)">${i + 1}</tspan>  ${txt}</text></g>`;
     });
     room.pts.forEach((p, i) => {
       const q = S(p);

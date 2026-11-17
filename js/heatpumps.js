@@ -190,7 +190,7 @@ function adviceHtml(c) {
     list.forEach(a => {
       const pct = c.total > 0 ? (a.dW / c.total) * 100 : 0;
       const on = !!P.advSel[a.con.id];
-      h += `<div class="card ${on ? 'cur' : ''}"><div class="kh" style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><b>${esc(a.rule.label)}</b><b style="font-family:var(--font-display);font-size:18px;color:var(--ok);white-space:nowrap">−${fmtW(a.dW)} W</b></div>
+      h += `<div class="card ${on ? 'cur' : ''}"><div class="kh" style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><b>${esc(a.rule.label)}</b><b style="font-size:18px;color:var(--ok);white-space:nowrap">−${fmtW(a.dW)} W</b></div>
         <span class="note">${esc(a.con.name)}: U ${nv(a.con.U, 2)} → ${nv(a.rule.to, 2)} W/m²K · ${fmt(a.A, 1)} m² in ${[...a.rooms].map(esc).join(', ')} · ${fmt(pct, 0)}% van het totaal</span>
         <label class="chk"><input type="checkbox" id="f-adv-${a.con.id}" data-f="advsel.${a.con.id}" ${on ? 'checked' : ''}> Meenemen in de berekening</label></div>`;
     });
