@@ -524,17 +524,16 @@ select:focus-visible,
 }
 .tabs {
   display: flex;
+  flex-wrap: wrap; /* a narrow panel gets two rows of tabs instead of hidden ones */
   flex: none;
   border-bottom: 1px solid var(--line);
   padding: 0 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 .tabs::-webkit-scrollbar {
   display: none;
 }
 .tab {
-  flex: 1 0 auto;
+  flex: 0 0 auto;
   font-size: 14px;
   border: none;
   background: none;

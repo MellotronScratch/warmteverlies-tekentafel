@@ -96,7 +96,7 @@ async function saveHpOwn(list) {
   }
 }
 function rerenderHp() {
-  if (tab === 'res' || tab === 'inst') renderPanel();
+  if (tab === 'res' || tab === 'inst' || tab === 'wp') renderPanel();
 }
 // design heat loss as a straight line: zero at the loss-weighted indoor temperature
 // improvement measures: per construction, the drop in heat loss when its U goes from the current value to the target
@@ -186,7 +186,7 @@ function adviceHtml(c) {
   if (!list.length)
     h += `<p class="note">Geen adviezen: alle constructies aan de buitenkant, de grond of een onverwarmde ruimte zijn al beter dan de uitgangspunten hieronder.</p>`;
   else {
-    h += `<p class="note">Constructies aan de buitenkant met een slechtere U-waarde dan de drempel. Vink een maatregel aan om hem mee te nemen; de warmtepompkeuze onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button> rekent dan met het warmteverlies na de maatregelen.</p>`;
+    h += `<p class="note">Constructies aan de buitenkant met een slechtere U-waarde dan de drempel. Vink een maatregel aan om hem mee te nemen; de warmtepompkeuze onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button> rekent dan met het warmteverlies na de maatregelen.</p>`;
     list.forEach(a => {
       const pct = c.total > 0 ? (a.dW / c.total) * 100 : 0;
       const on = !!P.advSel[a.con.id];
@@ -215,11 +215,12 @@ function hpSectionHtml(c) {
     L = lossLine(c, save),
     L0 = save > 0 ? lossLine(c) : null;
   if (c.total <= 0) return '';
-  if (!hpList) return `<div class="sec"><h3>Warmtepomp</h3><p class="note">Lijst met warmtepompen laden…</p></div>`;
+  if (!hpList)
+    return `<div class="sec"><h3>Warmtepomp kiezen</h3><p class="note">Lijst met warmtepompen laden…</p></div>`;
   const rows = hpList.map(h => ({ h, j: hpJudge(h, L) })).sort((a, b) => a.j.score - b.j.score);
   if (!hpSel || !hpList.some(h => h.id === hpSel)) hpSel = rows.length ? rows[0].h.id : null;
   const cur = rows.find(r => r.h.id === hpSel);
-  let h = `<div class="sec"><h3>Warmtepomp</h3>
+  let h = `<div class="sec"><h3>Warmtepomp kiezen</h3>
     <p class="note">${save > 0 ? `<b>Beoordeeld op het warmteverlies na de aangevinkte maatregelen.</b> ` : ''}Bij ${nv(L.te, 0)} °C is het warmteverlies ${fmt(L.at(L.te), 2)} kW; bij +10 °C nog ${fmt(L.at(10), 2)} kW. Een geschikte warmtepomp levert bij ${nv(L.te, 0)} °C minstens dat vermogen, en kan bij +10 °C terugregelen tot onder het warmteverlies, zodat hij niet steeds aan- en afslaat (pendelen). Bij <i>pendelt boven</i> staat vanaf welke buitentemperatuur het minimale vermogen groter is dan het warmteverlies. Hoe hoger die temperatuur, hoe minder uren hij pendelt. De lijst is gesorteerd op beide: hoeveel te groot bij de ontwerptemperatuur, en hoeveel het minimum bij +10 °C boven het verlies ligt.</p>`;
   if (hpErr) h += `<div class="warnbox">${esc(hpErr)}</div>`;
   if (cur) h += hpChartHtml(cur.h, cur.j, L, L0);

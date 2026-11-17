@@ -35,18 +35,23 @@ function livingHtml() {
   return `<div class="sec"><div class="kcard"><div class="kh"><span>Woonoppervlak</span><b>${fmt(tot, 1)} m²</b></div>${perF.length > 1 ? `<div class="det">${perF.map(x => `${esc(x.f.name)} ${fmt(x.A, 1)} m²`).join(' · ')}</div>` : ''}</div>
     <p class="note">De vloeroppervlakte van de ruimtes waar je woont, ongeveer zoals de gebruiksoppervlakte uit NEN 2580. Onder een schuin dak telt alleen het deel waar het minstens 1,5 m hoog is${low.length ? ` (${list(low)})` : ''}. ${out.length ? `Niet meegeteld: ${list(out)}.` : ''} Per ruimte zet je dit aan of uit met <b>Telt mee voor woonoppervlak</b>. Gemeten wordt binnen de getekende wanden; dakkapellen tellen niet extra mee.</p></div>`;
 }
-// Installatie: afgifte, stooklijn, warmtepomp, systeeminhoud, leidingnet, thermostaatkranen en appendages
+// Installatie: afgifte, leidingnet, thermostaatkranen en appendages
 function viewInst() {
-  const c = calcAll(),
-    save = adviceSaving(c);
-  return `<div class="sec"><h2>Installatie</h2><p class="note">Hoe de warmte in de ruimtes komt: radiatoren en vloerverwarming, de aanvoertemperatuur, de warmtepomp en het leidingnet. Het warmteverlies waar dit op rekent (${fmt(c.total / 1000, 2)} kW${save > 0 ? `, na de aangevinkte verbeteradviezen ${fmt((c.total - save) / 1000, 2)} kW` : ''}) staat onder <button class="crumb" data-act="gotab" data-tab="res">Resultaten</button>.</p></div>
+  const c = calcAll();
+  return `<div class="sec"><h2>Installatie</h2><p class="note">Hoe de warmte in de ruimtes komt: radiatoren, convectoren en vloerverwarming, de aanvoertemperatuur en het leidingnet. Stooklijn, warmtepompkeuze, jaarverbruik en systeeminhoud staan onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>.</p></div>
   ${emitOverviewHtml(c)}
   ${shortageSummaryHtml(c)}
+  ${networkHtml()}`;
+}
+// Warmtepomp: stooklijn, keuze met grafiek, jaarverbruik en kosten, systeeminhoud
+function viewWp() {
+  const c = calcAll(),
+    save = adviceSaving(c);
+  return `<div class="sec"><h2>Warmtepomp</h2><p class="note">Welke warmtepomp past, op welke aanvoertemperatuur hij moet draaien en wat hij per jaar verbruikt. Hij rekent met het warmteverlies onder <button class="crumb" data-act="gotab" data-tab="res">Resultaten</button> (${fmt(c.total / 1000, 2)} kW${save > 0 ? `, na de aangevinkte verbeteradviezen ${fmt((c.total - save) / 1000, 2)} kW` : ''}) en met de afgifte onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button>.</p></div>
   ${curveHtml()}
   ${hpSectionHtml(c)}
   ${annualHtml(c)}
-  ${volumeHtml()}
-  ${networkHtml()}`;
+  ${volumeHtml()}`;
 }
 function viewRes() {
   const c = calcAll();
@@ -67,7 +72,7 @@ function viewRes() {
     })
     .join('')}
   ${adviceHtml(c)}
-  <div class="sec"><p class="note">Afgifte, stooklijn, warmtepomp, systeeminhoud en het leidingnet staan onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button>.</p></div>
+  <div class="sec"><p class="note">Afgifte en het leidingnet staan onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button>; stooklijn, warmtepompkeuze, jaarverbruik en systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>.</p></div>
   <div class="sec"><h3>Tabel</h3></div>
   <div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>θi</th><th>A m²</th><th>Transm.</th><th>Vent.+inf.</th><th>Totaal W</th><th>W/m²</th></tr></thead><tbody>`;
   P.floors.forEach(f => {
@@ -268,6 +273,7 @@ function renderPanel() {
   } else if (tab === 'con') h = viewCon(conFocus);
   else if (tab === 'vent') h = viewVent();
   else if (tab === 'inst') h = viewInst();
+  else if (tab === 'wp') h = viewWp();
   else if (tab === 'res') h = viewRes();
   else h = viewSet();
   pbody.innerHTML = h;

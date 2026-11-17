@@ -15,11 +15,12 @@ De kolom rechts met de eigenschappen maak je breder of smaller door de rand aan 
 
 Met **Over** onderaan de gereedschapsbalk links open je een venster met links naar deze handleiding en naar de pagina waar je een fout meldt of een idee deelt.
 
-Het paneel heeft zes tabbladen:
+Het paneel heeft zeven tabbladen. Is het paneel smal, dan staan ze op twee regels.
 - **Selectie**: wat je in de tekening hebt aangeklikt.
 - **Constructies**: wanden, ramen, vloeren en daken met hun U-waarde.
 - **Ventilatie**: ventilatie en infiltratie.
-- **Installatie**: afgifte, stooklijn, warmtepomp, systeeminhoud, leidingnet, thermostaatkranen en appendages.
+- **Installatie**: afgifte, leidingnet, thermostaatkranen en appendages.
+- **Warmtepomp**: stooklijn, warmtepompkeuze met grafiek, jaarverbruik en kosten, en systeeminhoud.
 - **Resultaten**: het warmteverlies per ruimte, het woonoppervlak en de verbeteradviezen.
 - **Project**: verdiepingen, rekenwaarden en je projecten.
 
