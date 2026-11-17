@@ -82,7 +82,15 @@ Zonder gekozen thermostaatkraan is de weerstand van een element indicatief: 3 kP
 Onder **Installatie → Thermostaatkranen** kies je welke kranen er in het huis zitten. Heeft één radiator een andere kraan, kies die dan in het paneel van die radiator. De app rekent dan de voorinstelling per radiator uit:
 
 - **Kranen met standen**, zoals Heimeier V-exact II (1–8) of Danfoss RA-N (1–7 en N): de kraan van het indexcircuit staat helemaal open. Voor elke andere radiator zoekt de app de stand waarmee hij zijn ontwerpdebiet krijgt, met de kv-waarden per stand uit de datasheet. Bij de radiator staat hoeveel procent van het ontwerpdebiet die stand ongeveer geeft. Laat zelfs stand 1 te veel water door, dan zegt de app dat.
-- **Heimeier Eclipse**: die begrenst zelf het debiet. Je stelt per radiator het debiet in l/h in. De kraan heeft wel minstens 10 kPa drukverschil nodig (15 kPa boven 100 l/h), en dat telt mee in het indexcircuit.
+- **Debietbegrenzers**: die begrenzen zelf het debiet. Je stelt per radiator het debiet in l/h in. Ze hebben wel een minimaal drukverschil nodig, en dat telt mee in het indexcircuit:
+
+  | Kraan | Instelbereik | Minimaal drukverschil |
+  | --- | --- | --- |
+  | Heimeier Eclipse | 10–150 l/h | 10 kPa (15 kPa boven 100 l/h) |
+  | Heimeier Eclipse 300 | 30–300 l/h | 20 kPa |
+  | Jaga Gampper Vario DP (opvolger van de Eclipse bij Jaga) | 20–340 l/h | 15 kPa |
+
+  Vraagt een radiator meer dan de kraan doorlaat, dan zegt de app dat. Bij een convector die meer dan 150 l/h nodig heeft, is een Eclipse 300 of Gampper Vario DP dus de oplossing.
 
 De standen staan in de tabel onder **Leidingnet en indexcircuit**, in het schema en in het rapport. Andere kranen voeg je toe in `data/thermostaatkranen.json`.
 

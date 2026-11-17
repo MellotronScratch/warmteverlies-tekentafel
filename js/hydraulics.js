@@ -440,7 +440,7 @@ function trvHtml(N) {
         ? `Zonder bekende kraan rekent de app met ${nv(v ? v.dp : 3, 0)} kPa over radiator en kraan, en staat bij <i>Inregelen</i> hoeveel extra weerstand een radiator nodig heeft. Kies je kraan, dan rekent de app de voorinstelling uit.`
         : v.soort === 'kv'
           ? `De app rekent per radiator uit welke stand de kraan nodig heeft om het ontwerpdebiet te krijgen, als de kraan van het indexcircuit helemaal open staat. De kv-waarden per stand komen uit de datasheet (${esc(v.bron || '')}). Zet daarna de thermostaatkop terug; de voorinstelling blijft staan.`
-          : `Deze kraan begrenst zelf het debiet: je stelt per radiator het debiet in l/h in, en de kraan houdt dat vast, ook als andere kranen dichtgaan. Hij heeft minstens ${nv(v.dpMin, 0)} kPa nodig (${nv(v.dpMinHoog, 0)} kPa boven ${nv(v.debietHoog, 0)} l/h); dat telt mee in het indexcircuit.`
+          : `Deze kraan begrenst zelf het debiet: je stelt per radiator het debiet in l/h in, en de kraan houdt dat vast, ook als andere kranen dichtgaan. Instelbereik ${nv(v.min, 0)} tot ${nv(v.max, 0)} l/h. Hij heeft minstens ${nv(v.dpMin, 0)} kPa nodig${v.dpMinHoog > v.dpMin && v.debietHoog ? ` (${nv(v.dpMinHoog, 0)} kPa boven ${nv(v.debietHoog, 0)} l/h)` : ''}; dat telt mee in het indexcircuit.`
     }${own ? ` ${own} element(en) hebben een eigen kraan, gekozen bij het element zelf.` : ''}</p></div>`;
 }
 // appendages in the main pipe at the heat pump

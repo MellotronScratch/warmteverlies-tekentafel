@@ -33,7 +33,7 @@ De tabellen waar de app mee rekent, staan als JSON in de map `data/`. Je kunt ze
 | [`leidingen.json`](../data/leidingen.json) | Leidingtypes (koper, alupex, staal) met per buitendiameter de binnendiameter. |
 | [`radiatoren.json`](../data/radiatoren.json) | Paneeltypes (T10 t/m T33) met vermogen en waterinhoud per meter bij 600 mm hoogte. |
 | [`vloerverwarming.json`](../data/vloerverwarming.json) | Vloerafwerkingen (warmteweerstand) en de afgiftecoëfficiënt per hart-op-hartafstand. |
-| [`thermostaatkranen.json`](../data/thermostaatkranen.json) | Thermostaatkranen met de kv-waarde per voorinstelling, of het instelbereik van een debietbegrenzer (Heimeier Eclipse). |
+| [`thermostaatkranen.json`](../data/thermostaatkranen.json) | Thermostaatkranen met de kv-waarde per voorinstelling, of het instelbereik van een debietbegrenzer (Heimeier Eclipse en Eclipse 300, Jaga Gampper Vario DP). |
 | [`appendages.json`](../data/appendages.json) | Appendages in de hoofdleiding (vuilfilter, afsluiter, driewegklep, …) met een typische kv-waarde. |
 | [`ventilatoren.json`](../data/ventilatoren.json) | Ventilatoren voor boosters (luchtdebiet en toerental) en de ijking van de ventilatorberekening. |
 | [`klimaat.json`](../data/klimaat.json) | Uren per jaar per buitentemperatuur (KNMI De Bilt, 2011–2025), voor het jaarverbruik. |

@@ -395,6 +395,7 @@ function normalizeProject(p) {
   const legacy = p.settings && !p.settings.ventSys; // projects from before ventilation per room: keep their results
   p.settings = { ...DEFAULT_SETTINGS, ...(p.settings || {}) };
   if (typeof p.settings.gasNet !== 'string') p.settings.gasNet = '';
+  if (p.settings.trv === 'heimeier-eclipse') p.settings.trv = 'heimeier-eclipse-150'; // key renamed (11-2026)
   const adv = p.settings.advice || {};
   p.settings.advice = {};
   Object.keys(ADVICE_DEFAULT).forEach(k => {
@@ -596,7 +597,7 @@ function normalizeProject(p) {
           rh: +e.rh > 0 ? +e.rh : 600,
           rl: +e.rl > 0 ? +e.rl : 0,
           loops: [1, 2, 3, 4].includes(+e.loops) ? +e.loops : 1,
-          trv: typeof e.trv === 'string' ? e.trv : '' // '' = the valve chosen for the whole house
+          trv: typeof e.trv === 'string' ? (e.trv === 'heimeier-eclipse' ? 'heimeier-eclipse-150' : e.trv) : '' // '' = the valve chosen for the whole house
         };
       });
     r.emitters.forEach(syncRad);

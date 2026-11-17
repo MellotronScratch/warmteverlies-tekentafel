@@ -1,22 +1,44 @@
 {
-  "toelichting": "Thermostaatkranen voor de voorinstelling per radiator of convector (Resultaten › Leidingnet). soort 'kv': per stand de kv-waarde (m³/h bij 1 bar drukverschil) bij een P-band van 2 K, uit de datasheet van de fabrikant; de app kiest de stand waarmee de radiator zijn ontwerpdebiet krijgt. soort 'debiet': een kraan die zelf het debiet begrenst (bijvoorbeeld Heimeier Eclipse); je stelt het debiet in l/h in, binnen min–max, en de kraan heeft minstens dpMin kPa drukverschil nodig (dpMinHoog boven debietHoog l/h). soort 'vast': geen voorinstelling bekend, de app rekent met dp kPa over radiator en kraan samen. lichaam: kPa over radiator en retourkoppeling bij een kraan met voorinstelling. Verander de sleutels niet: projecten verwijzen ernaar.",
+  "toelichting": "Thermostaatkranen voor de voorinstelling per radiator of convector (Resultaten › Leidingnet). soort 'kv': per stand de kv-waarde (m³/h bij 1 bar drukverschil) bij een P-band van 2 K, uit de datasheet van de fabrikant; de app kiest de stand waarmee de radiator zijn ontwerpdebiet krijgt. soort 'debiet': een kraan die zelf het debiet begrenst (bijvoorbeeld Heimeier Eclipse); je stelt het debiet in l/h in, binnen min–max, en de kraan heeft minstens dpMin kPa drukverschil nodig (optioneel dpMinHoog boven debietHoog l/h) en hoogstens dpMax kPa om stil te blijven. soort 'vast': geen voorinstelling bekend, de app rekent met dp kPa over radiator en kraan samen. lichaam: kPa over radiator en retourkoppeling bij een kraan met voorinstelling. Verander de sleutels niet: projecten verwijzen ernaar.",
   "lichaam": 0.5,
   "kranen": {
-    "onbekend": { "naam": "Onbekend / zonder voorinstelling", "soort": "vast", "dp": 3 },
+    "onbekend": {
+      "naam": "Onbekend / zonder voorinstelling",
+      "soort": "vast",
+      "dp": 3
+    },
     "heimeier-vexact2": {
       "naam": "Heimeier V-exact II",
       "soort": "kv",
-      "standen": [["1", 0.049], ["2", 0.09], ["3", 0.15], ["4", 0.265], ["5", 0.33], ["6", 0.47], ["7", 0.59], ["8", 0.67]],
+      "standen": [
+        ["1", 0.049],
+        ["2", 0.09],
+        ["3", 0.15],
+        ["4", 0.265],
+        ["5", 0.33],
+        ["6", 0.47],
+        ["7", 0.59],
+        ["8", 0.67]
+      ],
       "bron": "IMI Heimeier, technische gegevens V-exact II (NL), kv bij xp 2,0 K"
     },
     "danfoss-ran15": {
       "naam": "Danfoss RA-N 15",
       "soort": "kv",
-      "standen": [["1", 0.04], ["2", 0.09], ["3", 0.16], ["4", 0.25], ["5", 0.36], ["6", 0.43], ["7", 0.52], ["N", 0.73]],
+      "standen": [
+        ["1", 0.04],
+        ["2", 0.09],
+        ["3", 0.16],
+        ["4", 0.25],
+        ["5", 0.36],
+        ["6", 0.43],
+        ["7", 0.52],
+        ["N", 0.73]
+      ],
       "bron": "Danfoss datasheet VDSXL202 (RA-N 15), kv bij xp 2 K"
     },
-    "heimeier-eclipse": {
-      "naam": "Heimeier Eclipse (debietbegrenzer)",
+    "heimeier-eclipse-150": {
+      "naam": "Heimeier Eclipse (debietbegrenzer, 10–150 l/h)",
       "soort": "debiet",
       "min": 10,
       "max": 150,
@@ -25,6 +47,24 @@
       "debietHoog": 100,
       "dpMax": 60,
       "bron": "IMI Heimeier, productpagina en datasheet Eclipse"
+    },
+    "heimeier-eclipse-300": {
+      "naam": "Heimeier Eclipse 300 (debietbegrenzer, 30–300 l/h)",
+      "soort": "debiet",
+      "min": 30,
+      "max": 300,
+      "dpMin": 20,
+      "dpMax": 60,
+      "bron": "IMI Heimeier, technische gegevens Eclipse 300: 30–300 l/h, minimaal 20 kPa, maximaal 60 kPa"
+    },
+    "gampper-vario-dp": {
+      "naam": "Jaga Gampper Vario DP (debietbegrenzer, 20–340 l/h)",
+      "soort": "debiet",
+      "min": 20,
+      "max": 340,
+      "dpMin": 15,
+      "dpMax": 70,
+      "bron": "Gampper, Ventilunterteile Vario-DP (10-2022): regelbereik 15–70 kPa, instelbereik 20–340 l/h; Jaga aansluitsets en ventielen NL.2026"
     }
   }
 }
