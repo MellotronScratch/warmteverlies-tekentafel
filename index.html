@@ -2,6 +2,13 @@
 <html lang="nl">
   <head>
     <meta charset="utf-8" />
+    <script>
+      // chosen theme before the page is drawn (js/theme.js), so it does not flash in the wrong colours
+      try {
+        var t = localStorage.getItem('wvt.theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    </script>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <title>Warmtepomp Tekentafel</title>
     <meta
@@ -88,6 +95,7 @@
         <span class="total" id="total"></span>
         <button class="btn" id="btn-undo" title="Ongedaan maken (Ctrl+Z)">↶ Ongedaan</button>
         <button class="btn" id="btn-redo" title="Opnieuw (Ctrl+Y)">↷</button>
+        <button class="btn icon" id="btn-theme" aria-label="Weergave wisselen"></button>
       </header>
       <div class="main">
         <nav class="tools" id="tools" aria-label="Gereedschap">
@@ -239,6 +247,7 @@
     <script src="js/storage.js"></script>
     <script src="js/share.js"></script>
     <script src="js/about.js"></script>
+    <script src="js/theme.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

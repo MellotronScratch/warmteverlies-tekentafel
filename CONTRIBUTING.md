@@ -24,7 +24,7 @@ Lokaal bewaart de app projecten in de opslag van je browser, net als online. Een
   - `js/panel.js`, `js/views.js`: het paneel rechts met de tabbladen.
   - `js/emitters.js`, `js/sizing.js`, `js/hydraulics.js`, `js/schema.js`: afgifte, radiatoradvies en stooklijn, leidingnet en schema.
   - `js/heatpumps.js`, `js/annual.js`: warmtepompkeuze, verbeteradviezen, warm tapwater en jaarverbruik.
-  - `js/report.js`, `js/io.js`, `js/storage.js`, `js/share.js`, `js/about.js`, `js/main.js`: rapport, import en export, opslaan, delen, het venster _Over_ en het opstarten.
+  - `js/report.js`, `js/io.js`, `js/storage.js`, `js/share.js`, `js/about.js`, `js/theme.js`, `js/main.js`: rapport, import en export, opslaan, delen, het venster _Over_, licht en donker, en het opstarten.
 - `data/*.json`: tabellen die je zonder programmeren kunt aanpassen. Elk bestand heeft een `toelichting`; het overzicht staat in de [rekenmethode](docs/rekenmethode.md).
 - `docs/*.md` en `README.md`: de handleiding. Bij het uitrollen zet `tools/handleiding.mjs` ze om naar [warmtepomptekentafel.nl/handleiding](https://warmtepomptekentafel.nl/handleiding/), met een `sitemap.xml`.
 - `api/`: het PHP-script voor korte deellinks, met `schema.sql` voor de database. Wachtwoorden staan alleen op de server (zie `api/config.example.php`), nooit in de repo.

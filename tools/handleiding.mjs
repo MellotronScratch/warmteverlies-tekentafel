@@ -130,6 +130,7 @@ const page = p => {
 <html lang="nl">
 <head>
 <meta charset="utf-8">
+<script>try{var t=localStorage.getItem("wvt.theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(full)}</title>
 <meta name="description" content="${esc(p.desc)}">
@@ -148,7 +149,7 @@ const page = p => {
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 </head>
 <body>
-<header class="top"><a class="brand" href="/">Warmtepomp Tekentafel<small>Handleiding</small></a><a class="btn" href="/">Open de app</a></header>
+<header class="top"><a class="brand" href="/">Warmtepomp Tekentafel<small>Handleiding</small></a><span class="tr"><button class="tbtn" id="theme" type="button"></button><a class="btn" href="/">Open de app</a></span></header>
 <div class="wrap">
 <nav class="toc" aria-label="Inhoud van de handleiding"><ol>${nav(p.slug)}</ol></nav>
 <main class="doc">
@@ -156,6 +157,26 @@ ${p.html}
 </main>
 </div>
 <footer class="foot"><a href="/">Warmtepomp Tekentafel</a> · <a href="${REPO}">Broncode op GitHub</a> · <a href="${REPO}/issues">Fout melden of idee delen</a> · <a href="${REPO}/blob/main/${p.file}">Deze pagina op GitHub</a></footer>
+<script>
+// weergave: automatisch, licht of donker; dezelfde keuze als in de app (wvt.theme)
+(function () {
+  var b = document.getElementById('theme'), order = ['auto', 'light', 'dark'],
+    label = { auto: 'automatisch (volgt je systeem)', light: 'licht', dark: 'donker' },
+    icon = {
+      auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>',
+      light: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>',
+      dark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>'
+    };
+  function now() { try { var t = localStorage.getItem('wvt.theme'); return t === 'light' || t === 'dark' ? t : 'auto'; } catch (e) { return 'auto'; } }
+  function set(t) {
+    if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+    try { if (t === 'auto') localStorage.removeItem('wvt.theme'); else localStorage.setItem('wvt.theme', t); } catch (e) {}
+    b.innerHTML = icon[t]; b.title = 'Weergave: ' + label[t] + '. Klik om te wisselen.'; b.setAttribute('aria-label', b.title);
+  }
+  b.onclick = function () { set(order[(order.indexOf(now()) + 1) % 3]); };
+  set(now());
+})();
+</script>
 </body>
 </html>
 `;

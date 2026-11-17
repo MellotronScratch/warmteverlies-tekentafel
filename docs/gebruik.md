@@ -6,6 +6,8 @@ Open de app op [warmtepomptekentafel.nl](https://warmtepomptekentafel.nl/). Inst
 
 De kolom rechts met de eigenschappen maak je breder of smaller door de rand aan de linkerkant te verslepen. Dubbelklik op die rand zet hem terug op de standaardbreedte. Je browser onthoudt de breedte.
 
+Met de knop rechtsboven, naast *Ongedaan*, wissel je de weergave tussen **automatisch** (volgt de instelling van je computer of telefoon), **licht** en **donker**. Je browser onthoudt de keuze, ook voor de handleiding.
+
 Met **Over** onderaan de gereedschapsbalk links open je een venster met links naar deze handleiding en naar de pagina waar je een fout meldt of een idee deelt.
 
 Het paneel heeft zeven tabbladen. Is het paneel smal, dan staan ze op twee regels.
