@@ -241,7 +241,12 @@ select.proj {
   background: var(--accent-soft-2);
 }
 .btn.icon {
-  padding: 6px 8px;
+  padding: 6px 10px;
+  gap: 5px;
+}
+.btn.icon span {
+  min-width: 3.3em; /* Auto, Licht and Donker: the button keeps its width */
+  text-align: left;
 }
 .btn.icon svg {
   width: 18px;

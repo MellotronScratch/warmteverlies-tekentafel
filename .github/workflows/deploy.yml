@@ -37,6 +37,10 @@ jobs:
         run: |
           npm install --no-save --no-package-lock --silent marked@15.0.12
           node tools/handleiding.mjs
+          # version behind scripts and stylesheet, so a browser with an old copy fetches the new one
+          V=${GITHUB_SHA::8}
+          sed -i -E "s#(src=\"js/[a-z0-9]+\.js|href=\"css/app\.css)\"#\1?v=$V\"#g" index.html
+          grep -c "?v=$V" index.html
       - name: Installeer lftp
         if: env.FTP_SERVER != ''
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp

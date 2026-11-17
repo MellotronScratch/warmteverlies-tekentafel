@@ -54,6 +54,7 @@ a {
 }
 .top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -93,12 +94,21 @@ a {
 }
 .tbtn {
   display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
   border: 1px solid var(--accent);
   background: none;
   color: var(--accent);
   border-radius: var(--r);
   padding: 6px 8px;
   cursor: pointer;
+}
+.tbtn span {
+  min-width: 3.3em;
+  text-align: left;
 }
 .tbtn svg {
   width: 18px;

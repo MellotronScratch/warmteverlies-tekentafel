@@ -42,7 +42,7 @@ Is de afgifte in een ruimte te klein bij de ingestelde aanvoer- en retourtempera
 - **vervangen**: dezelfde tabel voor één radiator die de hele ruimte verwarmt;
 - **boosters**: of ventilatoren onder de bestaande radiator het tekort zouden dekken.
 
-Onder Installatie staat welke ruimtes een tekort hebben. De lengtes komen uit de vuistregel in `data/radiatoren.json` (±10 %). Kies uiteindelijk uit de tabel van de fabrikant.
+Onder Installatie staat welke ruimtes een tekort hebben. De lengtes komen uit een vuistregel per paneeltype (±10 %). Kies uiteindelijk uit de tabel van de fabrikant.
 
 ## Vloerverwarming
 

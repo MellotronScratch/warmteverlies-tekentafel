@@ -3,6 +3,7 @@
 'use strict';
 const THEMES = ['auto', 'light', 'dark'];
 const THEME_LABEL = { auto: 'automatisch (volgt je systeem)', light: 'licht', dark: 'donker' };
+const THEME_SHORT = { auto: 'Auto', light: 'Licht', dark: 'Donker' };
 const THEME_ICON = {
   auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>',
   light:
@@ -26,7 +27,7 @@ function applyTheme(t) {
   } catch (_) {}
   const b = $('btn-theme');
   if (b) {
-    b.innerHTML = THEME_ICON[t];
+    b.innerHTML = THEME_ICON[t] + `<span>${THEME_SHORT[t]}</span>`;
     b.title = `Weergave: ${THEME_LABEL[t]}. Klik om te wisselen.`;
     b.setAttribute('aria-label', b.title);
   }

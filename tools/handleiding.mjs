@@ -5,11 +5,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { Marked } from 'marked';
+import { createHash } from 'node:crypto';
 
 const SITE = 'https://warmtepomptekentafel.nl';
 const REPO = 'https://github.com/MellotronScratch/warmteverlies-tekentafel';
 const OUT = 'handleiding';
 const ROOT = process.cwd();
+// version of the stylesheet, so a browser with an old copy fetches the new one
+const CSS_V = createHash('sha1').update(fs.readFileSync('tools/handleiding.css')).digest('hex').slice(0, 8);
 
 // pages in the order of the table of contents in README.md
 const readme = fs.readFileSync('README.md', 'utf8');
@@ -145,7 +148,7 @@ const page = p => {
 <link rel="icon" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
-<link rel="stylesheet" href="/${OUT}/handleiding.css">
+<link rel="stylesheet" href="/${OUT}/handleiding.css?v=${CSS_V}">
 <script type="application/ld+json">${JSON.stringify(ld)}</script>
 </head>
 <body>
@@ -162,6 +165,7 @@ ${p.html}
 (function () {
   var b = document.getElementById('theme'), order = ['auto', 'light', 'dark'],
     label = { auto: 'automatisch (volgt je systeem)', light: 'licht', dark: 'donker' },
+    short = { auto: 'Auto', light: 'Licht', dark: 'Donker' },
     icon = {
       auto: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>',
       light: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>',
@@ -171,7 +175,7 @@ ${p.html}
   function set(t) {
     if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
     try { if (t === 'auto') localStorage.removeItem('wvt.theme'); else localStorage.setItem('wvt.theme', t); } catch (e) {}
-    b.innerHTML = icon[t]; b.title = 'Weergave: ' + label[t] + '. Klik om te wisselen.'; b.setAttribute('aria-label', b.title);
+    b.innerHTML = icon[t] + '<span>' + short[t] + '</span>'; b.title = 'Weergave: ' + label[t] + '. Klik om te wisselen.'; b.setAttribute('aria-label', b.title);
   }
   b.onclick = function () { set(order[(order.indexOf(now()) + 1) % 3]); };
   set(now());

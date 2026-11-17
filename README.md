@@ -33,7 +33,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 6. **[Ventilatie en infiltratie](docs/ventilatie.md)**: systeem A, C of D, luchtstromen tussen ruimtes en qv10.
 7. **[Radiatoren, convectoren en vloerverwarming](docs/afgifte.md)**: vermogen en omrekening, ventilatoren (boosters), radiatoradvies en vloerverwarming.
 8. **[Stooklijn, leidingen en warmtepomp](docs/installatie.md)**: stooklijn, debiet, systeeminhoud, leidingnet en indexcircuit, thermostaatkranen, appendages en warmtepompkeuze.
-9. **[Rekenmethode, woonoppervlak en gegevens](docs/rekenmethode.md)**: hoe er gerekend wordt, het woonoppervlak en de tabellen in `data/`.
+9. **[Rekenmethode, woonoppervlak en gegevens](docs/rekenmethode.md)**: hoe er gerekend wordt, het woonoppervlak en de gegevens waarmee de app rekent.
 
 De handleiding staat ook als website op [warmtepomptekentafel.nl/handleiding](https://warmtepomptekentafel.nl/handleiding/). Elke pagina heeft bovenaan en onderaan links naar de vorige en volgende pagina.
 

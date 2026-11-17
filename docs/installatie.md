@@ -23,7 +23,7 @@ Onder **Afgiftesysteem** (bij *Installatie* of bij een radiator) vul je de aanvo
 - **Retourtemperatuur ingevuld:** het debiet volgt uit het vermogen: debiet = vermogen / (1,163 × ΔT). Bij een klein huis en ΔT 5 K komt daar vaak een laag debiet uit.
 - **Debiet ingevuld** (bijvoorbeeld 700 of 1000 l/h): dan volgt de ΔT uit het vermogen, en daaruit de retourtemperatuur. Een hoger debiet geeft een kleinere ΔT, een hogere gemiddelde watertemperatuur en dus meer afgifte van de radiatoren en convectoren. De stooklijn kan daardoor iets omlaag. Tegelijk stroomt er meer water door de leidingen, dus het drukverlies van het indexcircuit en de stroomsnelheid nemen toe.
 
-Staat bij de gekozen warmtepomp in `data/warmtepompen.json` een `minDebiet`, dan waarschuwt de app als het debiet daaronder ligt. Onder het minimale debiet gaat een warmtepomp pendelen of in storing. Kan het afgiftesysteem het minimale debiet niet aan, dan is een buffervat tussen aanvoer en retour nodig.
+Staat bij de gekozen warmtepomp in de lijst een minimaal debiet, dan waarschuwt de app als het debiet daaronder ligt. Onder het minimale debiet gaat een warmtepomp pendelen of in storing. Kan het afgiftesysteem het minimale debiet niet aan, dan is een buffervat tussen aanvoer en retour nodig.
 
 <img src="img/afgifte.png" width="360" alt="Afgiftesysteem met het debiet van de warmtepomp en de afgifte per ruimte">
 
@@ -73,7 +73,7 @@ Met **Schema van het leidingnet** (onder Installatie of bij de warmtepomp) zie j
 
 <img src="img/schema.png" width="800" alt="Het schema van het leidingnet met het indexcircuit in oranje">
 
-In een gesloten cv-systeem hoeft de pomp het water niet omhoog te pompen. Hij moet alleen de weerstand overwinnen, en dat is het drukverlies van het indexcircuit. Zet je bij een warmtepomp in `data/warmtepompen.json` de `restopvoerhoogte` (kPa), dan vergelijkt de app die ermee.
+In een gesloten cv-systeem hoeft de pomp het water niet omhoog te pompen. Hij moet alleen de weerstand overwinnen, en dat is het drukverlies van het indexcircuit. Staat bij de warmtepomp in de lijst de restopvoerhoogte (kPa), dan vergelijkt de app die ermee.
 
 Zonder gekozen thermostaatkraan is de weerstand van een element indicatief: 3 kPa voor een radiator of convector met kraan, 10 kPa voor een fancoil. Vloerverwarming rekent de lussen van 16×2 mm, verdeeld over groepen van hoogstens 100 m, plus 2 kPa voor de verdeler.
 
@@ -98,7 +98,7 @@ Onder **Installatie → Thermostaatkranen** kies je welke kranen er in het huis 
 
   Vraagt een radiator meer dan de kraan doorlaat, dan zegt de app dat. Bij een convector die meer dan 150 l/h nodig heeft, is een Eclipse 300 of Gampper Vario DP dus de oplossing.
 
-De standen staan in de tabel onder **Leidingnet en indexcircuit**, in het schema en in het rapport. Andere kranen voeg je toe in `data/thermostaatkranen.json`.
+De standen staan in de tabel onder **Leidingnet en indexcircuit**, in het schema en in het rapport. Staat jouw kraan er niet bij? [Meld hem](../README.md#fouten-suggesties-en-bijdragen) met de datasheet van de fabrikant.
 
 ### Inregelstaat
 
@@ -126,7 +126,7 @@ Onder **Warmtepomp → Warm tapwater** geef je aan of de warmtepomp ook het warm
 
 ## Warmtepomp kiezen
 
-Onder **Warmtepomp → Warmtepomp kiezen** vergelijk je de warmtepompen uit `data/warmtepompen.json` met het warmteverlies van je huis. De grafiek toont het warmteverlies over de buitentemperatuur, met het maximale en minimale vermogen van de gekozen warmtepomp. Een geschikte warmtepomp dekt bij de ontwerptemperatuur het verlies, en kan bij +10 °C ver genoeg terugregelen zodat hij niet steeds aan- en afslaat (pendelen). Per warmtepomp zie je vanaf welke buitentemperatuur hij pendelt.
+Onder **Warmtepomp → Warmtepomp kiezen** vergelijk je de warmtepompen uit de lijst van de app met het warmteverlies van je huis. De grafiek toont het warmteverlies over de buitentemperatuur, met het maximale en minimale vermogen van de gekozen warmtepomp. Een geschikte warmtepomp dekt bij de ontwerptemperatuur het verlies, en kan bij +10 °C ver genoeg terugregelen zodat hij niet steeds aan- en afslaat (pendelen). Per warmtepomp zie je vanaf welke buitentemperatuur hij pendelt.
 
 <img src="img/warmtepomp.png" width="360" alt="Warmtepompkeuze met grafiek van vermogen en warmteverlies">
 
@@ -136,10 +136,10 @@ Onder de warmtepompkeuze schat **Jaarverbruik en kosten** wat je huis in een gem
 
 - **Warmtevraag** voor verwarming: per buitentemperatuur het warmteverlies (de lijn uit de warmtepompkeuze, met de aangevinkte verbeteradviezen) min de warmte van mensen, apparaten en zon. Die winst is gelijk aan het verlies bij de **stookgrens**: boven die buitentemperatuur stookt het huis niet. In een goed geïsoleerd huis ligt de stookgrens rond 13–15 °C, in een oud huis rond 16–18 °C.
 - **Klimaat**: het aantal uren per jaar bij elke buitentemperatuur in De Bilt, gemiddeld over 2011–2025 (KNMI).
-- **COP**: uit het verschil tussen de aanvoertemperatuur van de stooklijn en de buitenlucht. Zonder gegevens van de fabrikant rekent de app met een gemiddelde lijn voor lucht/water-warmtepompen (Staffell e.a., 2012, inclusief ontdooien). Staan er COP-waarden bij de warmtepomp in `data/warmtepompen.json` (`cop`), dan schaalt de app die lijn daarnaar.
+- **COP**: uit het verschil tussen de aanvoertemperatuur van de stooklijn en de buitenlucht. Zonder gegevens van de fabrikant rekent de app met een gemiddelde lijn voor lucht/water-warmtepompen (Staffell e.a., 2012, inclusief ontdooien). Staan er COP-waarden van de fabrikant bij de warmtepomp in de lijst, dan schaalt de app die lijn daarnaar.
 - **Te klein of te groot**: wat boven het maximale vermogen uitkomt, levert een elektrisch element. Gebeurt dat alleen in de paar uur per jaar dat het kouder is dan de ontwerptemperatuur (meestal −10 °C), dan is dat normaal: de warmtepomp is gekozen op de ontwerptemperatuur. De app toont het dan als gewone regel. Moet het element ook bij warmer weer bijspringen, dan is de warmtepomp te klein en kleurt de regel rood. Ligt de vraag onder het minimale vermogen, dan pendelt de warmtepomp; die uren staan erbij, en ze kosten ongeveer 10% rendement.
 
-Je ziet de warmtevraag in kWh en in m³ gas, het stroomverbruik, het seizoensrendement (SCOP) voor verwarming en de COP voor tapwater, de gemiddelde aanvoertemperatuur en de kosten, met een uitsplitsing per temperatuurbereik. Vul de stroom- en gasprijs van je eigen contract in, en bij *Vaste kosten gas* wat je bespaart als de gasaansluiting eruit gaat. Kies je bij *Netbeheerder gas* je netbeheerder, dan vult de app daar de netbeheerkosten voor gas in: aansluiting, vastrecht, meterhuur en capaciteit, inclusief btw, voor een gewone huisaansluiting met 500 tot 4.000 m³ per jaar. Tel daar zelf de vaste leveringskosten van je energieleverancier bij op; die staan op je energierekening. De bedragen staan in [`data/netbeheer.json`](../data/netbeheer.json) en gelden voor 2026.
+Je ziet de warmtevraag in kWh en in m³ gas, het stroomverbruik, het seizoensrendement (SCOP) voor verwarming en de COP voor tapwater, de gemiddelde aanvoertemperatuur en de kosten, met een uitsplitsing per temperatuurbereik. Vul de stroom- en gasprijs van je eigen contract in, en bij *Vaste kosten gas* wat je bespaart als de gasaansluiting eruit gaat. Kies je bij *Netbeheerder gas* je netbeheerder, dan vult de app daar de netbeheerkosten voor gas in: aansluiting, vastrecht, meterhuur en capaciteit, inclusief btw, voor een gewone huisaansluiting met 500 tot 4.000 m³ per jaar. Tel daar zelf de vaste leveringskosten van je energieleverancier bij op; die staan op je energierekening. De bedragen gelden voor 2026.
 
 Staat de stooklijn op de koudste dagen op het maximum omdat een ruimte te weinig afgifte heeft, dan zegt de app dat: een hoge aanvoertemperatuur kost rendement, en meer afgifte verlaagt de stroomrekening. Warm tapwater zit erin als het onder *Warm tapwater* aanstaat, met de stroom en het gas apart vermeld. Nachtverlaging en je eigen stookgedrag zitten niet in de schatting. Het jaarverbruik staat ook in het rapport.
 

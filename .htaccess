@@ -1,0 +1,11 @@
+# Na een uitrol moet de browser meteen de nieuwe scripts en opmaak gebruiken, niet een week lang een oude kopie.
+# "no-cache" betekent: wel bewaren, maar eerst kort bij de server navragen of er iets veranderd is (304 als het gelijk is).
+# Afbeeldingen veranderen zelden; die mogen een week in de browser blijven.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|css|js|mjs|json|svg|xml|txt|md)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+  <FilesMatch "\.(png|jpe?g|webp|gif|ico)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>
