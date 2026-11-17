@@ -49,6 +49,7 @@ function viewWp() {
     save = adviceSaving(c);
   return `<div class="sec"><h2>Warmtepomp</h2><p class="note">Welke warmtepomp past, op welke aanvoertemperatuur hij moet draaien en wat hij per jaar verbruikt. Hij rekent met het warmteverlies onder <button class="crumb" data-act="gotab" data-tab="res">Resultaten</button> (${fmt(c.total / 1000, 2)} kW${save > 0 ? `, na de aangevinkte verbeteradviezen ${fmt((c.total - save) / 1000, 2)} kW` : ''}) en met de afgifte onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button>.</p></div>
   ${curveHtml()}
+  ${dhwHtml()}
   ${hpSectionHtml(c)}
   ${annualHtml(c)}
   ${volumeHtml()}`;
@@ -712,6 +713,11 @@ function applyField(el, final) {
         changed = true;
         break;
       }
+      if (k === 'dhwOn') {
+        P.settings.dhwOn = el.checked;
+        changed = true;
+        break;
+      }
       if (k === 'gasNet') {
         P.settings.gasNet = GRID.gas[v] ? v : '';
         if (GRID.gas[v]) P.settings.gasFix = +GRID.gas[v].perJaar || 0;
@@ -743,11 +749,17 @@ function applyField(el, final) {
         pEl: [0, 5],
         pGas: [0, 10],
         gasFix: [0, 2000],
-        etaGas: [0.5, 1.1]
+        etaGas: [0.5, 1.1],
+        dhwPers: [0, 20],
+        dhwKwh: [0, 3000],
+        dhwHours: [0, 8],
+        dhwTemp: [40, 70],
+        dhwLoss: [0, 5],
+        etaTap: [0.3, 1.1]
       };
       if (RANGE[k] && (n < RANGE[k][0] || n > RANGE[k][1])) {
         toast(
-          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${{ flow: 'l/h', pEl: '€/kWh', pGas: '€/m³', gasFix: '€', etaGas: '' }[k] ?? '°C'} en is niet overgenomen.`
+          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${{ flow: 'l/h', pEl: '€/kWh', pGas: '€/m³', gasFix: '€', etaGas: '', dhwPers: 'personen', dhwKwh: 'kWh', dhwHours: 'uur', dhwLoss: 'kWh', etaTap: '' }[k] ?? '°C'} en is niet overgenomen.`
         );
         return;
       }

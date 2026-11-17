@@ -18,7 +18,7 @@ Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. D
 - **Ventilatie en infiltratie**: systeem A, C of D met WTW, overstroom tussen ruimtes en infiltratie uit qv10.
 - **Afgifte**: radiatoren (vermogen zelf invullen of afleiden uit type, hoogte en lengte), convectoren (ook met ventilatoren), fancoils en vloerverwarming bij je eigen aanvoer- en retourtemperatuur. Met controle van de aansluitleiding (de getekende leiding naar het element) en de minimaal nodige aanvoertemperatuur.
 - **Verbeteradviezen** en **warmtepompkeuze**: vergelijk warmtepompen met het warmteverlies bij −10 °C (dekt het maximale vermogen het verlies?) en bij +10 °C (kan hij ver genoeg terugregelen, of gaat hij pendelen?). Per warmtepomp zie je vanaf welke buitentemperatuur hij pendelt. De lijst is gesorteerd op beide.
-- **Jaarverbruik en kosten**: warmtevraag per jaar, stroomverbruik en SCOP van de gekozen warmtepomp, en de kosten tegenover gas, met KNMI-uurtemperaturen van De Bilt.
+- **Jaarverbruik en kosten**: warmtevraag per jaar, stroomverbruik en SCOP van de gekozen warmtepomp, en de kosten tegenover gas, met KNMI-uurtemperaturen van De Bilt. Inclusief warm tapwater, en de onderbreking van de verwarming terwijl de warmtepomp de boiler opwarmt.
 - **Inregelstaat**: per radiator de kraanstand of het debiet op één afdrukbaar overzicht, om mee langs de radiatoren te lopen.
 - **Delen via een link**: een korte link naar een versleutelde kopie, of een lange link met het hele project erin. Wie hem opent, krijgt een kopie.
 - **Export**: JSON, CSV en [heatlossjs](https://github.com/trystanLea/heatlossjs).

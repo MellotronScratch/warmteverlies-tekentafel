@@ -99,6 +99,14 @@ const DEFAULT_SETTINGS = {
   gasFix: 0, // € per year fixed costs of the gas connection, saved when the gas goes
   gasNet: '', // id in data/netbeheer.json whose amount was put in gasFix ('' = own amount)
   etaGas: 0.9, // efficiency of the gas boiler (on the gross calorific value)
+  // domestic hot water by the heat pump (js/annual.js): no space heating while the tank heats up
+  dhwOn: true,
+  dhwPers: 2, // occupants
+  dhwKwh: 800, // kWh heat per occupant per year, including pipe losses
+  dhwHours: 1.5, // hours per day the heat pump makes hot water on a cold day
+  dhwTemp: 50, // °C tank temperature
+  dhwLoss: 1, // kWh per day standby loss of the tank
+  etaTap: 0.75, // efficiency of a combi boiler for hot water (gas comparison)
   trv: 'onbekend' // thermostatic radiator valve for the whole house (data/thermostaatkranen.json); per emitter em.trv
 };
 // improvement advice: constructions of this kind facing outside/ground/unheated with U above 'on' get the measure, to U 'to'
@@ -395,6 +403,7 @@ function normalizeProject(p) {
   const legacy = p.settings && !p.settings.ventSys; // projects from before ventilation per room: keep their results
   p.settings = { ...DEFAULT_SETTINGS, ...(p.settings || {}) };
   if (typeof p.settings.gasNet !== 'string') p.settings.gasNet = '';
+  p.settings.dhwOn = p.settings.dhwOn !== false;
   if (p.settings.trv === 'heimeier-eclipse') p.settings.trv = 'heimeier-eclipse-150'; // key renamed (11-2026)
   const adv = p.settings.advice || {};
   p.settings.advice = {};

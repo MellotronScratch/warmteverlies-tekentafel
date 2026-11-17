@@ -134,9 +134,13 @@ function lossLine(c, save) {
   };
 }
 const fmtT = t => (t > 0 ? '+' : t < 0 ? '−' : '') + nv(Math.abs(t), 0) + ' °C';
+// while the heat pump heats the hot water tank it does not heat the house: the rest of the day it has to make up for it
+const dhwHoursOn = () => (P.settings.dhwOn ? Math.min(8, Math.max(0, +P.settings.dhwHours || 0)) : 0);
+const dhwFactor = () => 24 / (24 - dhwHoursOn());
 function hpJudge(h, L) {
   const te = P.settings.te,
-    need = L.at(te),
+    f = dhwFactor(),
+    need = L.at(te) * f,
     need10 = L.at(10),
     max = hpAt(h, te, 'max'),
     min10 = hpAt(h, 10, 'min');
@@ -146,7 +150,7 @@ function hpJudge(h, L) {
   let biv = null;
   if (!covers) {
     for (let t = te; t <= 20; t += 0.1) {
-      if (hpAt(h, t, 'max') >= L.at(t)) {
+      if (hpAt(h, t, 'max') >= L.at(t) * f) {
         biv = t;
         break;
       }
@@ -223,6 +227,8 @@ function hpSectionHtml(c) {
   let h = `<div class="sec"><h3>Warmtepomp kiezen</h3>
     <p class="note">${save > 0 ? `<b>Beoordeeld op het warmteverlies na de aangevinkte maatregelen.</b> ` : ''}Bij ${nv(L.te, 0)} °C is het warmteverlies ${fmt(L.at(L.te), 2)} kW; bij +10 °C nog ${fmt(L.at(10), 2)} kW. Een geschikte warmtepomp levert bij ${nv(L.te, 0)} °C minstens dat vermogen, en kan bij +10 °C terugregelen tot onder het warmteverlies, zodat hij niet steeds aan- en afslaat (pendelen). Bij <i>pendelt boven</i> staat vanaf welke buitentemperatuur het minimale vermogen groter is dan het warmteverlies. Hoe hoger die temperatuur, hoe minder uren hij pendelt. De lijst is gesorteerd op beide: hoeveel te groot bij de ontwerptemperatuur, en hoeveel het minimum bij +10 °C boven het verlies ligt.</p>`;
   if (hpErr) h += `<div class="warnbox">${esc(hpErr)}</div>`;
+  if (dhwFactor() > 1)
+    h += `<p class="note">Op koude dagen maakt de warmtepomp ongeveer ${nv(dhwHoursOn(), 1)} uur per dag warm tapwater (zie <i>Warm tapwater</i> hierboven). In die tijd verwarmt hij het huis niet, dus moet hij in de overige uren meer leveren: bij ${nv(L.te, 0)} °C is minstens ${fmt(L.at(L.te) * dhwFactor(), 2)} kW nodig in plaats van ${fmt(L.at(L.te), 2)} kW. Daarop is de lijst beoordeeld.</p>`;
   if (cur) h += hpChartHtml(cur.h, cur.j, L, L0);
   h += `<div class="hplist" role="list" aria-label="Warmtepompen">`;
   h += rows
@@ -253,7 +259,7 @@ function hpChartHtml(hp, j, L, L0) {
     x1 = 15;
   const te = L.te < x0 ? L.te : x0;
   const xs = t => ml + ((t - te) / (x1 - te)) * (W - ml - mr);
-  let ymax = Math.max(L.at(te), L0 ? L0.at(te) : 0, hpAt(hp, x1, 'max'), hpAt(hp, te, 'max')) * 1.1;
+  let ymax = Math.max(L.at(te) * dhwFactor(), L0 ? L0.at(te) : 0, hpAt(hp, x1, 'max'), hpAt(hp, te, 'max')) * 1.1;
   const step = ymax <= 4 ? 1 : ymax <= 10 ? 2 : ymax <= 20 ? 4 : 5;
   ymax = Math.ceil(ymax / step) * step;
   const ys = v => H - mb - (v / ymax) * (H - mt - mb);
@@ -282,11 +288,14 @@ function hpChartHtml(hp, j, L, L0) {
   if (L0)
     o += `<path d="${path(t => L0.at(t))}" fill="none" stroke="var(--c-loss)" stroke-opacity=".4" stroke-width="2" stroke-dasharray="2 4"/>`;
   o += `<path d="${path(t => L.at(t))}" fill="none" stroke="var(--c-loss)" stroke-width="2.4"/>`;
+  const fD = dhwFactor();
+  if (fD > 1)
+    o += `<path d="${path(t => L.at(t) * fD)}" fill="none" stroke="var(--c-loss)" stroke-width="1.6" stroke-dasharray="6 4"/>`;
   // the two check points
   const dot = (t, v, col) =>
     `<circle cx="${xs(t)}" cy="${ys(v)}" r="5" fill="${col}" stroke="var(--surface)" stroke-width="2"/>`;
   o +=
-    dot(te, L.at(te), 'var(--c-loss)') +
+    dot(te, L.at(te) * fD, 'var(--c-loss)') +
     dot(te, j.max, 'var(--c-hp)') +
     dot(10, L.at(10), 'var(--c-loss)') +
     dot(10, j.min10, 'var(--c-hp)');
@@ -294,14 +303,14 @@ function hpChartHtml(hp, j, L, L0) {
   o += `<text x="${W - mr}" y="${ys(hpAt(hp, x1, 'max')) - 6}" text-anchor="end" style="fill:var(--ink);font-weight:600">max</text><text x="${W - mr}" y="${ys(hpAt(hp, x1, 'min')) - 6}" text-anchor="end" style="fill:var(--ink);font-weight:600">min</text>`;
   o += `<line id="hp-x" y1="${mt}" y2="${H - mb}" stroke="var(--ink)" stroke-opacity=".5" visibility="hidden"/><rect id="hp-hit" x="${ml}" y="${mt}" width="${W - ml - mr}" height="${H - mt - mb}" fill="transparent"/>`;
   window.__hpChart = { hp, L, te, x1, ml, mr, W, H };
-  return `<div class="chartleg"><span><i style="background:var(--c-loss)"></i>Warmteverlies${L0 ? ' na maatregelen' : ''}</span>${L0 ? `<span><i style="background:repeating-linear-gradient(90deg,var(--c-loss) 0 2px,transparent 2px 6px);opacity:.6"></i>nu</span>` : ''}<span><i style="background:var(--c-hp)"></i>${esc(hp.merk)} ${esc(hp.model)} max</span><span><i style="background:repeating-linear-gradient(90deg,var(--c-hp) 0 6px,transparent 6px 9px)"></i>min</span></div>
+  return `<div class="chartleg"><span><i style="background:var(--c-loss)"></i>Warmteverlies${L0 ? ' na maatregelen' : ''}</span>${fD > 1 ? `<span><i style="background:repeating-linear-gradient(90deg,var(--c-loss) 0 6px,transparent 6px 9px)"></i>met tapwater</span>` : ''}${L0 ? `<span><i style="background:repeating-linear-gradient(90deg,var(--c-loss) 0 2px,transparent 2px 6px);opacity:.6"></i>nu</span>` : ''}<span><i style="background:var(--c-hp)"></i>${esc(hp.merk)} ${esc(hp.model)} max</span><span><i style="background:repeating-linear-gradient(90deg,var(--c-hp) 0 6px,transparent 6px 9px)"></i>min</span></div>
     <div class="chart" id="hpchart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Warmteverlies en vermogen van ${esc(hp.merk)} ${esc(hp.model)} tegen de buitentemperatuur">${o}</svg><div class="tip" id="hp-tip" hidden></div></div>
-    <div class="tablewrap"><table class="calc"><thead><tr><th>Buiten</th><th>Warmteverlies kW</th><th>Max kW</th><th>Min kW</th></tr></thead><tbody>
+    <div class="tablewrap"><table class="calc"><thead><tr><th>Buiten</th><th>Warmteverlies kW</th>${fD > 1 ? '<th>Met tapwater kW</th>' : ''}<th>Max kW</th><th>Min kW</th></tr></thead><tbody>
     ${[te, -5, 0, 5, 10]
       .filter((t, i, a) => a.indexOf(t) === i)
       .map(
         t =>
-          `<tr><td>${t > 0 ? '+' : ''}${nv(t, 0)} °C</td><td>${fmt(L.at(t), 2)}</td><td>${fmt(hpAt(hp, t, 'max'), 2)}${hpExtra(hp, t) ? '*' : ''}</td><td>${fmt(hpAt(hp, t, 'min'), 2)}${hpExtra(hp, t) ? '*' : ''}</td></tr>`
+          `<tr><td>${t > 0 ? '+' : ''}${nv(t, 0)} °C</td><td>${fmt(L.at(t), 2)}</td>${fD > 1 ? `<td>${fmt(L.at(t) * fD, 2)}</td>` : ''}<td>${fmt(hpAt(hp, t, 'max'), 2)}${hpExtra(hp, t) ? '*' : ''}</td><td>${fmt(hpAt(hp, t, 'min'), 2)}${hpExtra(hp, t) ? '*' : ''}</td></tr>`
       )
       .join('')}
     </tbody></table></div>${[te, 10].some(t => hpExtra(hp, t)) ? '<p class="note">* doorgerekend buiten de opgegeven meetpunten</p>' : ''}`;
