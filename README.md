@@ -1,10 +1,10 @@
-# Warmteverlies Tekentafel
+# Warmtepomp Tekentafel
 
 Teken de plattegrond van je woning en zie direct het warmteverlies per ruimte. Daarnaast rekent de app de afgifte van radiatoren en vloerverwarming door en laat zien welke warmtepomp past.
 
 **[Open de app →](https://mellotronscratch.github.io/warmteverlies-tekentafel/)**
 
-![Schermafbeelding van de Warmteverlies Tekentafel](docs/screenshot.png)
+![Schermafbeelding van de Warmtepomp Tekentafel](docs/screenshot.png)
 
 ## Wat het doet
 

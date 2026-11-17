@@ -242,7 +242,7 @@ function reportHtml() {
   const yr = annualHtml(c);
   if (yr)
     h += `<section class="rsec"><h2>Jaarverbruik en kosten</h2>${yr.replace('<h3>Jaarverbruik en kosten</h3>', '')}<p class="note">Gerekend met stroom € ${fmt(S.pEl, 3)} per kWh, gas € ${fmt(S.pGas, 3)} per m³${S.gasFix > 0 ? `, vaste kosten gas € ${fmt(S.gasFix, 0)} per jaar` : ''}, een cv-ketel met ${fmt(S.etaGas * 100, 0)}% rendement en een stookgrens van ${nv(S.stook, 1)} °C.</p></section>`;
-  h += `<footer class="repfoot">Gemaakt met Warmteverlies Tekentafel · ${esc(date)}. Indicatieve berekening; controleer de uitkomst voordat je erop dimensioneert.</footer>`;
+  h += `<footer class="repfoot">Gemaakt met Warmtepomp Tekentafel · ${esc(date)}. Indicatieve berekening; controleer de uitkomst voordat je erop dimensioneert.</footer>`;
   return h;
 }
 
@@ -301,7 +301,7 @@ function balanceSheetHtml() {
       })
       .join('')}</tbody></table></section>`;
   });
-  h += `<footer class="repfoot">Gemaakt met Warmteverlies Tekentafel · ${esc(date)}. De voorinstellingen volgen uit de berekende leidingen en kv-waarden; regel in de praktijk bij op de retourtemperatuur.</footer>`;
+  h += `<footer class="repfoot">Gemaakt met Warmtepomp Tekentafel · ${esc(date)}. De voorinstellingen volgen uit de berekende leidingen en kv-waarden; regel in de praktijk bij op de retourtemperatuur.</footer>`;
   return h;
 }
 
