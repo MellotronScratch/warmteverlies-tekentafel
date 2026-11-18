@@ -332,8 +332,8 @@ function viewRoom(room) {
         .join('')}</select></label>
       <label class="f" for="f-st-edge">Begint bij<select class="in" id="f-st-edge" data-f="room.stair.edge">${room.pts.map((_, i) => opt(String(i), 'Wand ' + (i + 1) + ' (' + fmt(edge(room, i).L) + ' m)', String(st.edge))).join('')}</select></label>
       <label class="f" for="f-st-side">Langs de kant van<select class="in" id="f-st-side" data-f="room.stair.side">${opt('a', 'hoek ' + (st.edge + 1), st.side)}${opt('b', 'hoek ' + (((st.edge + 1) % n) + 1), st.side)}</select></label>
-      ${numField('f-st-w', 'room.stair.w', 'Breedte', 'm', st.w, 2)}</div>
-      <p class="note">Alleen voor de tekening en de 2,5D-weergave. De trap loopt van wand ${st.edge + 1} de ruimte in${st.shape === 'kwart' ? ' en draait aan het eind de hoek om' : st.shape === 'half' ? ', draait op een bordes en komt terug' : st.shape === 'spil' ? ', gaat aan het eind twee keer de hoek om en komt terug' : ''}. De app gaat uit van een rechthoekig trapgat.${spans(room) ? '' : ' Laat de ruimte doorlopen tot de verdieping erboven om de trap te zien.'}</p></div>`;
+      ${st.shape === 'spil' ? '' : numField('f-st-w', 'room.stair.w', 'Breedte', 'm', st.w, 2)}</div>
+      <p class="note">Alleen voor de tekening en de 2,5D-weergave. De trap loopt van wand ${st.edge + 1} de ruimte in${st.shape === 'kwart' ? ' en draait aan het eind de hoek om' : st.shape === 'half' ? ', draait op een bordes en komt terug' : st.shape === 'spil' ? ', gaat aan het eind twee keer de hoek om en komt terug; hij vult de hele breedte van het trapgat' : ''}. De app gaat uit van een rechthoekig trapgat.${spans(room) ? '' : ' Laat de ruimte doorlopen tot de verdieping erboven om de trap te zien.'}</p></div>`;
         })()
       : ''
   }

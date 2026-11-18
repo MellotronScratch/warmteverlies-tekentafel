@@ -151,11 +151,11 @@ function stairTreads(r, H) {
   if (u1 - u0 < 0.3 || vm < 0.3) return null;
   const N = Math.max(3, Math.round(H / 0.185)),
     T = N - 1; // risers and treads (the last riser steps onto the floor above)
-  let w = Math.min(
-    st.w,
-    (u1 - u0) / (st.shape === 'half' || st.shape === 'spil' ? 2 : 1),
-    st.shape === 'recht' ? vm : vm / 2
-  );
+  // a half turn without landing fills the whole stairwell: two flights side by side, each half its width
+  let w =
+    st.shape === 'spil'
+      ? Math.min((u1 - u0) / 2, vm / 2)
+      : Math.min(st.w, (u1 - u0) / (st.shape === 'half' ? 2 : 1), st.shape === 'recht' ? vm : vm / 2);
   const A = st.side === 'a',
     sa = A ? [u0, u0 + w] : [u1 - w, u1],
     sb = A ? [u1 - w, u1] : [u0, u0 + w];
@@ -447,7 +447,7 @@ function render3d() {
           d: d - 0.001,
           svg: `<polygon points="${fr.map(pt).join(' ')}" fill="#8A6236" fill-opacity=".9" stroke="#5C4022" stroke-width=".6" pointer-events="none"/>`
         });
-        // sides down to the floor, so the stair reads as one solid block
+        // sides one riser high: under the stair is usually a cupboard (trapkast) or open space, so it is not filled down to the floor
         q.poly.forEach((a, i) => {
           const b = q.poly[(i + 1) % q.poly.length];
           if (
@@ -455,7 +455,7 @@ function render3d() {
             (dist(b, q.front[0]) < 1e-6 && dist(a, q.front[1]) < 1e-6)
           )
             return;
-          const f4 = [P3(a, zb), P3(b, zb), P3(b, z), P3(a, z)],
+          const f4 = [P3(a, z - sg.rise), P3(b, z - sg.rise), P3(b, z), P3(a, z)],
             ds = f4.reduce((x, p) => x + p.d, 0) / 4;
           arr.push({
             mid: true,
