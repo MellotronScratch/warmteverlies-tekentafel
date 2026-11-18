@@ -683,6 +683,10 @@ function conUses() {
     };
   P.rooms.forEach(r => {
     const fl = (P.floors[floorIdx(r.floorId)] || {}).name || '';
+    // a floor or ceiling only counts when the calculation uses it: under a sloped roof, or at the top of a stairwell
+    // that runs up to the roof, the stored ceiling construction plays no part
+    const L = calcRoom(r).lines,
+      inCalc = (g, cid) => L.some(l => l.group === g && l.cid === cid);
     r.walls.forEach((w, i) =>
       w.segs.forEach((sg, j) => {
         const nm = 'Wand ' + (i + 1) + (w.segs.length > 1 ? LET[j] || j : '');
@@ -692,10 +696,12 @@ function conUses() {
         );
       })
     );
-    add(r.floor.cid, { room: r, fl, label: 'Vloer', act: 'selroom' });
-    add(r.floor.cidOut, { room: r, fl, label: 'Vloer (waar niets onder ligt)', act: 'selroom' });
-    add(r.ceil.cid, { room: r, fl, label: 'Plafond', act: 'selroom' });
-    add(r.ceil.cidOut, { room: r, fl, label: 'Plafond (waar niets boven ligt)', act: 'selroom' });
+    if (inCalc('floor', r.floor.cid)) add(r.floor.cid, { room: r, fl, label: 'Vloer', act: 'selroom' });
+    if (inCalc('floor', r.floor.cidOut))
+      add(r.floor.cidOut, { room: r, fl, label: 'Vloer (waar niets onder ligt)', act: 'selroom' });
+    if (inCalc('ceil', r.ceil.cid)) add(r.ceil.cid, { room: r, fl, label: 'Plafond', act: 'selroom' });
+    if (inCalc('ceil', r.ceil.cidOut))
+      add(r.ceil.cidOut, { room: r, fl, label: 'Plafond (waar niets boven ligt)', act: 'selroom' });
     if (r.roof && r.roof.type !== 'plat') add(r.roof.cid, { room: r, fl, label: 'Dakvlak', act: 'selroom' });
   });
   return uses;

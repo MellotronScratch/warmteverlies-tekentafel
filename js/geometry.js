@@ -310,7 +310,8 @@ function innerOutside(onlyRoom) {
       } else res.push({ room: r, w: l.w, s: l.s, con: c, A: l.A, phi: l.phi });
     })
   );
-  return res;
+  // a sliver of a few cm² comes from drawing a corner a centimetre off; that is not worth a warning
+  return res.filter(x => x.A >= 0.1);
 }
 // set those parts to 'buurwoning'; a part that is partly against a room is split on the border first
 function innerToNeighbour(list) {

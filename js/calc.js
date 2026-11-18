@@ -482,13 +482,20 @@ function wallParts(room, i, s0, s1, nb, R) {
 function wallPartsSpan(room, i, s0, s1, nb, R) {
   const e = edge(room, i),
     gross = wallArea(room, e, s0, s1, R),
-    parts = [];
+    parts = [],
+    el = R && R.vide ? floorElev() : null;
   let sum = 0;
   nb.forEach(n => {
     const iv = n.ivs.map(v => [Math.max(s0, v[0]), Math.min(s1, v[1])]).filter(v => v[1] - v[0] > 1e-6);
     const len = iv.reduce((a, v) => a + v[1] - v[0], 0);
     if (len > 0.005) {
-      const A = len * Math.min(n.room.height, room.height);
+      // a vide up to the roof, next to a room under a sloped roof (an attic): that room runs up to the roof as well,
+      // so the whole wall above its floor borders it, not just its height at the eaves
+      const dz = el && roofOf(n.room) ? (el[n.room.floorId] || 0) - (el[room.floorId] || 0) : null,
+        A =
+          dz !== null
+            ? iv.reduce((a, v) => a + Math.max(0, wallArea(room, e, v[0], v[1], R) - (v[1] - v[0]) * dz), 0)
+            : len * Math.min(n.room.height, room.height);
       parts.push({ room: n.room, len, A });
       sum += A;
     }
