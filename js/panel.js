@@ -410,14 +410,30 @@ function viewSeg(room, i, j) {
   let h = `<div class="sec"><button class="crumb" data-act="selroom" data-r="${room.id}">← ${esc(room.name)}</button><h2>${nm}</h2>
     <p class="note">Wand van hoek ${i + 1} naar hoek ${((i + 1) % room.pts.length) + 1}, totaal ${fmt(e.L)} m. Dit deel: ${fmt(s0)} – ${fmt(s1)} m (${fmt(s1 - s0)} m × ${fmt(room.height)} m hoog).</p>
     ${wallBar(room, i, j)}<div class="scale"><span>0</span><span>${fmt(e.L)} m</span></div></div>
-  <div class="sec" ${sg.adj === 'open' ? 'style="display:none"' : ''}><h3>Constructie</h3><select class="in" id="f-seg-cid" data-f="seg.cid">${conOptions(sg.cid, 'wand')}</select>
+  <div class="sec" ${sg.adj === 'open' && !spans(room) ? 'style="display:none"' : ''}><h3>Constructie</h3><select class="in" id="f-seg-cid" data-f="seg.cid">${conOptions(sg.cid, 'wand')}</select>
     ${con ? `<p class="note">U = ${nv(con.U, 3)} W/m²K${DU_TYPES.has(sg.adj === 'auto' ? 'buiten' : sg.adj) ? ` + ΔU koudebrug ${nv(P.settings.dU, 3)}` : ''}. Wijzig de waarde onder <button class="crumb" data-act="gocon" data-c="${con.id}">Constructies</button>.</p>` : `<p class="note">Nog geen constructie. Maak er een aan onder <button class="crumb" data-act="gocon">Constructies</button> met de U-waarde uit ubakus.de.</p>`}</div>
   <div class="sec"><h3>Grenst aan</h3><div class="row"><select class="in grow" id="f-seg-adj" data-f="seg.adj">${adjOptions(sg.adj, true)}</select>${sg.adj === 'temp' ? `<label class="f" style="width:110px" for="f-seg-t">Temp. <span class="u">°C</span><input class="in num" id="f-seg-t" data-f="seg.adjT" inputmode="decimal" value="${nv(sg.adjT, 1)}"></label>` : ''}</div>`;
   h += innerOutsideHtml(
     innerOutside(room).filter(x => x.w === i && x.s === j),
     'seg'
   );
-  if (sg.adj === 'open') {
+  // a vide through several floors: open or closed per floor, decided by the room next to it there
+  if (spans(room) && (sg.adj === 'open' || sg.adj === 'auto')) {
+    const seen = new Map();
+    sharedParts(room, i, s0, s1).forEach(p => {
+      if (!seen.has(p.o.id)) seen.set(p.o.id, p.o);
+    });
+    const list = [...seen.values()].sort((a, b) => floorIdx(a.floorId) - floorIdx(b.floorId));
+    if (list.length)
+      h += `<p class="note">Deze vide loopt door over meer verdiepingen. Per verdieping bepaalt de ruimte ernaast of hier een wand staat of een open verbinding: ${list
+        .map(o => {
+          const f = videOpenShare(room, i, s0, s1, o),
+            fl = P.floors[floorIdx(o.floorId)];
+          return `<b>${esc(o.name)}</b> (${esc(fl ? fl.name : '')}): ${f > 0.99 ? 'open' : f > 0.01 ? 'deels open' : 'wand'}`;
+        })
+        .join(', ')}. Wil je dat ergens veranderen, kies dan de wand van die ruimte.</p>`;
+  }
+  if (sg.adj === 'open' && !spans(room)) {
     const ps = partnersOf(room, i, j);
     const dT = ps.filter(p => Math.abs(p.o.temp - room.temp) > 0.05);
     h += `<p class="note">Hier zit geen wand: deze ruimte loopt open over in ${ps.length ? ps.map(p => '<b>' + esc(p.o.name) + '</b>').join(' en ') : 'een andere ruimte'}, bijvoorbeeld een hal die overgaat in een trapvide. Er gaat geen warmte door dit stuk en het heeft geen constructie nodig. De andere ruimte heeft hier ook een open verbinding.</p>

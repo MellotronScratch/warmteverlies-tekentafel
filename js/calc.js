@@ -541,14 +541,15 @@ function transLines(room) {
       const s0 = b[j],
         s1 = b[j + 1],
         len = s1 - s0;
-      if (len <= 1e-4 || sg.adj === 'open') return; // open connection: no wall, no loss
+      const vide = spans(room),
+        adj = vide && sg.adj === 'open' ? 'auto' : sg.adj; // a vide decides open or closed per floor, see below
+      if (len <= 1e-4 || (sg.adj === 'open' && !vide)) return; // open connection: no wall, no loss
       const con = conById(sg.cid);
       const nm = 'Wand ' + (i + 1) + (w.segs.length > 1 ? LET[j] || j : '');
       // a window or door loses heat to whatever lies behind it at its own place: outside, or the room next door (an inner door)
-      const lay = sg.adj === 'auto' ? opLayout(room, i, j) : [];
+      const lay = adj === 'auto' && sg.adj !== 'open' ? opLayout(room, i, j) : [];
       const target = o => {
-        if (sg.adj !== 'auto')
-          return { t: adjTemp(sg.adj, sg.adjT), type: sg.adj, key: 'adj', lab: ADJ[sg.adj].toLowerCase() };
+        if (adj !== 'auto') return { t: adjTemp(adj, sg.adjT), type: adj, key: 'adj', lab: ADJ[adj].toLowerCase() };
         const it = lay.find(x => x.o === o),
           tc = it ? (it.t0 + it.t1) / 2 : (s0 + s1) / 2,
           n = nb.find(n => n.ivs.some(v => tc >= v[0] - 1e-6 && tc <= v[1] + 1e-6));
@@ -557,7 +558,7 @@ function transLines(room) {
           : { t: S.te, type: 'buiten', key: 'buiten', lab: 'buiten' };
       };
       const opA = {};
-      sg.openings.forEach(o => {
+      (sg.adj === 'open' ? [] : sg.openings).forEach(o => {
         const A = Math.max(0, o.w * o.h),
           tg = target(o);
         opA[tg.key] = (opA[tg.key] || 0) + A;
@@ -574,7 +575,7 @@ function transLines(room) {
         });
       });
       let parts = [];
-      if (sg.adj === 'auto')
+      if (adj === 'auto')
         parts = wallParts(room, i, s0, s1, nb, R).map(p =>
           p.room
             ? { len: p.len, A: p.A, t: p.room.temp, type: 'ruimte', lab: p.room.name, key: p.room.id }
@@ -584,11 +585,20 @@ function transLines(room) {
         parts.push({
           len,
           A: wallArea(room, edge(room, i), s0, s1, R),
-          t: adjTemp(sg.adj, sg.adjT),
-          type: sg.adj,
-          lab: ADJ[sg.adj].toLowerCase(),
+          t: adjTemp(adj, sg.adjT),
+          type: adj,
+          lab: ADJ[adj].toLowerCase(),
           key: 'adj'
         });
+      // a vide: the pieces next to a room that is open towards the vide on its floor are no wall
+      if (vide && adj === 'auto')
+        parts = parts
+          .map(p => {
+            const o = p.type === 'ruimte' && getRoom(p.key),
+              f = o ? videOpenShare(room, i, s0, s1, o) : 0;
+            return f > 0 ? { ...p, A: p.A * (1 - f), len: p.len * (1 - f) } : p;
+          })
+          .filter(p => p.A > 1e-4);
       // the opening comes off the wall part it sits in; whatever does not fit there comes off the rest of the wall
       let rem = 0;
       Object.entries(opA).forEach(([k, A]) => {

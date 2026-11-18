@@ -164,6 +164,27 @@ function partnersOf(room, i, j) {
     };
   });
 }
+// A vide (a room through several floors) has one wall from its own floor up to the top. Whether a piece of that wall is
+// open is decided per floor, by the room next to it: open when that room's wall there is an open connection. So the
+// landing upstairs can be open to the vide while the hall below still has a wall. Returns 0..1: the share of the length
+// of [s0,s1] of wall i that room o lies against with an open wall.
+function videOpenShare(room, i, s0, s1, o) {
+  let all = 0,
+    open = 0;
+  sharedParts(room, i, s0, s1)
+    .filter(p => p.o === o)
+    .forEach(p => {
+      const bo = bounds(o, p.k),
+        mid = (p.u0 + p.u1) / 2;
+      let jj = 0;
+      while (jj < bo.length - 2 && mid > bo[jj + 1]) jj++;
+      const sg = o.walls[p.k] && o.walls[p.k].segs[jj],
+        L = p.t1 - p.t0;
+      all += L;
+      if (sg && sg.adj === 'open') open += L;
+    });
+  return all > 0 ? open / all : 0;
+}
 // give the shared pieces in the neighbouring rooms their own wall part, so they can follow this one
 function isolatePartners(room, i, j) {
   partnersOf(room, i, j).forEach(p => {

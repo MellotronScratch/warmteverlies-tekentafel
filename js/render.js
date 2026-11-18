@@ -612,7 +612,48 @@ function render3d() {
               isSel = top && sel && sel.t === 'seg' && sel.r === r.id && sel.w === i && sel.s === j;
             const poly = bot.concat(tp.slice().reverse()).map(pt).join(' ');
             const d = bot.concat(tp).reduce((a, q) => a + q.d, 0) / (bot.length * 2);
-            if (sg.adj === 'open') {
+            // a vide through several floors: per floor a wall or an open connection, decided by the room next to it there
+            if (spans(r)) {
+              const el = floorElev(),
+                base = el[r.floorId] || 0,
+                [la, lb] = levelsOf(r),
+                sp = sharedParts(r, i, s0, s1),
+                bands = [];
+              for (let fi = la; fi <= lb; fi++) {
+                const fl = P.floors[fi],
+                  nbs = [...new Set(sp.filter(p => p.o.floorId === fl.id && !spans(p.o)).map(p => p.o))];
+                bands.push({
+                  lo: (el[fl.id] || 0) - base,
+                  hi: fi < lb ? (el[P.floors[fi + 1].id] || 0) - base : Infinity,
+                  open: nbs.length > 0 && nbs.every(o => videOpenShare(r, i, s0, s1, o) > 0.99)
+                });
+              }
+              if (bands.some(bd => bd.open)) {
+                bands.forEach(bd => {
+                  const tops = ts.map(t => Math.min(bd.hi, zTop(r, R, at(t))));
+                  if (tops.every(z => z <= bd.lo + 1e-3)) return;
+                  const qb = ts.map(t => P3(at(t), z0 + bd.lo)),
+                    qt = ts.map((t, k) => P3(at(t), z0 + Math.max(bd.lo, tops[k]))),
+                    pl = qb.concat(qt.slice().reverse()).map(pt).join(' '),
+                    dd = qb.concat(qt).reduce((a, q) => a + q.d, 0) / (qb.length * 2);
+                  items.push({
+                    d: dd + (near ? 0.0001 : 0),
+                    near,
+                    svg: bd.open
+                      ? `<polygon points="${pl}" fill="none" stroke="var(--muted)" stroke-opacity=".6" stroke-width="1" stroke-dasharray="5 5" pointer-events="none"/>`
+                      : `<polygon points="${pl}" fill="${col}" fill-opacity="${!top ? (near ? 0.18 : 0.55) : near ? 0.22 : 0.9}" stroke="var(--wall)" stroke-opacity="${near ? 0.35 : 0.8}" stroke-width="1" stroke-linejoin="round" pointer-events="none"/>`
+                  });
+                });
+                if (top)
+                  items.push({
+                    d: d + 0.0002,
+                    near,
+                    svg: `<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="${isSel ? 'var(--heat)' : 'transparent'}" fill-opacity=".2" stroke="${isSel ? 'var(--heat)' : 'none'}" stroke-width="3" style="cursor:pointer"/>`
+                  });
+                return;
+              }
+            }
+            if (sg.adj === 'open' && !spans(r)) {
               items.push({
                 d,
                 near: true,
@@ -857,7 +898,17 @@ function renderCanvas() {
           out += `<line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--accent)" stroke-opacity=".45" stroke-width="16" stroke-linecap="round"/>`;
         if (isSel)
           out += `<line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--heat)" stroke-opacity=".55" stroke-width="16" stroke-linecap="round"/>`;
-        if (sg.adj === 'open')
+        const nbs2 = spans(r)
+            ? [
+                ...new Set(
+                  sharedParts(r, i, s0, s1)
+                    .filter(p => p.o.floorId === r.floorId && !spans(p.o))
+                    .map(p => p.o)
+                )
+              ]
+            : null,
+          open2 = nbs2 ? nbs2.length > 0 && nbs2.every(o => videOpenShare(r, i, s0, s1, o) > 0.99) : sg.adj === 'open';
+        if (open2)
           out += `<line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--paper)" stroke-width="7"/><line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--room)" stroke-width="7"/><line x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="6 5"/>`;
         else
           out += heatView

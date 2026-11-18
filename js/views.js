@@ -540,7 +540,9 @@ function applyField(el, final) {
         sg.adj = 'open';
         const ps = isolatePartners(room, sel.w, sel.s);
         sg.adj = v;
-        ps.forEach(p => {
+        // only on the same floor: a vide running through several floors is open or closed per floor, decided by the room
+        // next to it there (the landing upstairs can be open while the hall below has a wall)
+        ps.filter(p => p.o.floorId === room.floorId).forEach(p => {
           const x = p.o.walls[p.k].segs[p.jj];
           if (v === 'open') x.adj = 'open';
           else if (x.adj === 'open') x.adj = 'auto';

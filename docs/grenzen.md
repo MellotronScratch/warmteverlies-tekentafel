@@ -36,7 +36,8 @@ Grenst een wanddeel aan meer dan één ruimte, of maar voor een deel aan een and
 Soms is de scheiding tussen twee ruimtes geen muur, bijvoorbeeld waar de hal overgaat in de trapvide, of tussen een keuken en een woonkamer zonder tussenwand. Kies dan bij het wanddeel onder **Grenst aan** voor **Open verbinding (geen wand)**. Dan gebeurt er het volgende:
 
 - Dat stuk telt niet mee voor de warmte die van de ene naar de andere ruimte gaat, en het heeft geen constructie nodig.
-- De andere ruimte krijgt hier vanzelf ook een open verbinding.
+- De andere ruimte op dezelfde verdieping krijgt hier vanzelf ook een open verbinding.
+- Een vide of trappenhuis loopt door over meer verdiepingen. Daar bepaalt per verdieping de ruimte ernaast of er een wand staat of een open verbinding. Zet je de wand van de overloop naar de vide op open, dan geldt dat alleen op die verdieping; de hal eronder houdt zijn wand, tot je die ook open zet. Bij de wand van de vide zelf zie je per verdieping wat er geldt, en in 2,5D is het open stuk gestreept.
 - In de tekening is het een stippellijn, en in de 2,5D-weergave staat er geen muur.
 - Hebben de twee ruimtes een andere temperatuur, dan waarschuwt de app. Bij een open verbinding is de temperatuur in de praktijk ongeveer gelijk.
 - Lucht stroomt er vrij. Geef onder **Ventilatie** de overstroom op als de ene ruimte lucht toevoert en de andere afzuigt.
@@ -51,7 +52,7 @@ Trek je met **Wand** een nieuwe scheiding, dan kies je in het venster meteen of 
 - in het leidingnet krijgt elk element zijn deel van het warmteverlies van de hele zone, zodat ook een ruimte zonder eigen radiator meetelt in het debiet;
 - bij een ruimte zonder eigen afgifte staat waar hij door verwarmd wordt.
 
-Het warmteverlies per ruimte blijft gewoon per ruimte. Een zone ontstaat alleen als beide kanten van het wanddeel op *Open verbinding* staan. Zit er een deur, teken dan een binnenwand met een deur; dan zijn het aparte ruimtes.
+Het warmteverlies per ruimte blijft gewoon per ruimte. Een zone ontstaat alleen als beide kanten van het wanddeel op *Open verbinding* staan; bij een vide is open aan de kant van de ruimte op die verdieping genoeg. Zit er een deur, teken dan een binnenwand met een deur; dan zijn het aparte ruimtes.
 
 ---
 

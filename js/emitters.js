@@ -292,7 +292,8 @@ function heatZones() {
         // that have an ordinary wall there
         partnersOf(r, i, j).forEach(p => {
           const back = p.o.walls[p.k] && p.o.walls[p.k].segs[p.jj];
-          if (up[p.o.id] == null || !back || back.adj !== 'open') return; // an unheated room is not part of a zone
+          // the back side must be open too, except a vide: that is open on a floor where the room next to it is open
+          if (up[p.o.id] == null || !back || (back.adj !== 'open' && !spans(p.o))) return; // an unheated room is not part of a zone
           up[find(p.o.id)] = find(r.id);
         });
       });
