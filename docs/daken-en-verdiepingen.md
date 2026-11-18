@@ -16,7 +16,7 @@ Teken je op zo'n hogere verdieping een ruimte die over de vide heen valt, dan kn
 - Ligt de vide helemaal binnen de nieuwe ruimte, dan zou er een gat in de ruimte komen. Dat kan niet, dus de app maakt er twee delen van, met een open verbinding ertussen.
 - Valt de ruimte helemaal binnen de vide, dan wordt hij niet toegevoegd.
 
-**De trap tekenen**: staat een ruimte op *Trappenhuis*, dan kies je in het ruimtepaneel de vorm van de trap: **recht**, **kwartslag** (gaat de hoek om, met spillen in de hoek) of **halve draai** (met een bordes). Daarnaast kies je bij welke wand hij begint, langs welke kant hij loopt en hoe breed hij is. In de plattegrond zie je dan de treden met een pijl naar boven. In de 2,5D-weergave staat per verdieping een trap van vloer tot vloer. De app gaat uit van een rechthoekig trapgat. De trap is alleen voor het beeld en telt niet mee in de berekening.
+**De trap tekenen**: staat een ruimte op *Trappenhuis*, dan kies je in het ruimtepaneel de vorm van de trap: **recht**, **kwartslag** (gaat de hoek om, met spillen in de hoek), **halve draai zonder bordes** (gaat twee keer de hoek om met spillen en komt terug, zoals in veel rijtjeshuizen) of **halve draai met bordes**. Daarnaast kies je bij welke wand hij begint, langs welke kant hij loopt en hoe breed hij is. In de plattegrond zie je dan de treden met een pijl naar boven. In de 2,5D-weergave staat per verdieping een trap van vloer tot vloer. De app gaat uit van een rechthoekig trapgat. De trap is alleen voor het beeld en telt niet mee in de berekening.
 
 ## Schuine daken
 

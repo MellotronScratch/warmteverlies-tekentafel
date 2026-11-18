@@ -119,9 +119,14 @@ function gridSvg(W, H) {
   return `<path d="${minor}" stroke="var(--grid)" stroke-width="1"/><path d="${maj}" stroke="var(--grid-major)" stroke-width="1"/>`;
 }
 /* ---------- staircases: treads in plan, for the 2.5D view and the floor plan ----------
-   room.stair = {shape:'recht'|'kwart'|'half', edge: wall where the stair starts, side:'a'|'b' (the end of that wall it runs along), w: width}
+   room.stair = {shape:'recht'|'kwart'|'spil'|'half', edge: wall where the stair starts, side:'a'|'b' (the end of that wall it runs along), w: width}
    The stairwell is taken as the rectangle around the room, seen from the start wall. */
-const STAIR_SHAPES = { recht: 'Rechte trap', kwart: 'Kwartslag (gaat de hoek om)', half: 'Halve draai (met bordes)' };
+const STAIR_SHAPES = {
+  recht: 'Rechte trap',
+  kwart: 'Kwartslag (gaat de hoek om)',
+  spil: 'Halve draai zonder bordes (twee keer de hoek om)',
+  half: 'Halve draai met bordes'
+};
 function stairOf(r) {
   const st = r.stair || {};
   return {
@@ -146,7 +151,11 @@ function stairTreads(r, H) {
   if (u1 - u0 < 0.3 || vm < 0.3) return null;
   const N = Math.max(3, Math.round(H / 0.185)),
     T = N - 1; // risers and treads (the last riser steps onto the floor above)
-  let w = Math.min(st.w, (u1 - u0) / (st.shape === 'half' ? 2 : 1), st.shape === 'recht' ? vm : vm / 2);
+  let w = Math.min(
+    st.w,
+    (u1 - u0) / (st.shape === 'half' || st.shape === 'spil' ? 2 : 1),
+    st.shape === 'recht' ? vm : vm / 2
+  );
   const A = st.side === 'a',
     sa = A ? [u0, u0 + w] : [u1 - w, u1],
     sb = A ? [u1 - w, u1] : [u0, u0 + w];
@@ -175,23 +184,8 @@ function stairTreads(r, H) {
       out.push(q);
     }
   };
-  if (st.shape === 'recht') run(T, sa[0], sa[1], 0, vm, 'v+');
-  else if (st.shape === 'kwart') {
-    const L1 = vm - w,
-      L2 = u1 - u0 - w,
-      rest = Math.max(2, T - 3),
-      n1 = Math.max(1, Math.round((rest * L1) / (L1 + L2))),
-      n2 = Math.max(1, rest - n1);
-    run(n1, sa[0], sa[1], 0, vm - w, 'v+');
-    // three winders turning the corner: wedges from the inner corner to the outer sides of the corner square
-    const ui = A ? sa[1] : sa[0],
-      uo = A ? sa[0] : sa[1],
-      pin = W(ui, vm - w),
-      outer = [W(uo, vm - w), W(uo, vm), W(ui, vm)],
-      seg = [
-        [outer[0], outer[1]],
-        [outer[1], outer[2]]
-      ];
+  // three winders turning a corner: wedges from the inner corner (pin) to the outer sides of the corner square
+  const corner = (pin, outer) => {
     const along = t =>
       t <= 1
         ? { x: outer[0].x + (outer[1].x - outer[0].x) * t, y: outer[0].y + (outer[1].y - outer[0].y) * t }
@@ -204,8 +198,37 @@ function stairTreads(r, H) {
       pts.push(along(t1));
       out.push({ poly: pts, front: [pin, along(t0)] });
     }
+  };
+  const ui = A ? sa[1] : sa[0],
+    uo = A ? sa[0] : sa[1],
+    firstCorner = () => corner(W(ui, vm - w), [W(uo, vm - w), W(uo, vm), W(ui, vm)]);
+  if (st.shape === 'recht') run(T, sa[0], sa[1], 0, vm, 'v+');
+  else if (st.shape === 'kwart') {
+    const L1 = vm - w,
+      L2 = u1 - u0 - w,
+      rest = Math.max(2, T - 3),
+      n1 = Math.max(1, Math.round((rest * L1) / (L1 + L2))),
+      n2 = Math.max(1, rest - n1);
+    run(n1, sa[0], sa[1], 0, vm - w, 'v+');
+    firstCorner();
     if (A) run(n2, sa[1], u1, vm - w, vm, 'u+');
     else run(n2, u0, sa[0], vm - w, vm, 'u-');
+  } else if (st.shape === 'spil') {
+    // up along one side, two quarter turns with winders (and straight treads between them if there is room), back down the other side
+    const L1 = vm - w,
+      mid = A ? [sa[1], sb[0]] : [sb[1], sa[0]],
+      Lm = Math.max(0, mid[1] - mid[0]),
+      rest = Math.max(2, T - 6),
+      nm = Lm > 0.15 ? Math.round((rest * Lm) / (2 * L1 + Lm)) : 0,
+      n1 = Math.max(1, Math.floor((rest - nm) / 2)),
+      n2 = Math.max(1, rest - nm - n1);
+    run(n1, sa[0], sa[1], 0, vm - w, 'v+');
+    firstCorner();
+    if (nm > 0) run(nm, mid[0], mid[1], vm - w, vm, A ? 'u+' : 'u-');
+    const si = A ? sb[0] : sb[1],
+      so = A ? sb[1] : sb[0];
+    corner(W(si, vm - w), [W(si, vm), W(so, vm), W(so, vm - w)]);
+    run(n2, sb[0], sb[1], 0, vm - w, 'v-');
   } else {
     const n1 = Math.max(1, Math.floor((T - 1) / 2)),
       n2 = Math.max(1, T - 1 - n1);
