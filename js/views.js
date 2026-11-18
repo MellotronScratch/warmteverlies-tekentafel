@@ -930,6 +930,13 @@ function applyField(el, final) {
       const bg = curBg(),
         n = num(v);
       if (!bg || n == null) return;
+      if (parts[1] === 'rot') {
+        if (Math.abs(n) > 180) return;
+        bg.rot = Math.round(n * 100) / 100; // around the centre of the image
+        if (!bg.rot) delete bg.rot;
+        changed = true;
+        break;
+      }
       bg.op = Math.min(1, Math.max(0.1, n / 100));
       changed = true;
       break;

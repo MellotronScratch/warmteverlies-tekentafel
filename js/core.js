@@ -474,10 +474,18 @@ function normalizeProject(p) {
   p.floors.forEach(f => {
     f.name = String(f.name || 'Verdieping');
     f.below = f.below === 'kelder' || f.below === 'kruip' ? f.below : '';
-    // underlay image: position and size in metres, opacity 0.1–1
+    // underlay image: position and size in metres, opacity 0.1–1, rotation in degrees around its centre
     const b = f.bg;
     if (b && typeof b.img === 'string' && +b.w > 0 && +b.h > 0)
-      f.bg = { img: b.img, x: +b.x || 0, y: +b.y || 0, w: +b.w, h: +b.h, op: Math.min(1, Math.max(0.1, +b.op || 0.5)) };
+      f.bg = {
+        img: b.img,
+        x: +b.x || 0,
+        y: +b.y || 0,
+        w: +b.w,
+        h: +b.h,
+        op: Math.min(1, Math.max(0.1, +b.op || 0.5)),
+        ...(Number.isFinite(+b.rot) && +b.rot ? { rot: ((((+b.rot + 180) % 360) + 360) % 360) - 180 } : {})
+      };
     else delete f.bg;
   });
   p.images = p.images && typeof p.images === 'object' ? p.images : {};

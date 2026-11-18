@@ -1,5 +1,6 @@
 // Onderlegger: een afbeelding (bijvoorbeeld een bouwtekening) onder de plattegrond van een verdieping, om over te tekenen.
-// Per verdieping: floor.bg = { img, x, y, w, h, op } in meters en een dekking 0–1. De afbeelding zelf staat in P.images[img]
+// Per verdieping: floor.bg = { img, x, y, w, h, op, rot } in meters, een dekking 0–1 en een draaiing in graden om het
+// midden (rot ontbreekt als hij recht ligt). De afbeelding zelf staat in P.images[img]
 // (data-URL), zodat de stappen voor ongedaan maken hem niet telkens meekopiëren.
 'use strict';
 const BG_MAX_PX = 2000; // longest side after downscaling
@@ -12,10 +13,12 @@ const curBg = () => floorBg(P.floors.find(f => f.id === curFloor));
 function bgSvg() {
   const bg = curBg();
   if (!bg || !layerOn('bg')) return '';
-  const a = S({ x: bg.x, y: bg.y });
-  let s = `<image href="${P.images[bg.img]}" x="${a.x.toFixed(1)}" y="${a.y.toFixed(1)}" width="${(bg.w * view.s).toFixed(1)}" height="${(bg.h * view.s).toFixed(1)}" opacity="${bg.op}" preserveAspectRatio="none" pointer-events="none"/>`;
+  const a = S({ x: bg.x, y: bg.y }),
+    c = S({ x: bg.x + bg.w / 2, y: bg.y + bg.h / 2 }),
+    tf = bg.rot ? ` transform="rotate(${bg.rot} ${c.x.toFixed(1)} ${c.y.toFixed(1)})"` : '';
+  let s = `<image href="${P.images[bg.img]}" x="${a.x.toFixed(1)}" y="${a.y.toFixed(1)}" width="${(bg.w * view.s).toFixed(1)}" height="${(bg.h * view.s).toFixed(1)}" opacity="${bg.op}" preserveAspectRatio="none" pointer-events="none"${tf}/>`;
   if (bgMode === 'move')
-    s += `<rect x="${a.x}" y="${a.y}" width="${bg.w * view.s}" height="${bg.h * view.s}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="8 5" pointer-events="none"/>`;
+    s += `<rect x="${a.x}" y="${a.y}" width="${bg.w * view.s}" height="${bg.h * view.s}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="8 5" pointer-events="none"${tf}/>`;
   return s;
 }
 // the measuring line while setting the scale
@@ -140,32 +143,52 @@ function askBgDistance() {
     bgPts = [];
     return;
   }
+  // how far the line is off horizontal or vertical (a scan that is not quite straight)
+  const ang = (Math.atan2(bgPts[1].y - bgPts[0].y, bgPts[1].x - bgPts[0].x) * 180) / Math.PI,
+    skew = Math.round(ang / 90) * 90 - ang, // degrees to turn so the line is straight
+    tilted = Math.abs(skew) >= 0.05;
   const box = $('ask');
   box.innerHTML = `<b>Schaal instellen</b>
     <p>De lijn is nu ${fmt(d, 2)} m lang in de tekening. Hoe lang is hij in werkelijkheid?</p>
     <label class="f" for="ask-dist">Werkelijke afstand <span class="u">m</span><input class="in num" id="ask-dist" inputmode="decimal" value="${nv(d, 2)}"></label>
-    <div class="row"><button class="btn primary" id="ask-ok">Schaal toepassen</button><button class="btn" id="ask-no">Annuleren</button></div>`;
+    ${
+      tilted
+        ? `<label class="chk"><input type="checkbox" id="ask-rot" ${Math.abs(skew) <= 20 ? 'checked' : ''}> Deze lijn is horizontaal of verticaal: tekening recht leggen (${fmt(Math.abs(skew), 1)}° ${skew > 0 ? 'met de klok mee' : 'tegen de klok in'})</label>`
+        : ''
+    }
+    <div class="row"><button class="btn primary" id="ask-ok">Toepassen</button><button class="btn" id="ask-no">Annuleren</button></div>`;
   box.hidden = false;
   const ok = () => {
-    const v = num($('ask-dist').value);
+    const v = num($('ask-dist').value),
+      straighten = !!($('ask-rot') && $('ask-rot').checked); // read before the box is emptied
     closeAsk();
     if (!(v > 0)) {
       setBgMode(null);
       return;
     }
-    // scale around the first point, so that point stays where it is
+    // turn (when asked) and scale around the first point, so that point stays where it is
     const bg = curBg(),
       k = v / d,
-      p = bgPts[0];
+      p = bgPts[0],
+      turn = straighten ? skew : 0;
     pushUndo();
-    bg.x = r3(p.x + (bg.x - p.x) * k);
-    bg.y = r3(p.y + (bg.y - p.y) * k);
+    const t = (turn * Math.PI) / 180,
+      c0 = { x: bg.x + bg.w / 2 - p.x, y: bg.y + bg.h / 2 - p.y },
+      c = {
+        x: p.x + (c0.x * Math.cos(t) - c0.y * Math.sin(t)) * k,
+        y: p.y + (c0.x * Math.sin(t) + c0.y * Math.cos(t)) * k
+      };
     bg.w = r3(bg.w * k);
     bg.h = r3(bg.h * k);
+    bg.x = r3(c.x - bg.w / 2);
+    bg.y = r3(c.y - bg.h / 2);
+    const rot = Math.round((((((bg.rot || 0) + turn + 180) % 360) + 360) % 360) * 100) / 100 - 180;
+    if (Math.abs(rot) >= 0.005) bg.rot = rot;
+    else delete bg.rot;
     markDirty();
     setBgMode(null);
     toast(
-      `Schaal ingesteld: de afbeelding is nu ${fmt(bg.w, 2)} × ${fmt(bg.h, 2)} m. Met Verplaatsen leg je hem op de goede plek.`
+      `Schaal ingesteld${turn ? ` en ${fmt(Math.abs(turn), 1)}° rechtgezet` : ''}: de afbeelding is nu ${fmt(bg.w, 2)} × ${fmt(bg.h, 2)} m. Met Verplaatsen leg je hem op de goede plek.`
     );
   };
   $('ask-ok').onclick = ok;
@@ -194,10 +217,11 @@ function bgPanelHtml() {
   const f = P.floors.find(x => x.id === curFloor),
     bg = floorBg(f);
   let h = `<div class="sec"><h3>Onderlegger: ${esc(f.name)}</h3>
-    <p class="note">Leg een afbeelding van een bouwtekening of plattegrond onder deze verdieping en teken de ruimtes erop na. Stel eerst de schaal in met twee punten waarvan je de afstand weet, en verplaats hem daarna naar de goede plek. Je kunt een afbeelding ook op de tekening slepen of plakken (Ctrl/Cmd+V), bijvoorbeeld een schermafbeelding. Een nieuwe afbeelding vervangt de huidige.</p>
+    <p class="note">Leg een afbeelding van een bouwtekening of plattegrond onder deze verdieping en teken de ruimtes erop na. Stel eerst de schaal in met twee punten waarvan je de afstand weet; ligt een scan scheef, kies dan een lijn die horizontaal of verticaal hoort te zijn, dan legt de app de tekening meteen recht. Verplaats hem daarna naar de goede plek. Je kunt een afbeelding ook op de tekening slepen of plakken (Ctrl/Cmd+V), bijvoorbeeld een schermafbeelding. Een nieuwe afbeelding vervangt de huidige.</p>
     <div class="row"><button class="btn small" data-act="bgpick">${bg ? 'Andere afbeelding' : 'Afbeelding kiezen'}</button>${bg ? `<button class="btn small" data-act="bgscale" aria-pressed="${bgMode === 'scale'}">Schaal instellen</button><button class="btn small" data-act="bgmove" aria-pressed="${bgMode === 'move'}">${bgMode === 'move' ? 'Klaar' : 'Verplaatsen'}</button><button class="btn small danger" data-act="bgdel">Weghalen</button>` : ''}</div>`;
   if (bg)
     h += `<label class="f" for="f-bg-op">Dekking <span class="u">${fmtW(bg.op * 100)}%</span><input type="range" id="f-bg-op" data-f="bg.op" min="10" max="100" step="5" value="${Math.round(bg.op * 100)}"></label>
+    <div class="fields">${numField('f-bg-rot', 'bg.rot', 'Draaiing', 'graden, + is met de klok mee', bg.rot || 0, 2)}</div>
     <p class="note">${fmt(bg.w, 2)} × ${fmt(bg.h, 2)} m. Onder <b>Lagen</b> zet je de onderlegger aan of uit. De afbeelding wordt verkleind opgeslagen in het project (ook in de export).</p>`;
   return h + `</div>`;
 }
