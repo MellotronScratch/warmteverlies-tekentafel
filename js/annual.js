@@ -152,11 +152,10 @@ function gridField(S) {
 function annualHtml(c) {
   if (c.total <= 0 || !CLIMATE.uren || !Object.keys(CLIMATE.uren).length) return '';
   const S = P.settings,
-    hp = hpList && hpList.find(h => h.id === hpSel),
+    hp = curHp(c),
     R = annualCalc(c, hp),
-    eur = v => '€ ' + fmt(v, 0),
     kwh = v => fmt(v, 0) + ' kWh';
-  let h = `<div class="sec"><h3>Jaarverbruik en kosten</h3>
+  let h = `<div class="sec"><h3>Jaarverbruik</h3>
     <p class="note">Een schatting voor een gemiddeld jaar in De Bilt (KNMI, 2011–2025)${hp ? `, met de ${esc(hp.merk)} ${esc(hp.model)} die hierboven is gekozen` : ''}. ${S.dhwOn ? 'Verwarming en warm tapwater' : 'Alleen ruimteverwarming (warm tapwater staat uit)'}; nachtverlaging en je eigen stookgedrag zitten er niet in.</p>`;
   if (R.heat <= 0) return h + `<p class="note">Geen warmtevraag boven de stookgrens.</p></div>`;
   h += `<div class="kcard"><div class="kh"><span>Warmtevraag per jaar</span><b>${kwh(R.heat)}</b></div><span class="note">Voor verwarming. Zoveel warmte als ${fmt(R.gasHeat, 0)} m³ gas in een cv-ketel met ${fmt(S.etaGas * 100, 0)}% rendement.${R.dhw ? ` Daarbij komt ${kwh(R.dhwHeat)} voor warm tapwater (${fmt(S.dhwPers, 0)} ${+S.dhwPers === 1 ? 'bewoner' : 'bewoners'}, met het warmhoudverlies van de boiler).` : ''}</span></div>`;
@@ -173,12 +172,9 @@ function annualHtml(c) {
       <tr><td>Seizoensrendement verwarming (SCOP)<small>warmte gedeeld door stroom over het hele jaar</small></td><td>${fmt(R.scop, 1)}</td></tr>
       ${R.dhwCop ? `<tr><td>Rendement warm tapwater (COP)<small>boiler op ${nv(S.dhwTemp, 0)} °C, over het hele jaar</small></td><td>${fmt(R.dhwCop, 1)}</td></tr>` : ''}
       <tr><td>Gemiddelde aanvoertemperatuur<small>gewogen naar de geleverde warmte</small></td><td>${fmt(R.tsAvg, 0)} °C</td></tr>
-      ${R.cycHours > 0 ? `<tr><td>Uren waarin hij pendelt<small>vraag onder het minimale vermogen</small></td><td>${fmt(R.cycHours, 0)} uur</td></tr>` : ''}
-      <tr><td>Kosten warmtepomp</td><td>${eur(R.costHp)}</td></tr>`;
+      ${R.cycHours > 0 ? `<tr><td>Uren waarin hij pendelt<small>vraag onder het minimale vermogen</small></td><td>${fmt(R.cycHours, 0)} uur</td></tr>` : ''}`;
   }
-  h += `<tr><td>Kosten met gas<small>${fmt(R.gas, 0)} m³${R.dhwGas > 0 ? ` (waarvan ${fmt(R.dhwGas, 0)} m³ voor tapwater met een combiketel)` : ''}${S.gasFix > 0 ? ` + ${eur(S.gasFix)} vaste kosten` : ''}</small></td><td>${eur(R.costGas)}</td></tr>`;
-  if (hp)
-    h += `<tr class="sum"><td>${R.costGas >= R.costHp ? 'Goedkoper met de warmtepomp' : 'Duurder met de warmtepomp'}</td><td>${eur(Math.abs(R.costGas - R.costHp))} per jaar</td></tr>`;
+  h += `<tr><td>Gas bij een cv-ketel<small>ter vergelijking${R.dhwGas > 0 ? `, waarvan ${fmt(R.dhwGas, 0)} m³ voor tapwater met een combiketel` : ''}</small></td><td>${fmt(R.gas, 0)} m³</td></tr>`;
   h += `</tbody></table></div>`;
   if (!hp) h += `<p class="note">Kies hierboven een warmtepomp om het stroomverbruik te zien.</p>`;
   if (hp && R.atMax)
@@ -191,22 +187,56 @@ function annualHtml(c) {
       )
       .join('')}</tbody></table></div>`;
   }
-  h += `<div class="fields">
-      ${numField('f-s-stook', 'set.stook', 'Stookgrens', '°C buiten', S.stook, 1)}
+  h += `<div class="fields">${numField('f-s-stook', 'set.stook', 'Stookgrens', '°C buiten', S.stook, 1)}</div>
+    <p class="note">De stookgrens is de buitentemperatuur waarboven je huis geen verwarming meer nodig heeft door warmte van mensen, apparaten en zon: in een goed geïsoleerd huis lager (13–15 °C), in een oud huis hoger (16–18 °C). Wat dit verbruik kost, staat onder <button class="crumb" data-act="gotab" data-tab="kost">Kosten</button>.</p>
+    <p class="note">De COP volgt uit het verschil tussen de aanvoertemperatuur van de stooklijn hierboven en de buitenlucht${R.cf.own ? `, geschaald naar de opgegeven COP-waarden van deze warmtepomp (factor ${fmt(R.cf.f, 2)})` : ', met een gemiddelde lijn voor lucht/water-warmtepompen. Staan er COP-waarden van de fabrikant bij de warmtepomp in de lijst, dan rekent de app daarmee'}. Een lagere stooklijn geeft een hogere COP.</p></div>`;
+  return h;
+}
+
+// tab Kosten: what the annual use costs with the heat pump and with gas, and the prices
+// the cost table: heat pump against gas (also in the report)
+function costTableHtml(c, rep) {
+  const S = P.settings,
+    hp = curHp(c),
+    ok = c.total > 0 && CLIMATE.uren && Object.keys(CLIMATE.uren).length,
+    R = ok ? annualCalc(c, hp) : null,
+    eur = v => '€ ' + fmt(v, 0);
+  let h = '';
+  if (!R || R.heat <= 0)
+    h += `<p class="note">Teken eerst ruimtes; de kosten volgen uit het jaarverbruik onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>.</p>`;
+  else {
+    if (!rep)
+      h += `<p class="note">Voor een gemiddeld jaar, met het verbruik onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>${hp ? ` (${esc(hp.merk)} ${esc(hp.model)})` : ''}.</p>`;
+    h += `<div class="tablewrap"><table class="calc"><tbody>`;
+    if (hp)
+      h += `<tr><td>Warmtepomp<small>${fmt(R.el, 0)} kWh stroom × € ${fmt(priceEl(), 3)}</small></td><td>${eur(R.costHp)}</td></tr>`;
+    h += `<tr><td>Gas met een cv-ketel<small>${fmt(R.gas, 0)} m³ × € ${fmt(priceGas(), 3)}${S.gasFix > 0 ? ` + ${eur(S.gasFix)} vaste kosten` : ''}</small></td><td>${eur(R.costGas)}</td></tr>`;
+    if (hp)
+      h += `<tr class="sum"><td>${R.costGas >= R.costHp ? 'Goedkoper met de warmtepomp' : 'Duurder met de warmtepomp'}</td><td>${eur(Math.abs(R.costGas - R.costHp))} per jaar</td></tr>`;
+    h += `</tbody></table></div>`;
+    if (!hp)
+      h += `<p class="note">Kies onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button> een warmtepomp om de kosten met de warmtepomp te zien.</p>`;
+  }
+  return h;
+}
+function costHtml(c) {
+  const S = P.settings;
+  return `<div class="sec"><h3>Kosten per jaar</h3>${costTableHtml(c)}</div><div class="sec"><h3>Prijzen</h3><div class="fields">
       ${numField('f-s-pel', 'set.pEl', 'Stroomprijs', S.pEl != null ? '€ per kWh, eigen prijs' : '€ per kWh, gemiddeld', priceEl(), 3)}
       ${numField('f-s-pgas', 'set.pGas', 'Gasprijs', S.pGas != null ? '€ per m³, eigen prijs' : '€ per m³, gemiddeld', priceGas(), 3)}
-      ${gridField(S)}
-      ${numField('f-s-gfix', 'set.gasFix', 'Vaste kosten gas', '€ per jaar', S.gasFix, 2)}
-      ${numField('f-s-eta', 'set.etaGas', 'Rendement cv-ketel', '0 tot 1', S.etaGas, 2)}
     </div>
     <p class="note">${
       S.pEl == null && S.pGas == null
-        ? `De stroom- en gasprijs zijn het gemiddelde van het CBS${PRICES.maandNaam ? ` over ${esc(PRICES.maandNaam)}` : ''}: het leveringstarief van een vast of variabel contract plus energiebelasting, inclusief btw. De app werkt ze elke maand bij. Vul de prijzen van je eigen contract in als je die weet; leeg maken zet het gemiddelde terug.`
+        ? `De stroom- en gasprijs zijn het gemiddelde van het CBS${PRICES.maandNaam ? ` over ${esc(PRICES.maandNaam)}` : ''}: het leveringstarief van een vast of variabel contract plus energiebelasting, inclusief btw. De app werkt ze elke maand bij. Vul de prijzen van je eigen contract in als je die weet (inclusief belastingen); leeg maken zet het gemiddelde terug.`
         : `${S.pEl != null ? 'De stroomprijs' : ''}${S.pEl != null && S.pGas != null ? ' en de gasprijs zijn' : S.pEl != null ? ' is' : 'De gasprijs is'} je eigen prijs. Het gemiddelde van het CBS${PRICES.maandNaam ? ` over ${esc(PRICES.maandNaam)}` : ''} is € ${fmt(PRICES.stroom, 3)} per kWh en € ${fmt(PRICES.gas, 3)} per m³. <button class="crumb" data-act="pricesavg">Actuele prijzen gebruiken</button>`
-    }</p>
-    <p class="note">Vul de prijzen in inclusief belastingen. De stookgrens is de buitentemperatuur waarboven je huis geen verwarming meer nodig heeft door warmte van mensen, apparaten en zon: in een goed geïsoleerd huis lager (13–15 °C), in een oud huis hoger (16–18 °C). Bij <i>Vaste kosten gas</i> vul je in wat je bespaart als de gasaansluiting eruit gaat. Kies je je netbeheerder, dan vult de app de netbeheerkosten voor gas${GRID.jaar ? ` van ${GRID.jaar}` : ''} in (gewone huisaansluiting, 500 tot 4.000 m³ per jaar, inclusief btw). Tel daar de vaste leveringskosten van je energieleverancier bij op: die vervallen ook. Beide staan op je energierekening.</p>
-    <p class="note">De COP volgt uit het verschil tussen de aanvoertemperatuur van de stooklijn hierboven en de buitenlucht${R.cf.own ? `, geschaald naar de opgegeven COP-waarden van deze warmtepomp (factor ${fmt(R.cf.f, 2)})` : ', met een gemiddelde lijn voor lucht/water-warmtepompen. Staan er COP-waarden van de fabrikant bij de warmtepomp in de lijst, dan rekent de app daarmee'}. Een lagere stooklijn geeft een hogere COP.</p></div>`;
-  return h;
+    }</p></div>
+    <div class="sec"><h3>Vergelijking met gas</h3><div class="fields">
+      ${gridField(S)}
+      ${numField('f-s-gfix', 'set.gasFix', 'Vaste kosten gas', '€ per jaar', S.gasFix, 2)}
+      ${numField('f-s-eta', 'set.etaGas', 'Rendement cv-ketel', '0 tot 1', S.etaGas, 2)}
+      ${S.dhwOn ? numField('f-s-etat', 'set.etaTap', 'Tapwater met een combiketel', 'rendement 0 tot 1', S.etaTap, 2) : ''}
+    </div>
+    <p class="note">Bij <i>Vaste kosten gas</i> vul je in wat je bespaart als de gasaansluiting eruit gaat. Kies je je netbeheerder, dan vult de app de netbeheerkosten voor gas${GRID.jaar ? ` van ${GRID.jaar}` : ''} in (gewone huisaansluiting, 500 tot 4.000 m³ per jaar, inclusief btw). Tel daar de vaste leveringskosten van je energieleverancier bij op: die vervallen ook. Beide staan op je energierekening. Met gas rekent de app met een combiketel voor het tapwater; die heeft geen boiler, maar wel een lager rendement voor tapwater dan voor verwarming.</p></div>`;
 }
 
 // settings for domestic hot water (tab Warmtepomp): the heat pump's pause while it heats the tank, and the annual energy
@@ -228,9 +258,8 @@ function dhwHtml() {
       ${numField('f-s-dhwh', 'set.dhwHours', 'Tapwater op een koude dag', 'uur per dag', S.dhwHours, 1)}
       ${numField('f-s-dhwt', 'set.dhwTemp', 'Boilertemperatuur', '°C', S.dhwTemp, 0)}
       ${numField('f-s-dhwl', 'set.dhwLossW', 'Warmhoudverlies boiler', 'W, zoals op het label', S.dhwLossW, 0)}
-      ${numField('f-s-etat', 'set.etaTap', 'Tapwater met een combiketel', 'rendement 0 tot 1', S.etaTap, 2)}
     </div>
     <p class="note">Terwijl de warmtepomp de boiler opwarmt, verwarmt hij het huis niet. Op een koude dag duurt dat bij veel warmtepompen 1 tot 2 uur. In de overige uren moet hij dat inhalen: met ${nv(dhwHoursOn(), 1)} uur per dag is ${fmt(pct, 0)}% meer vermogen nodig. Daarmee rekenen de warmtepompkeuze hieronder en het jaarverbruik.</p>
-    <p class="note">Voor het jaarverbruik telt de warmte voor tapwater (gemiddeld zo'n 800 kWh per bewoner per jaar, met het leidingverlies) plus het warmhoudverlies van de boiler. Dat staat in watt op het energielabel of in de datasheet (een boiler van 200 liter zit meestal tussen 35 en 70 W). Die waarde is gemeten met de boiler op 65 °C; op ${nv(S.dhwTemp, 0)} °C verliest hij ${fmtW((boilerLossDay() * 1000) / 24)} W, ${fmt(boilerLossDay(), 2)} kWh per dag. De COP volgt uit de boilertemperatuur: hoe warmer de boiler, hoe lager. Met gas rekent de app met een combiketel; die heeft geen boiler, maar wel een lager rendement voor tapwater dan voor verwarming.</p></div>`
+    <p class="note">Voor het jaarverbruik telt de warmte voor tapwater (gemiddeld zo'n 800 kWh per bewoner per jaar, met het leidingverlies) plus het warmhoudverlies van de boiler. Dat staat in watt op het energielabel of in de datasheet (een boiler van 200 liter zit meestal tussen 35 en 70 W). Die waarde is gemeten met de boiler op 65 °C; op ${nv(S.dhwTemp, 0)} °C verliest hij ${fmtW((boilerLossDay() * 1000) / 24)} W, ${fmt(boilerLossDay(), 2)} kWh per dag. De COP volgt uit de boilertemperatuur: hoe warmer de boiler, hoe lager.</p></div>`
   );
 }

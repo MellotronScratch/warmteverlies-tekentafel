@@ -47,12 +47,17 @@ function viewInst() {
 function viewWp() {
   const c = calcAll(),
     save = adviceSaving(c);
-  return `<div class="sec"><h2>Warmtepomp</h2><p class="note">Welke warmtepomp past, op welke aanvoertemperatuur hij moet draaien en wat hij per jaar verbruikt. Hij rekent met het warmteverlies onder <button class="crumb" data-act="gotab" data-tab="res">Resultaten</button> (${fmt(c.total / 1000, 2)} kW${save > 0 ? `, na de aangevinkte verbeteradviezen ${fmt((c.total - save) / 1000, 2)} kW` : ''}) en met de afgifte onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button>.</p></div>
+  return `<div class="sec"><h2>Warmtepomp</h2><p class="note">Welke warmtepomp past, op welke aanvoertemperatuur hij moet draaien en wat hij per jaar verbruikt. Wat dat kost, staat onder <button class="crumb" data-act="gotab" data-tab="kost">Kosten</button>. Hij rekent met het warmteverlies onder <button class="crumb" data-act="gotab" data-tab="res">Resultaten</button> (${fmt(c.total / 1000, 2)} kW${save > 0 ? `, na de aangevinkte verbeteradviezen ${fmt((c.total - save) / 1000, 2)} kW` : ''}) en met de afgifte onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button>.</p></div>
   ${curveHtml()}
   ${dhwHtml()}
   ${hpSectionHtml(c)}
   ${annualHtml(c)}
   ${volumeHtml()}`;
+}
+function viewCost() {
+  const c = calcAll();
+  return `<div class="sec"><h2>Kosten</h2><p class="note">Wat verwarmen en warm tapwater per jaar kosten met de warmtepomp, en ter vergelijking met gas. Het verbruik zelf staat onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>.</p></div>
+  ${costHtml(c)}`;
 }
 function viewRes() {
   const c = calcAll();
@@ -73,7 +78,7 @@ function viewRes() {
     })
     .join('')}
   ${adviceHtml(c)}
-  <div class="sec"><p class="note">Afgifte en het leidingnet staan onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button>; stooklijn, warmtepompkeuze, jaarverbruik en systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>.</p></div>
+  <div class="sec"><p class="note">Afgifte en het leidingnet staan onder <button class="crumb" data-act="gotab" data-tab="inst">Installatie</button>; stooklijn, warmtepompkeuze, jaarverbruik en systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>; de kosten onder <button class="crumb" data-act="gotab" data-tab="kost">Kosten</button>.</p></div>
   <div class="sec"><h3>Tabel</h3></div>
   <div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>θi</th><th>A m²</th><th>Transm.</th><th>Vent.+inf.</th><th>Totaal W</th><th>W/m²</th></tr></thead><tbody>`;
   P.floors.forEach(f => {
@@ -277,6 +282,7 @@ function renderPanel() {
   else if (tab === 'vent') h = viewVent();
   else if (tab === 'inst') h = viewInst();
   else if (tab === 'wp') h = viewWp();
+  else if (tab === 'kost') h = viewCost();
   else if (tab === 'res') h = viewRes();
   else h = viewSet();
   pbody.innerHTML = h;

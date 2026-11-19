@@ -15,7 +15,8 @@ Het paneel heeft zeven tabbladen. Is het paneel smal, dan staan ze op twee regel
 - **Constructies**: wanden, ramen, vloeren en daken met hun U-waarde.
 - **Ventilatie**: ventilatie en infiltratie.
 - **Installatie**: afgifte, leidingnet, thermostaatkranen en appendages.
-- **Warmtepomp**: stooklijn, warm tapwater, warmtepompkeuze met grafiek, jaarverbruik en kosten, en systeeminhoud.
+- **Warmtepomp**: stooklijn, warm tapwater, warmtepompkeuze met grafiek, jaarverbruik en systeeminhoud.
+- **Kosten**: wat de warmtepomp per jaar kost tegenover gas, met de stroom- en gasprijs en de vaste kosten van de gasaansluiting.
 - **Resultaten**: het warmteverlies per ruimte, het woonoppervlak en de verbeteradviezen.
 - **Project**: verdiepingen, rekenwaarden en je projecten.
 

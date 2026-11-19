@@ -96,7 +96,7 @@ async function saveHpOwn(list) {
   }
 }
 function rerenderHp() {
-  if (tab === 'res' || tab === 'inst' || tab === 'wp') renderPanel();
+  if (tab === 'res' || tab === 'inst' || tab === 'wp' || tab === 'kost') renderPanel();
 }
 // design heat loss as a straight line: zero at the loss-weighted indoor temperature
 // improvement measures: per construction, the drop in heat loss when its U goes from the current value to the target
@@ -213,6 +213,17 @@ function adviceHtml(c) {
       .join('')}
     </tbody></table></div><p class="note">Richtwaarden: HR++ glas in een nieuw kozijn ca. U 1,1–1,4, triple glas ca. 0,7–0,9; spouwvulling ca. U 0,4–0,5; Rc 3,5 komt overeen met U ≈ 0,27, Rc 6 met U ≈ 0,16.</p>`;
   return h + `</div>`;
+}
+// the chosen heat pump; without a choice the best fit in the list (the top row under Warmtepomp kiezen)
+function curHp(c) {
+  if (!hpList || !hpList.length) return null;
+  if (!hpSel || !hpList.some(h => h.id === hpSel)) {
+    c = c || calcAll();
+    if (c.total <= 0) return null;
+    const L = lossLine(c, adviceSaving(c));
+    hpSel = hpList.map(h => ({ h, j: hpJudge(h, L) })).sort((a, b) => a.j.score - b.j.score)[0].h.id;
+  }
+  return hpList.find(h => h.id === hpSel);
 }
 function hpSectionHtml(c) {
   const save = adviceSaving(c),
