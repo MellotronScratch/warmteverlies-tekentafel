@@ -212,6 +212,7 @@ function pipeSnap(wp, o) {
     );
     const fi = floorIdx(curFloor);
     (P.risers || []).forEach(rs => {
+      if (o.skipRiser === rs.id) return;
       const a = floorIdx(rs.from),
         b = floorIdx(rs.to);
       if (fi >= a && fi <= b) tryP(rs, 'vtx');
@@ -222,16 +223,30 @@ function pipeSnap(wp, o) {
       if (Math.abs(pf - fi) > 1) return;
       pp.pts.forEach((p, i) => {
         if (o.skip && o.skip.p === pp.id && o.skip.i === i) return;
+        if (o.skipPt && o.skipPt.has(pp.id + ':' + i)) return;
         tryP(p, pf === fi ? 'vtx' : 'riser');
       });
     });
     drawPts.forEach(p => tryP(p, 'vtx'));
+    if (best) return best;
+    // anywhere along a radiator or convector (a connection in the middle, for example)
+    curRooms().forEach(r =>
+      (r.emitters || []).forEach(em => {
+        if (em.kind === 'vv' || !em.a || !em.b) return;
+        const h = onSeg(wp, em.a, em.b, bd);
+        if (h && dist(wp, h.q) < bd) {
+          bd = dist(wp, h.q);
+          best = { x: r3(h.q.x), y: r3(h.q.y), kind: 'vtx' };
+        }
+      })
+    );
     if (best) return best;
     (P.pipes || [])
       .filter(pp => pp.floorId === curFloor)
       .forEach(pp => {
         for (let i = 1; i < pp.pts.length; i++) {
           if (o.skip && o.skip.p === pp.id && (o.skip.i === i || o.skip.i === i - 1)) continue;
+          if (o.skipPt && (o.skipPt.has(pp.id + ':' + i) || o.skipPt.has(pp.id + ':' + (i - 1)))) continue;
           const h = onSeg(wp, pp.pts[i - 1], pp.pts[i], bd);
           if (h && dist(wp, h.q) < bd) {
             bd = dist(wp, h.q);
@@ -262,6 +277,7 @@ function finishPipe() {
     name: 'Leiding ' + (P.pipes.length + 1)
   };
   P.pipes.push(pp);
+  linkEmitters(pp);
   const nr = autoRisers(pp);
   sel = { t: 'pipe', p: pp.id };
   tab = 'sel';
@@ -270,6 +286,23 @@ function finishPipe() {
   toast(
     `${pp.name} getekend (${fmt(pipeLen(pp))} m).${nr ? ` Met ${nr === 1 ? 'een stijgleiding' : nr + ' stijgleidingen'} naar de verdieping ernaast.` : ''} Kies het leidingtype en de diameter.`
   );
+}
+// an emitter with a point of this pipe exactly on it (snapped) is connected to this pipe from now on
+function linkEmitters(pp) {
+  P.rooms
+    .filter(r => r.floorId === pp.floorId)
+    .forEach(r =>
+      (r.emitters || []).forEach(em => {
+        const on = q =>
+          em.kind === 'vv'
+            ? em.pts.some((a, i) => {
+                const h = onSeg(q, a, em.pts[(i + 1) % em.pts.length], 0.01);
+                return h && dist(q, h.q) < 0.01;
+              })
+            : emDist(em, q) < 0.01;
+        if (pp.pts.some(on)) em.link = pp.id;
+      })
+    );
 }
 // a point of a pipe exactly on a point of a pipe one floor up or down, without a riser there yet: add a riser
 function autoRisers(pp) {
@@ -1485,7 +1518,9 @@ svg.addEventListener('pointermove', e => {
     if (drag.type === 'riser') {
       const rs = (P.risers || []).find(x => x.id === drag.q);
       if (!rs) return;
-      const p = snapPoint(wp, { alt: e.altKey });
+      // like a pipe point: onto radiator ends, the heat pump, pipes; not onto the points that move along with it
+      const own = new Set(drag.glued.map(g => g.pp.id + ':' + g.i)),
+        p = pipeSnap(wp, { alt: e.altKey, skipRiser: rs.id, skipPt: own });
       if (rs.x === p.x && rs.y === p.y) return;
       if (!drag.moved) {
         pushUndo();
@@ -1657,6 +1692,7 @@ function endPointer() {
     }
     if (d.type === 'pipept' && d.moved) {
       const pp = P.pipes.find(x => x.id === d.p);
+      if (pp) linkEmitters(pp);
       if (pp && autoRisers(pp)) toast('Stijgleiding naar de verdieping ernaast gemaakt.', true);
     }
     if (d.moved) {

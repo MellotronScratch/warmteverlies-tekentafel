@@ -1,6 +1,6 @@
 // Onderlegger: een afbeelding (bijvoorbeeld een bouwtekening) onder de plattegrond van een verdieping, om over te tekenen.
-// Per verdieping: floor.bg = { img, x, y, w, h, op, rot } in meters, een dekking 0–1 en een draaiing in graden om het
-// midden (rot ontbreekt als hij recht ligt). De afbeelding zelf staat in P.images[img]
+// Per verdieping: floor.bg = { img, x, y, w, h, op, rot, flip } in meters, een dekking 0–1 en een draaiing in graden om het
+// midden (rot ontbreekt als hij recht ligt); flip: eerst links-rechts gespiegeld, dan gedraaid. De afbeelding zelf staat in P.images[img]
 // (data-URL), zodat de stappen voor ongedaan maken hem niet telkens meekopiëren.
 'use strict';
 const BG_MAX_PX = 2000; // longest side after downscaling
@@ -15,7 +15,12 @@ function bgSvg() {
   if (!bg || !layerOn('bg')) return '';
   const a = S({ x: bg.x, y: bg.y }),
     c = S({ x: bg.x + bg.w / 2, y: bg.y + bg.h / 2 }),
-    tf = bg.rot ? ` transform="rotate(${bg.rot} ${c.x.toFixed(1)} ${c.y.toFixed(1)})"` : '';
+    cx = c.x.toFixed(1),
+    cy = c.y.toFixed(1),
+    tf =
+      bg.rot || bg.flip
+        ? ` transform="${bg.rot ? `rotate(${bg.rot} ${cx} ${cy})` : ''}${bg.flip ? ` translate(${cx} ${cy}) scale(-1 1) translate(${-cx} ${-cy})` : ''}"`
+        : '';
   let s = `<image href="${P.images[bg.img]}" x="${a.x.toFixed(1)}" y="${a.y.toFixed(1)}" width="${(bg.w * view.s).toFixed(1)}" height="${(bg.h * view.s).toFixed(1)}" opacity="${bg.op}" preserveAspectRatio="none" pointer-events="none"${tf}/>`;
   if (bgMode === 'move')
     s += `<rect x="${a.x}" y="${a.y}" width="${bg.w * view.s}" height="${bg.h * view.s}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="8 5" pointer-events="none"${tf}/>`;
@@ -223,6 +228,7 @@ function bgPanelHtml() {
     h += `<label class="f" for="f-bg-op">Dekking <span class="u">${fmtW(bg.op * 100)}%</span><input type="range" id="f-bg-op" data-f="bg.op" min="10" max="100" step="5" value="${Math.round(bg.op * 100)}"></label>
     <div class="fields">${numField('f-bg-rot', 'bg.rot', 'Draaiing', 'graden, + is met de klok mee', bg.rot || 0, 2)}</div>
     <div class="row"><button class="btn small" data-act="bgturn" data-v="-90" title="Een kwartslag tegen de klok in">↺ 90° linksom</button><button class="btn small" data-act="bgturn" data-v="90" title="Een kwartslag met de klok mee">↻ 90° rechtsom</button><button class="btn small" data-act="bgturn" data-v="180">180°</button></div>
+    <div class="row"><button class="btn small" data-act="bgflip" data-v="h">⇋ Spiegelen links-rechts</button><button class="btn small" data-act="bgflip" data-v="v">⇅ Spiegelen boven-onder</button></div>
     <p class="note">${fmt(bg.w, 2)} × ${fmt(bg.h, 2)} m. Onder <b>Lagen</b> zet je de onderlegger aan of uit. De afbeelding wordt verkleind opgeslagen in het project (ook in de export).</p>`;
   return h + `</div>`;
 }

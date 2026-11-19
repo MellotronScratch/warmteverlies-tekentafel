@@ -1274,6 +1274,22 @@ function act(a, b) {
     case 'bgdel':
       removeBg();
       break;
+    case 'bgflip': {
+      // mirror as seen on screen: left-right turns the angle around, top-bottom is left-right plus a half turn
+      const bg = curBg();
+      if (!bg) return;
+      pushUndo();
+      const r0 = bg.rot || 0,
+        r1 = b.dataset.v === 'v' ? 180 - r0 : -r0,
+        rot = Math.round((((((r1 + 180) % 360) + 360) % 360) - 180) * 100) / 100;
+      if (Math.abs(rot) >= 0.005) bg.rot = rot === -180 ? 180 : rot;
+      else delete bg.rot;
+      if (bg.flip) delete bg.flip;
+      else bg.flip = true;
+      markDirty();
+      renderAll();
+      break;
+    }
     case 'bgturn': {
       // turn around the centre of the image, keeping the angle between -180 and 180
       const bg = curBg();

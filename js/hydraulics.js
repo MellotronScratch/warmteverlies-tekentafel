@@ -197,6 +197,11 @@ function buildNetwork() {
   const abs = n => (el[n.f] || 0) + n.z,
     inRiser = new Set();
   // risers: every node on their floors within a few centimetres of them
+  risers.forEach(rs =>
+    [rs.from, rs.to].forEach(f => {
+      if (![...nodes.values()].some(n => n.f === f && dist(n, rs) <= RISER_TOL)) node(f, rs, 0);
+    })
+  );
   const riserInfo = risers.map(rs => {
     const list = [];
     nodes.forEach(n => {
@@ -211,7 +216,7 @@ function buildNetwork() {
     // length from the lowest to the highest pipe on it; an end without a pipe counts from or to the floor there
     const bot = list.some(x => x.n.f === rs.from) ? lo : el[rs.from] || 0,
       top = hiN && hiN.n.f === rs.to ? hiN.abs : el[rs.to] || 0;
-    return { rs, L: Math.max(0, top - bot), floors: [...new Set(list.map(x => x.n.f))], bot, top };
+    return { rs, L: Math.max(0, top - bot), nodes: list.map(x => x.n), bot, top };
   });
   // within one floor: pipes at different heights that meet in the same place
   const groups = new Map();
@@ -244,6 +249,18 @@ function buildNetwork() {
     });
     return best;
   };
+  // the nodes of each pipe, for emitters linked to a pipe
+  const ofPipe = new Map();
+  edges.forEach(e => {
+    if (e.vert || !e.pp) return;
+    if (!ofPipe.has(e.pp.id)) ofPipe.set(e.pp.id, new Set());
+    ofPipe.get(e.pp.id).add(e.a).add(e.b);
+  });
+  const attach = (em, r) => {
+    const own = em.link && ofPipe.get(em.link),
+      n = own ? nearest(r.floorId, nd => (own.has(nd) ? emDist(em, nd) : Infinity)) : null;
+    return n || nearest(r.floorId, nd => emDist(em, nd));
+  };
   // emitters and their design flow: their share of the heat loss of their heating zone (rooms joined by open connections)
   const ems = [];
   zoneList().forEach(z => {
@@ -254,10 +271,7 @@ function buildNetwork() {
       need = zoneNeed(z);
     list.forEach(({ em, room: r }, i) => {
       const W = sum > 0 ? (need * outs[i]) / sum : 0,
-        n = drop(
-          nearest(r.floorId, nd => emDist(em, nd)),
-          em.kind === 'vv' ? 0 : EM_Z
-        );
+        n = drop(attach(em, r), em.kind === 'vv' ? 0 : EM_Z);
       const o = { em, room: r, node: n, W, lh: lhOf(W, dT), reach: false };
       if (n) n.ems.push(o);
       ems.push(o);

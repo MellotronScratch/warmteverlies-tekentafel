@@ -111,7 +111,6 @@ function viewPipe(pp) {
     vol = tot * 2 * pipeLpm(pp.mat, pp.dn),
     vl = vLimit(pp),
     cap = pipeCapacity(pp.mat, pp.dn, vl),
-    need = calcAll().total / 1000,
     S = P.settings;
   return `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-pipe-name" data-f="pipe.name" value="${esc(pp.name)}" aria-label="Naam leiding"></div>
   <div class="fields">${floorSelect('f-pipe-fl', 'pipe.floorId', pp.floorId)}</div>
@@ -147,7 +146,6 @@ function viewPipe(pp) {
   <p class="note">Stromingsgeluid hoor je alleen bij een leiding die in een kamer in het zicht loopt. Een weggewerkte leiding mag daarom sneller stromen: tot ${nv(V_MAX, 1)} m/s in plaats van ${nv(V_OK, 1)} m/s. Daarboven is ook een weggewerkte leiding te klein, omdat het drukverlies snel oploopt. In de tekening is een weggewerkte leiding gestreept.</p>
   ${netPipeHtml(pp)}
   <div class="det">Getekend ${fmt(len)} m + extra ${fmt(pp.extra)} m = ${fmt(tot)} m<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b><br>Draagt bij ${nv(vl, 1)} m/s ongeveer ${fmt(cap, 1)} kW (ΔT ${fmt(sysDT(), 1)} K)</div>
-  ${cap < need ? `<p class="note" style="color:var(--warn)">⚠ Is dit de hoofdleiding, dan is hij te klein voor het hele huis (${fmt(need, 2)} kW): het water stroomt dan sneller dan ${nv(vl, 1)} m/s.</p>` : ''}
   <p class="note">Eén lijn staat voor aanvoer én retour. Vul bij <i>Extra lengte</i> stukken in die je niet tekent. Koppelingen en bochten tellen niet mee. De inhoud gaat mee in de systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>.</p>
   <p class="note">Hoekpunt verslepen: sleep het. Klik op een + om een punt toe te voegen, en dubbelklik op een punt om het weg te halen.</p>
   <div class="row"><button class="btn danger" data-act="delpipe">Leiding verwijderen</button></div>`;
@@ -176,9 +174,13 @@ const riserAt = (q, fid) =>
   );
 function viewRiser(rs) {
   const N = network(),
-    info = N.risers.find(x => x.rs === rs) || { L: 0, floors: [] },
+    info = N.risers.find(x => x.rs === rs) || { L: 0, nodes: [] },
+    // floors where a pipe, an emitter or the heat pump connects to it
+    floors = [
+      ...new Set(info.nodes.filter(n => n.ems.length || n === N.root || n.adj.some(e => e.pp !== rs)).map(n => n.f))
+    ],
     fl = id => esc(P.floors[floorIdx(id)].name),
-    open = [rs.from, rs.to].filter(f => !info.floors.includes(f)),
+    open = [rs.from, rs.to].filter(f => !floors.includes(f)),
     vol = info.L * 2 * pipeLpm(rs.mat, rs.dn);
   return `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-rs-name" data-f="riser.name" value="${esc(rs.name)}" aria-label="Naam stijgleiding"></div>
   <div class="fields">${floorSelect('f-rs-from', 'riser.from', rs.from, 'Van')}${floorSelect('f-rs-to', 'riser.to', rs.to, 'Tot en met')}</div>
@@ -197,8 +199,8 @@ function viewRiser(rs) {
       .join('')}</select></label></div>
   <label class="chk"><input type="checkbox" id="f-rs-hid" data-f="riser.hidden" ${rs.hidden ? 'checked' : ''}> Weggewerkt: in een koker, muur of kast</label>
   ${netPipeHtml(rs)}
-  <div class="det">Lengte ${fmt(info.L, 2)} m (van de leiding onderaan tot de leiding bovenaan)<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b>${info.floors.length ? `<br>Aangesloten op ${info.floors.map(fl).join(', ')}` : ''}</div>
-  ${open.length ? `<p class="note" style="color:var(--warn)">⚠ Op ${open.map(fl).join(' en ')} sluit nog geen leiding aan. Ga naar die verdieping en teken een leiding vanaf het ↕-teken.</p>` : ''}
+  <div class="det">Lengte ${fmt(info.L, 2)} m (van de leiding onderaan tot de leiding bovenaan)<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b>${floors.length ? `<br>Aangesloten op ${floors.map(fl).join(', ')}` : ''}</div>
+  ${open.length ? `<p class="note" style="color:var(--warn)">⚠ Op ${open.map(fl).join(' en ')} sluit nog niets aan. Ga naar die verdieping en teken een leiding vanaf het rondje, of sleep het rondje naar het uiteinde van een radiator.</p>` : ''}
   <p class="note">Een stijgleiding verbindt de leidingen die op deze plek beginnen, eindigen of langslopen, op alle verdiepingen van <i>Van</i> tot en met <i>Tot en met</i>. Sleep het ↕-teken om hem te verplaatsen: de leidingpunten erop gaan mee.</p>
   <div class="row"><button class="btn danger" data-act="delriser">Stijgleiding verwijderen</button></div>`;
 }

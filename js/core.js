@@ -484,7 +484,8 @@ function normalizeProject(p) {
         w: +b.w,
         h: +b.h,
         op: Math.min(1, Math.max(0.1, +b.op || 0.5)),
-        ...(Number.isFinite(+b.rot) && +b.rot ? { rot: ((((+b.rot + 180) % 360) + 360) % 360) - 180 } : {})
+        ...(Number.isFinite(+b.rot) && +b.rot ? { rot: ((((+b.rot + 180) % 360) + 360) % 360) - 180 } : {}),
+        ...(b.flip ? { flip: true } : {}) // mirrored left-right in the image itself, before the rotation
       };
     else delete f.bg;
   });
@@ -676,6 +677,8 @@ function normalizeProject(p) {
           rh: +e.rh > 0 ? +e.rh : 600,
           rl: +e.rl > 0 ? +e.rl : 0,
           loops: [1, 2, 3, 4].includes(+e.loops) ? +e.loops : 1,
+          // the pipe this emitter is connected to: a pipe that ends on it; then it does not hang on another pipe nearby
+          ...(typeof e.link === 'string' && e.link ? { link: e.link } : {}),
           trv: typeof e.trv === 'string' ? (e.trv === 'heimeier-eclipse' ? 'heimeier-eclipse-150' : e.trv) : '' // '' = the valve chosen for the whole house
         };
       });
