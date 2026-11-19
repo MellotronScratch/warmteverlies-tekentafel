@@ -16,6 +16,8 @@ De berekening gaat uit van één aanvoertemperatuur voor het hele huis, met de �
 
 <img src="img/stooklijn.png" width="360" alt="De stooklijn onder Warmtepomp">
 
+Onder **Installatie → Afgifte** staat per ruimte het warmteverlies, de afgifte en in de kolom **Nodig °C** hoe warm het water minimaal moet zijn om die ruimte warm te krijgen. Alle radiatoren, convectoren en vloerverwarming krijgen hetzelfde water van de warmtepomp; het is dus geen temperatuur per radiator. De ruimte met de hoogste waarde is *maatgevend* en bepaalt de aanvoertemperatuur. Een ruimte met een lager getal heeft afgifte over: daar knijpt de thermostaatkraan wat dicht.
+
 ## Debiet van de warmtepomp
 
 Onder **Afgiftesysteem** (bij *Installatie* of bij een radiator) vul je de aanvoertemperatuur in, en óf de retourtemperatuur, óf het **debiet** van de warmtepomp in l/h.

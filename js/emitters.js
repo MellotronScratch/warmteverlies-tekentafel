@@ -804,15 +804,20 @@ function emitOverviewHtml(c) {
         if (pipeBad(pipeCheck(x.em, emOutput(x.em, x.room), N))) pipes++;
       });
       const ok = e >= need - 1;
-      return `<tr class="${ok ? '' : 'miss'}"><td>${lab}${z.multi ? '<small>open verbonden: één zone</small>' : ''}</td><td>${fmt(need / 1000, 2)}</td><td>${fmt(e / 1000, 2)}</td><td>${ok ? '✓' : '⚠ ' + fmt((need - e) / 1000, 2)}</td><td>${ns == null ? '–' : ns === Infinity ? '> 90' : fmt(ns, 0)}</td></tr>`;
+      return {
+        ns,
+        html: top =>
+          `<tr class="${ok ? '' : 'miss'}"><td>${lab}${z.multi ? '<small>open verbonden: één zone</small>' : ''}${top ? '<small>maatgevend</small>' : ''}</td><td>${fmt(need / 1000, 2)}</td><td>${fmt(e / 1000, 2)}</td><td>${ok ? '✓' : '⚠ ' + fmt((need - e) / 1000, 2)}</td><td>${ns == null ? '–' : ns === Infinity ? '> 90' : top ? `<b>${fmt(ns, 0)}</b>` : fmt(ns, 0)}</td></tr>`
+      };
     })
+    .map(x => (typeof x === 'string' ? x : x.html(x.ns != null && x.ns === maxNs && maxNs > 0)))
     .join('');
   return `<div class="sec"><h3>Afgifte</h3>${twFieldsHtml()}
     ${
       any
         ? `<div class="kcard"><div class="kh"><span>Minimaal nodige aanvoertemperatuur</span><b>${maxNs === Infinity ? '> 90' : fmt(maxNs, 0)} °C</b></div>
-      <span class="note">De ruimte met de zwaarste vraag bepaalt de aanvoertemperatuur van de hele installatie. Ruimtes die open met elkaar verbonden zijn (geen wand ertussen), rekenen samen als één zone. Ruimtes zonder afgifte, ook niet in hun zone, tellen niet mee.${pipes ? ` <b style="color:var(--warn)">⚠ ${pipes} aansluitleiding${pipes > 1 ? 'en zijn' : ' is'} krap of te klein.</b>` : ''}</span></div>`
+      <span class="note">Alle radiatoren, convectoren en vloerverwarming krijgen hetzelfde water van de warmtepomp (${nv(S.twSup, 1)} °C). De kolom <i>Nodig °C</i> laat per ruimte zien hoe warm dat water minimaal moet zijn om die ruimte warm te krijgen. De ruimte met de hoogste waarde (<i>maatgevend</i>) bepaalt de aanvoertemperatuur van de hele installatie; staat er bij een ruimte een lager getal, dan heeft die afgifte over en knijpt de thermostaatkraan daar wat dicht. Ruimtes die open met elkaar verbonden zijn (geen wand ertussen), rekenen samen als één zone. Ruimtes zonder afgifte, ook niet in hun zone, tellen niet mee.${pipes ? ` <b style="color:var(--warn)">⚠ ${pipes} aansluitleiding${pipes > 1 ? 'en zijn' : ' is'} krap of te klein.</b>` : ''}</span></div>`
         : ''
     }
-    <div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>Verlies kW</th><th>Afgifte kW</th><th>Status</th><th>Aanvoer °C</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    <div class="tablewrap"><table class="calc"><thead><tr><th>Ruimte</th><th>Verlies kW</th><th>Afgifte kW</th><th>Status</th><th title="Minimaal nodige aanvoertemperatuur voor deze ruimte">Nodig °C</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
 }
