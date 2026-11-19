@@ -83,6 +83,7 @@ const DEFAULT_SETTINGS = {
   bufVol: 0,
   minVolL: 15,
   tMax: 55,
+  curvePts: [-10, -5, 0, 5, 10], // °C outside: the points of the user's own heating curve control (2–10)
   ventSys: 'D',
   eta: 0.85,
   tRet: 20,
@@ -402,6 +403,9 @@ function normalizeProject(p) {
   if (typeof p.shared !== 'string') delete p.shared; // fingerprint of the share link this copy came from (js/share.js)
   const legacy = p.settings && !p.settings.ventSys; // projects from before ventilation per room: keep their results
   p.settings = { ...DEFAULT_SETTINGS, ...(p.settings || {}) };
+  p.settings.curvePts = (Array.isArray(p.settings.curvePts) ? p.settings.curvePts : DEFAULT_SETTINGS.curvePts)
+    .slice(0, 10)
+    .map(t => (t === null || t === '' || !Number.isFinite(+t) ? null : Math.max(-30, Math.min(25, +t))));
   if (typeof p.settings.gasNet !== 'string') p.settings.gasNet = '';
   p.settings.dhwOn = p.settings.dhwOn !== false;
   if (p.settings.trv === 'heimeier-eclipse') p.settings.trv = 'heimeier-eclipse-150'; // key renamed (11-2026)

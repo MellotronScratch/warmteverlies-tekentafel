@@ -14,6 +14,8 @@ Onder **Warmtepomp → Stooklijn** rekent de app voor elke buitentemperatuur van
 
 De berekening gaat uit van één aanvoertemperatuur voor het hele huis, met de ΔT tussen aanvoer en retour uit het project. Stel de lijn daarna in de praktijk bij.
 
+Stel je de stooklijn op je warmtepomp of regeling in met losse punten, gebruik dan **Stooklijn in punten**. Vul bij **Aantal punten** in hoeveel punten jouw regeling heeft (2 tot 10); er verschijnt dan voor elk punt een vakje. Vul daarin de buitentemperaturen in, bijvoorbeeld −15, −10, 0, 5, 10 en 15 °C. Een nieuw vakje begint 5 graden boven het vorige. Een leeg vakje telt niet mee. De tabel eronder geeft per punt de nodige aanvoertemperatuur, naar boven afgerond op een halve graad, en de maatgevende ruimte. Die waarden neem je zo over. Een punt onder de ontwerptemperatuur rekent de app door: het warmteverlies loopt daar in een rechte lijn verder op.
+
 <img src="img/stooklijn.png" width="360" alt="De stooklijn onder Warmtepomp">
 
 Onder **Installatie → Afgifte** staat per ruimte het warmteverlies, de afgifte en in de kolom **Nodig °C** hoe warm het water minimaal moet zijn om die ruimte warm te krijgen. Alle radiatoren, convectoren en vloerverwarming krijgen hetzelfde water van de warmtepomp; het is dus geen temperatuur per radiator. De ruimte met de hoogste waarde is *maatgevend* en bepaalt de aanvoertemperatuur. Een ruimte met een lager getal heeft afgifte over: daar knijpt de thermostaatkraan wat dicht.

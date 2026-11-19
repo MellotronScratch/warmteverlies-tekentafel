@@ -20,7 +20,8 @@ function heatingCurve() {
     who = z => (z.multi ? { id: z.lead.id, name: z.name } : z.lead);
   const pts = [];
   let missing = zones.filter(x => !x.z.ems.length).flatMap(x => x.rs.map(o => o.r));
-  for (let t = Math.floor(S.te); t <= CURVE_TOP; t++) {
+  // the needed supply at one outside temperature (also below the design temperature: the loss keeps rising in a straight line)
+  const at = t => {
     let best = null,
       lim = null;
     const short = [],
@@ -42,11 +43,12 @@ function heatingCurve() {
         lim = who(x.z);
       }
     });
-    pts.push({ t, ts: short.length ? tMax : best, room: short.length ? null : lim, short });
-  }
+    return { t, ts: short.length ? tMax : best, room: short.length ? null : lim, short };
+  };
+  for (let t = Math.floor(S.te); t <= CURVE_TOP; t++) pts.push(at(t));
   const design = pts[0],
     foot = pts[pts.length - 1];
-  return { pts, design, foot, missing, dT, tMax };
+  return { pts, design, foot, missing, dT, tMax, at };
 }
 
 function curveHtml() {
@@ -120,8 +122,39 @@ function curveHtml() {
     }
     <div class="fields">${numField('f-s-tmax', 'set.tMax', 'Maximale aanvoer warmtepomp', '°C', K.tMax, 0)}</div>
     ${K.missing.length ? `<p class="note" style="color:var(--warn)">⚠ Zonder afgifte, dus niet meegenomen: ${K.missing.map(r => esc(r.name)).join(', ')}.</p>` : ''}
-    <p class="note">Stel op de warmtepomp de rechte lijn in: het eindpunt bij de laagste buitentemperatuur en het voetpunt bij +${CURVE_TOP} °C. Fabrikanten noemen dat ook wel stooklijn, weerafhankelijke regeling of heating curve. Daarna regel je de lijn in de praktijk bij: is het overal net warm genoeg, zet hem dan stapjes lager. De berekening gaat uit van één aanvoertemperatuur voor het hele huis. Vloerverwarming met een eigen mengregeling heeft een eigen, lagere lijn.</p></div>`;
+    <p class="note">Stel op de warmtepomp de rechte lijn in: het eindpunt bij de laagste buitentemperatuur en het voetpunt bij +${CURVE_TOP} °C. Fabrikanten noemen dat ook wel stooklijn, weerafhankelijke regeling of heating curve. Daarna regel je de lijn in de praktijk bij: is het overal net warm genoeg, zet hem dan stapjes lager. De berekening gaat uit van één aanvoertemperatuur voor het hele huis. Vloerverwarming met een eigen mengregeling heeft een eigen, lagere lijn.</p></div>${curvePtsHtml(K)}`;
   return h;
+}
+
+// the points of the user's own control: per outside temperature the needed supply, to copy into the heat pump or controller
+function curvePtsHtml(K) {
+  const S = P.settings,
+    cp = S.curvePts || [],
+    fields = cp
+      .map((_, i) => i)
+      .map(
+        i =>
+          `<input class="in" type="text" inputmode="decimal" id="f-cp-${i}" data-f="set.curvePt.${i}" value="${cp[i] == null ? '' : nv(cp[i], 1)}" aria-label="Buitentemperatuur punt ${i + 1}" style="width:4.2em;text-align:right">`
+      )
+      .join(' '),
+    ts = [...new Set(cp.filter(t => t != null))].sort((a, b) => a - b),
+    rows = ts
+      .map(t => {
+        const p = K.at(t),
+          v =
+            p.ts == null
+              ? '–'
+              : p.short.length
+                ? `> ${nv(K.tMax, 0)} <small>te weinig afgifte</small>`
+                : `<b>${fmt(Math.ceil(p.ts * 2) / 2, 1)}</b>`;
+        return `<tr><td>${t > 0 ? '+' : ''}${nv(t, 1)}</td><td>${v}</td><td class="txt">${p.room ? esc(p.room.name) : ''}${t < S.te ? ' <small>onder de ontwerptemperatuur, doorgetrokken</small>' : ''}</td></tr>`;
+      })
+      .join('');
+  return `<div class="sec"><h3>Stooklijn in punten</h3>
+    <p class="note">Kan je warmtepomp of regeling de stooklijn met losse punten instellen? Kies hoeveel punten, en vul de buitentemperatuur van elk punt in. Een leeg vakje telt niet mee.</p>
+    <div class="fields">${numField('f-cp-n', 'set.curveN', 'Aantal punten', '2 tot 10', cp.length, 0)}</div>
+    <div class="row">${fields}</div>
+    ${rows ? `<div class="tablewrap"><table class="calc"><thead><tr><th>Buiten °C</th><th>Aanvoer °C</th><th>Maatgevend</th></tr></thead><tbody>${rows}</tbody></table></div><p class="note">De aanvoer is per punt uitgerekend en naar boven afgerond op een halve graad. Tussen de punten trekt de regeling meestal een rechte lijn; dat ligt dicht bij wat nodig is.</p>` : ''}</div>`;
 }
 
 /* ---------- radiator advice ----------

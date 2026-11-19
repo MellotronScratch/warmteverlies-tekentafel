@@ -781,6 +781,31 @@ function applyField(el, final) {
         changed = true;
         break;
       }
+      if (k === 'curveN') {
+        // how many points: a new one starts 5 degrees above the one before it
+        const n = Math.round(num(v));
+        if (!(n >= 2 && n <= 10)) return;
+        const cp = (P.settings.curvePts || []).slice(0, n);
+        while (cp.length < n) {
+          const last = [...cp].reverse().find(t => t != null);
+          cp.push(last == null ? P.settings.te : Math.min(25, last + 5));
+        }
+        P.settings.curvePts = cp;
+        changed = true;
+        break;
+      }
+      if (k === 'curvePt') {
+        // one of the points of the user's own heating curve; empty leaves it out
+        const i = +parts[2],
+          cp = (P.settings.curvePts || []).slice();
+        if (!(i >= 0 && i < cp.length)) return;
+        const n = String(v).trim() === '' ? null : num(v);
+        if ((n == null && String(v).trim() !== '') || (n != null && (n < -30 || n > 25))) return;
+        cp[i] = n;
+        P.settings.curvePts = cp;
+        changed = true;
+        break;
+      }
       if (k === 'ventSys' || k === 'infMode') {
         P.settings[k] = v;
         changed = true;
