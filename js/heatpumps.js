@@ -100,6 +100,16 @@ function rerenderHp() {
 }
 // design heat loss as a straight line: zero at the loss-weighted indoor temperature
 // improvement measures: per construction, the drop in heat loss when its U goes from the current value to the target
+// the measure for one construction: for a wall it depends on the build-up. A cavity with still air (not a ventilated
+// gap behind cladding) can be filled; a solid wall, or a cavity that is already full, is insulated on the outside or inside.
+function adviceLabel(con, rule) {
+  if (con.kind !== 'wand' || !(con.layers || []).length) return rule.label;
+  const mat = id => (P.materials || []).find(m => m.id === id);
+  return con.layers.some(l => (mat(l.mid) || {}).type === 'spouw' && l.vent !== 'sterk')
+    ? 'Spouw vullen (spouwmuurisolatie)'
+    : 'Gevel isoleren aan de buiten- of binnenkant';
+}
+const ADVICE_MIN_A = 0.5; // m²: less of a construction at the outside is no reason to insulate it
 function computeAdvice(c) {
   const R = P.settings.advice,
     map = {};
@@ -110,14 +120,19 @@ function computeAdvice(c) {
       if (!con) return;
       const r = R[con.kind];
       if (!r || !(con.U > r.on) || !(r.to < con.U)) return;
-      const m = map[con.id] || (map[con.id] = { con, rule: r, A: 0, dW: 0, rooms: new Set() });
+      const m =
+        map[con.id] || (map[con.id] = { con, rule: r, label: adviceLabel(con, r), A: 0, dW: 0, rooms: new Set() });
       const d = l.A * (con.U - r.to) * l.dT;
       m.A += l.A;
       m.dW += d;
       m.rooms.add(x.room.name);
     })
   );
-  return Object.values(map).sort((a, b) => b.dW - a.dW);
+  // leave out tiny pieces: a room that sticks out a centimetre past the facade or the floor below gives a few
+  // square centimetres of inner wall or floor 'outside', and insulating that makes no sense
+  return Object.values(map)
+    .filter(m => m.A >= ADVICE_MIN_A)
+    .sort((a, b) => b.dW - a.dW);
 }
 function adviceSaving(c, list) {
   return (list || computeAdvice(c)).filter(a => P.advSel[a.con.id]).reduce((s, a) => s + a.dW, 0);
@@ -194,7 +209,7 @@ function adviceHtml(c) {
     list.forEach(a => {
       const pct = c.total > 0 ? (a.dW / c.total) * 100 : 0;
       const on = !!P.advSel[a.con.id];
-      h += `<div class="card ${on ? 'cur' : ''}"><div class="kh" style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><b>${esc(a.rule.label)}</b><b style="font-size:18px;color:var(--ok);white-space:nowrap">−${fmtW(a.dW)} W</b></div>
+      h += `<div class="card ${on ? 'cur' : ''}"><div class="kh" style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><b>${esc(a.label)}</b><b style="font-size:18px;color:var(--ok);white-space:nowrap">−${fmtW(a.dW)} W</b></div>
         <span class="note">${esc(a.con.name)}: U ${nv(a.con.U, 2)} → ${nv(a.rule.to, 2)} W/m²K · ${fmt(a.A, 1)} m² in ${[...a.rooms].map(esc).join(', ')} · ${fmt(pct, 0)}% van het totaal</span>
         <label class="chk"><input type="checkbox" id="f-adv-${a.con.id}" data-f="advsel.${a.con.id}" ${on ? 'checked' : ''}> Meenemen in de berekening</label></div>`;
     });

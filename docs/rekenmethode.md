@@ -22,6 +22,13 @@ Onder **Resultaten** staat het woonoppervlak van het huis, totaal en per verdiep
 
 Er wordt gemeten binnen de getekende wanden. Teken je op buitenmaat, dan komt het woonoppervlak dus wat hoger uit. Dakkapellen tellen niet extra mee.
 
+## Verbeteradviezen
+
+Onder **Resultaten** staan verbeteradviezen: constructies aan de buitenkant, aan de grond of aan een onverwarmde ruimte met een slechtere U-waarde dan de drempel. Per soort (ramen, wanden, vloeren, daken) stel je de drempel en de nieuwe U-waarde zelf in. Vink je een maatregel aan, dan rekent de warmtepompkeuze met het lagere warmteverlies.
+
+- Bij een wand kijkt de app naar de laagopbouw. Zit er een luchtspouw in, dan luidt het advies *Spouw vullen*. Is de muur massief, of is de spouw al gevuld of alleen een geventileerde ruimte achter gevelbekleding, dan luidt het *Gevel isoleren aan de buiten- of binnenkant*. Heeft de wand alleen een U-waarde zonder opbouw, dan staat er *Gevel of spouw na-isoleren*.
+- Constructies met minder dan 0,5 m² aan de buitenkant krijgen geen advies. Zulke stukjes ontstaan vaak doordat een ruimte in de tekening een centimeter buiten de gevel of buiten de verdieping eronder uitsteekt; isoleren is daar geen zinnige maatregel.
+
 ## Gegevens waar de app mee rekent
 
 Naast wat je zelf invult, rekent de app met een aantal vaste tabellen:

@@ -238,7 +238,7 @@ function reportHtml() {
     h += `<section class="rsec"><h2>Verbeteradviezen</h2><table class="calc"><thead><tr><th>Maatregel</th><th>U nu → na</th><th>A m²</th><th>Besparing W</th></tr></thead><tbody>${adv
       .map(
         a =>
-          `<tr${P.advSel[a.con.id] ? ' class="sum"' : ''}><td>${esc(a.rule.label)}${P.advSel[a.con.id] ? ' <small>meegenomen</small>' : ''}<small>${esc(a.con.name)} · ${[...a.rooms].map(esc).join(', ')}</small></td><td>${nv(a.con.U, 2)} → ${nv(a.rule.to, 2)}</td><td>${fmt(a.A, 1)}</td><td>${fmtW(a.dW)}</td></tr>`
+          `<tr${P.advSel[a.con.id] ? ' class="sum"' : ''}><td>${esc(a.label)}${P.advSel[a.con.id] ? ' <small>meegenomen</small>' : ''}<small>${esc(a.con.name)} · ${[...a.rooms].map(esc).join(', ')}</small></td><td>${nv(a.con.U, 2)} → ${nv(a.rule.to, 2)}</td><td>${fmt(a.A, 1)}</td><td>${fmtW(a.dW)}</td></tr>`
       )
       .join(
         ''
