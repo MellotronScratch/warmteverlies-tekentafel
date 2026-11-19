@@ -41,9 +41,17 @@ jobs:
           V=${GITHUB_SHA::8}
           sed -i -E "s#(src=\"js/[a-z0-9]+\.js|href=\"css/app\.css)\"#\1?v=$V\"#g" index.html
           grep -c "?v=$V" index.html
+      # lftp (het uploadprogramma) zit niet standaard op de runner. De pakketservers van Ubuntu haperen soms even:
+      # dan een paar keer opnieuw proberen in plaats van de hele deploy te laten mislukken.
       - name: Installeer lftp
         if: env.FTP_SERVER != ''
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+        run: |
+          for i in 1 2 3 4; do
+            sudo apt-get -o Acquire::Retries=3 update -qq && sudo apt-get -o Acquire::Retries=3 install -y -qq lftp && break
+            echo "Poging $i mislukt, over 20 seconden opnieuw"
+            sleep 20
+          done
+          command -v lftp
       - name: Uploaden
         if: env.FTP_SERVER != ''
         env:
