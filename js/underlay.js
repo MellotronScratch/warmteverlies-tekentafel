@@ -222,6 +222,7 @@ function bgPanelHtml() {
   if (bg)
     h += `<label class="f" for="f-bg-op">Dekking <span class="u">${fmtW(bg.op * 100)}%</span><input type="range" id="f-bg-op" data-f="bg.op" min="10" max="100" step="5" value="${Math.round(bg.op * 100)}"></label>
     <div class="fields">${numField('f-bg-rot', 'bg.rot', 'Draaiing', 'graden, + is met de klok mee', bg.rot || 0, 2)}</div>
+    <div class="row"><button class="btn small" data-act="bgturn" data-v="-90" title="Een kwartslag tegen de klok in">↺ 90° linksom</button><button class="btn small" data-act="bgturn" data-v="90" title="Een kwartslag met de klok mee">↻ 90° rechtsom</button><button class="btn small" data-act="bgturn" data-v="180">180°</button></div>
     <p class="note">${fmt(bg.w, 2)} × ${fmt(bg.h, 2)} m. Onder <b>Lagen</b> zet je de onderlegger aan of uit. De afbeelding wordt verkleind opgeslagen in het project (ook in de export).</p>`;
   return h + `</div>`;
 }

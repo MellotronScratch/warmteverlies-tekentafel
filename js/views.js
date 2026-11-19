@@ -526,7 +526,9 @@ function applyField(el, final) {
       } else if (k === 'at') {
         delete pp.at;
         delete pp.z;
-        if (v === 'plafond') pp.at = 'plafond';
+        if (v === 'plafond' || v === 'invloer' || v === 'inplafond') pp.at = v;
+        if (v === 'invloer' || v === 'inplafond')
+          pp.hidden = true; // cast in: flow noise not audible
         else if (v === 'hoogte') {
           pp.at = 'hoogte';
           pp.z = r3(pipeZ({ ...pp, at: 'plafond' }) / 2);
@@ -1272,6 +1274,18 @@ function act(a, b) {
     case 'bgdel':
       removeBg();
       break;
+    case 'bgturn': {
+      // turn around the centre of the image, keeping the angle between -180 and 180
+      const bg = curBg();
+      if (!bg) return;
+      pushUndo();
+      const rot = Math.round((((((bg.rot || 0) + +b.dataset.v + 180) % 360) + 360) % 360) * 100) / 100 - 180;
+      if (Math.abs(rot) >= 0.005) bg.rot = rot === -180 ? 180 : rot;
+      else delete bg.rot;
+      markDirty();
+      renderAll();
+      break;
+    }
     case 'report':
       track('rapport');
       openReport();

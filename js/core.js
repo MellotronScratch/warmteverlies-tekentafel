@@ -558,8 +558,8 @@ function normalizeProject(p) {
         name: String(x.name || 'Leiding'),
         ...(x.hidden ? { hidden: true } : {}), // in floor, wall or boxing: flow noise not audible
         // height: along the floor (default), along the ceiling, or at its own height above the floor (m)
-        ...(x.at === 'plafond'
-          ? { at: 'plafond' }
+        ...(['plafond', 'invloer', 'inplafond'].includes(x.at)
+          ? { at: x.at }
           : x.at === 'hoogte'
             ? { at: 'hoogte', z: Math.max(0, +x.z || 0) }
             : {})

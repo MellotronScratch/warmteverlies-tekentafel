@@ -63,9 +63,16 @@ function storeyH(fid) {
 }
 // height of a pipe above its floor (m): along the floor, along the ceiling (just under it) or its own height
 const pipeZ = pp =>
-  pp.at === 'plafond' ? Math.max(0, storeyH(pp.floorId) - 0.05) : pp.at === 'hoogte' ? pp.z || 0 : 0;
+  pp.at === 'plafond'
+    ? Math.max(0, storeyH(pp.floorId) - 0.05)
+    : pp.at === 'inplafond'
+      ? storeyH(pp.floorId)
+      : pp.at === 'hoogte'
+        ? pp.z || 0
+        : 0;
 const pipeAtText = pp =>
-  pp.at === 'plafond' ? 'langs het plafond' : pp.at === 'hoogte' ? 'op ' + fmt(pp.z || 0, 2) + ' m' : '';
+  ({ plafond: 'langs het plafond', invloer: 'in de vloer', inplafond: 'in het plafond' })[pp.at] ||
+  (pp.at === 'hoogte' ? 'op ' + fmt(pp.z || 0, 2) + ' m' : '');
 // water content (litres), indicative: panel radiators per metre at 600 mm high; otherwise per kW of rated output
 function emVolume(em) {
   if (em.kind === 'vv') return vvLoop(em) * pipeLpm('pex', '16');
@@ -124,14 +131,17 @@ function viewPipe(pp) {
     ${numField('f-pipe-x', 'pipe.extra', 'Extra lengte', 'm', pp.extra, 1)}</div>
   <div class="fields"><label class="f" for="f-pipe-at">Hoogte<select class="in" id="f-pipe-at" data-f="pipe.at">${[
     ['vloer', 'Langs de vloer'],
+    ['invloer', 'In de vloer'],
     ['plafond', 'Langs het plafond'],
+    ['inplafond', 'In het plafond'],
     ['hoogte', 'Op een eigen hoogte']
   ]
     .map(([k, l]) => `<option value="${k}" ${(pp.at || 'vloer') === k ? 'selected' : ''}>${l}</option>`)
     .join(
       ''
     )}</select></label>${pp.at === 'hoogte' ? numField('f-pipe-z', 'pipe.z', 'Boven de vloer', 'm', pp.z || 0, 2) : ''}</div>
-  ${pp.at ? `<p class="note">De leiding loopt ${pipeAtText(pp)} (${fmt(pipeZ(pp), 2)} m boven de vloer). Het stuk omlaag naar een radiator, convector, vloerverwarming of de warmtepomp telt mee in de lengte, en een stijgleiding begint of eindigt op deze hoogte.</p>` : ''}
+  ${pp.at === 'invloer' ? '<p class="note">De leiding ligt in de vloer, bijvoorbeeld in een mantelbuis in het beton gestort. Hij telt daarom als weggewerkt.</p>' : ''}
+  ${pp.at && pp.at !== 'invloer' ? `<p class="note">De leiding loopt ${pipeAtText(pp)} (${fmt(pipeZ(pp), 2)} m boven de vloer${pp.at === 'inplafond' ? ', in de vloer van de verdieping erboven' : ''}). Het stuk omlaag naar een radiator, convector, vloerverwarming of de warmtepomp telt mee in de lengte, en een stijgleiding begint of eindigt op deze hoogte.</p>` : ''}
   ${pipeRiserHtml(pp)}
   <label class="chk"><input type="checkbox" id="f-pipe-hid" data-f="pipe.hidden" ${pp.hidden ? 'checked' : ''}> Weggewerkt: in de vloer, een muur, een koof of de kruipruimte</label>
   <p class="note">Stromingsgeluid hoor je alleen bij een leiding die in een kamer in het zicht loopt. Een weggewerkte leiding mag daarom sneller stromen: tot ${nv(V_MAX, 1)} m/s in plaats van ${nv(V_OK, 1)} m/s. Daarboven is ook een weggewerkte leiding te klein, omdat het drukverlies snel oploopt. In de tekening is een weggewerkte leiding gestreept.</p>
