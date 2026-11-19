@@ -601,24 +601,34 @@ function fanNeedHtml(em, room) {
       h +
       `<div class="warnbox">Ook op 100% geven ${em.fan.count} ventilatoren te weinig: ${fmtW(F.max)} W van de ${fmtW(F.rest)} W die ${where} nodig heeft${share}. Neem meer of grotere ventilatoren, of een hogere aanvoertemperatuur.</div></div>`
     );
-  // with margin: the speed at which the fans give 1.5× what is needed (capped at 100 %)
-  const target = F.rest * 1.5;
-  let lo = 0,
+  // advice: a little above the minimum, because how much air really gets through the fins differs per emitter.
+  // The speed at which the output is 15% more than needed, at most 20 points above the minimum, rounded up to 5%.
+  const exact = Math.max(1, Math.ceil(F.pct));
+  let lo = F.pct,
     hi = 100;
-  if (F.at(100) < target) lo = hi = 100;
+  if (F.at(100) < F.rest * 1.15) lo = hi = 100;
   else
     for (let k = 0; k < 30; k++) {
       const m = (lo + hi) / 2;
-      if (F.at(m) < target) lo = m;
+      if (F.at(m) < F.rest * 1.15) lo = m;
       else hi = m;
     }
-  const exact = Math.max(1, Math.ceil(F.pct)),
-    safe = Math.max(exact, Math.ceil(hi));
+  const safe = Math.max(exact, Math.min(100, exact + 20, Math.ceil(hi / 5) * 5));
+  // output at a few speeds: shows that faster gives less and less extra
+  const steps = [...new Set([exact, safe, 50, 75, 100])].filter(p => p >= exact).sort((x, y) => x - y);
+  const tbl = `<div class="tablewrap"><table class="calc"><thead><tr><th>Toerental</th><th>Afgifte element</th><th>t.o.v. nodig</th></tr></thead><tbody>${steps
+    .map(p => {
+      const W = F.at(p);
+      return `<tr${p === safe ? ' class="sum"' : ''}><td>${p}%${p === exact ? ' (minimaal)' : p === safe ? ' (advies)' : ''}</td><td>${fmtW(W)} W</td><td>${fmtW((W / F.rest) * 100)}%</td></tr>`;
+    })
+    .join('')}</tbody></table></div>`;
   return (
     h +
     `<div class="kcard"><div class="kh"><span>${em.fan.count} × ${esc(fanModel(em).naam)}</span><b>${exact}%</b></div>
-    <div class="seglegend"><span style="--c:transparent">met 50% marge ${safe}%</span><span style="--c:transparent">${fmtW(F.rest)} W nodig</span></div></div>
-    <p class="note">Bij ${nv(P.settings.twSup, 1)}/${fmt(tRet(), 1)} °C en ${nv(P.settings.te, 0)} °C buiten heeft ${where} ${fmtW(F.rest)} W van dit element nodig${share}. Dat halen deze ventilatoren vanaf ${exact}%. Omdat de berekening een schatting is, raden we ${safe}% aan (50% meer vermogen dan nodig). Probeer een ander aantal of type hierboven: het toerental rekent meteen mee. ${exact < 6 ? 'Veel ventilatoren stoppen onder ongeveer 5% PWM of draaien dan op hun minimum. ' : ''}Een regeling op de watertemperatuur (zoals een HeatMeister) mag dit toerental bijna gelijk houden over de hele stooklijn: de stooklijn verlaagt de aanvoer al in dezelfde mate als het warmteverlies.</p>
+    <div class="seglegend"><span style="--c:transparent">minimaal ${exact}%, advies ${safe}%</span><span style="--c:transparent">${fmtW(F.rest)} W nodig</span></div></div>
+    <p class="note">Bij ${nv(P.settings.twSup, 1)}/${fmt(tRet(), 1)} °C en ${nv(P.settings.te, 0)} °C buiten heeft ${where} ${fmtW(F.rest)} W van dit element nodig${share}. Dat halen deze ventilatoren vanaf <b>${exact}%</b>. ${safe > exact ? `Zet ze op ${safe}% voor wat speling: hoeveel lucht er echt door de lamellen gaat, verschilt per radiator en per ventilator.` : ''} ${exact < 6 ? 'Veel ventilatoren stoppen onder ongeveer 5% PWM of draaien dan op hun minimum. ' : ''}</p>
+    ${tbl}
+    <p class="note">Sneller draaien levert steeds minder extra op: de lucht komt dan al bijna zo warm uit de radiator als het water, en de ventilatoren maken meer geluid. Probeer een ander aantal of type hierboven: het toerental rekent meteen mee. Een regeling op de watertemperatuur (zoals een HeatMeister) mag dit toerental bijna gelijk houden over de hele stooklijn: de stooklijn verlaagt de aanvoer al in dezelfde mate als het warmteverlies.</p>
     <div class="row">${em.fan.pct !== safe ? `<button class="btn small" data-act="fanpct" data-v="${safe}">Zet toerental op ${safe}%</button>` : ''}</div></div>`
   );
 }
