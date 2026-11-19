@@ -126,7 +126,7 @@ Onder **Installatie → Appendages bij de warmtepomp** zet je de onderdelen in d
 Onder **Warmtepomp → Warm tapwater** geef je aan of de warmtepomp ook het warme tapwater maakt, met een boiler. Dat staat standaard aan. Zet het uit bij een hybride warmtepomp, waarbij de cv-ketel het tapwater maakt, of bij een losse elektrische boiler.
 
 - **Onderbreking**: terwijl de warmtepomp de boiler opwarmt, verwarmt hij het huis niet. Op een koude dag duurt dat bij veel warmtepompen 1 tot 2 uur. In de overige uren moet hij dat inhalen. Met 1,5 uur per dag is bij de ontwerptemperatuur 24 / 22,5 = 7% meer vermogen nodig. De warmtepompkeuze rekent daarmee, en de grafiek toont het als gestreepte lijn *met tapwater*. In het jaarverbruik heeft de warmtepomp per dag minder uren voor verwarming.
-- **Energie**: de warmte voor tapwater per bewoner (standaard 800 kWh per jaar, met het leidingverlies) plus het stilstandsverlies van de boiler (standaard 1 kWh per dag). De COP volgt uit de boilertemperatuur plus 5 K tegen de buitenlucht, over alle uren van het jaar, ook in de zomer.
+- **Energie**: de warmte voor tapwater per bewoner (standaard 800 kWh per jaar, met het leidingverlies) plus het **warmhoudverlies** van de boiler in watt, zoals op het energielabel of in de datasheet staat (standaard 50 W). Die waarde is gemeten met de boiler op 65 °C in een ruimte van 20 °C; de app rekent hem om naar jouw boilertemperatuur. Een boiler op 50 °C verliest zo twee derde van de labelwaarde. De COP volgt uit de boilertemperatuur plus 5 K tegen de buitenlucht, over alle uren van het jaar, ook in de zomer.
 - **Gas**: in de vergelijking maakt een combiketel het tapwater, zonder boiler en met een lager rendement dan voor verwarming (standaard 75%).
 
 ## Warmtepomp kiezen

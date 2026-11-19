@@ -47,6 +47,11 @@ function supplyFn() {
   };
 }
 
+// standby loss of the tank in kWh per day: the label value (W at 65 °C, room 20 °C) scaled to the tank temperature
+function boilerLossDay() {
+  const S = P.settings;
+  return (Math.max(0, +S.dhwLossW || 0) * 24 * Math.max(0, S.dhwTemp - 20)) / BOILER_LABEL_DT / 1000;
+}
 function annualCalc(c, hp) {
   const S = P.settings,
     L = lossLine(c, adviceSaving(c)),
@@ -112,7 +117,8 @@ function annualCalc(c, hp) {
   // domestic hot water
   R.dhw = !!S.dhwOn;
   R.dhwUse = R.dhw ? Math.max(0, S.dhwPers) * Math.max(0, S.dhwKwh) : 0; // kWh heat at the tap
-  R.dhwHeat = R.dhw ? R.dhwUse + Math.max(0, S.dhwLoss) * 365 : 0; // plus the standby loss of the tank
+  R.dhwLossDay = boilerLossDay(); // kWh per day at the tank temperature
+  R.dhwHeat = R.dhw ? R.dhwUse + R.dhwLossDay * 365 : 0; // plus the standby loss of the tank
   R.dhwEl = 0;
   if (R.dhw && hp && R.dhwHeat > 0) {
     const all = Object.entries(CLIMATE.uren || {}),
@@ -153,7 +159,7 @@ function annualHtml(c) {
   let h = `<div class="sec"><h3>Jaarverbruik en kosten</h3>
     <p class="note">Een schatting voor een gemiddeld jaar in De Bilt (KNMI, 2011–2025)${hp ? `, met de ${esc(hp.merk)} ${esc(hp.model)} die hierboven is gekozen` : ''}. ${S.dhwOn ? 'Verwarming en warm tapwater' : 'Alleen ruimteverwarming (warm tapwater staat uit)'}; nachtverlaging en je eigen stookgedrag zitten er niet in.</p>`;
   if (R.heat <= 0) return h + `<p class="note">Geen warmtevraag boven de stookgrens.</p></div>`;
-  h += `<div class="kcard"><div class="kh"><span>Warmtevraag per jaar</span><b>${kwh(R.heat)}</b></div><span class="note">Voor verwarming. Zoveel warmte als ${fmt(R.gasHeat, 0)} m³ gas in een cv-ketel met ${fmt(S.etaGas * 100, 0)}% rendement.${R.dhw ? ` Daarbij komt ${kwh(R.dhwHeat)} voor warm tapwater (${fmt(S.dhwPers, 0)} ${+S.dhwPers === 1 ? 'bewoner' : 'bewoners'}, met het stilstandsverlies van de boiler).` : ''}</span></div>`;
+  h += `<div class="kcard"><div class="kh"><span>Warmtevraag per jaar</span><b>${kwh(R.heat)}</b></div><span class="note">Voor verwarming. Zoveel warmte als ${fmt(R.gasHeat, 0)} m³ gas in een cv-ketel met ${fmt(S.etaGas * 100, 0)}% rendement.${R.dhw ? ` Daarbij komt ${kwh(R.dhwHeat)} voor warm tapwater (${fmt(S.dhwPers, 0)} ${+S.dhwPers === 1 ? 'bewoner' : 'bewoners'}, met het warmhoudverlies van de boiler).` : ''}</span></div>`;
   h += `<div class="tablewrap"><table class="calc"><tbody>`;
   if (hp) {
     h += `<tr><td>Stroom voor de warmtepomp${R.dhwEl > 0 ? `<small>verwarming ${kwh(R.elHeat)}, warm tapwater ${kwh(R.dhwEl)}</small>` : ''}</td><td>${kwh(R.el)}</td></tr>
@@ -216,10 +222,10 @@ function dhwHtml() {
       ${numField('f-s-dhwk', 'set.dhwKwh', 'Warmte per bewoner', 'kWh per jaar', S.dhwKwh, 0)}
       ${numField('f-s-dhwh', 'set.dhwHours', 'Tapwater op een koude dag', 'uur per dag', S.dhwHours, 1)}
       ${numField('f-s-dhwt', 'set.dhwTemp', 'Boilertemperatuur', '°C', S.dhwTemp, 0)}
-      ${numField('f-s-dhwl', 'set.dhwLoss', 'Stilstandsverlies boiler', 'kWh per dag', S.dhwLoss, 1)}
+      ${numField('f-s-dhwl', 'set.dhwLossW', 'Warmhoudverlies boiler', 'W, zoals op het label', S.dhwLossW, 0)}
       ${numField('f-s-etat', 'set.etaTap', 'Tapwater met een combiketel', 'rendement 0 tot 1', S.etaTap, 2)}
     </div>
     <p class="note">Terwijl de warmtepomp de boiler opwarmt, verwarmt hij het huis niet. Op een koude dag duurt dat bij veel warmtepompen 1 tot 2 uur. In de overige uren moet hij dat inhalen: met ${nv(dhwHoursOn(), 1)} uur per dag is ${fmt(pct, 0)}% meer vermogen nodig. Daarmee rekenen de warmtepompkeuze hieronder en het jaarverbruik.</p>
-    <p class="note">Voor het jaarverbruik telt de warmte voor tapwater (gemiddeld zo'n 800 kWh per bewoner per jaar, met het leidingverlies) plus het stilstandsverlies van de boiler (een boiler van 200 liter verliest ongeveer 1 tot 1,5 kWh per dag). De COP volgt uit de boilertemperatuur: hoe warmer de boiler, hoe lager. Met gas rekent de app met een combiketel; die heeft geen boiler, maar wel een lager rendement voor tapwater dan voor verwarming.</p></div>`
+    <p class="note">Voor het jaarverbruik telt de warmte voor tapwater (gemiddeld zo'n 800 kWh per bewoner per jaar, met het leidingverlies) plus het warmhoudverlies van de boiler. Dat staat in watt op het energielabel of in de datasheet (een boiler van 200 liter zit meestal tussen 35 en 70 W). Die waarde is gemeten met de boiler op 65 °C; op ${nv(S.dhwTemp, 0)} °C verliest hij ${fmtW((boilerLossDay() * 1000) / 24)} W, ${fmt(boilerLossDay(), 2)} kWh per dag. De COP volgt uit de boilertemperatuur: hoe warmer de boiler, hoe lager. Met gas rekent de app met een combiketel; die heeft geen boiler, maar wel een lager rendement voor tapwater dan voor verwarming.</p></div>`
   );
 }

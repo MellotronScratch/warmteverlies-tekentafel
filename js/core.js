@@ -67,6 +67,7 @@ const AIR = {
     [300, 0.23]
   ]
 };
+const BOILER_LABEL_DT = 45; // K: the standby loss on a boiler label is measured with the tank at 65 °C in a room of 20 °C
 const DEFAULT_SETTINGS = {
   te: -10,
   tGround: 5,
@@ -106,7 +107,7 @@ const DEFAULT_SETTINGS = {
   dhwKwh: 800, // kWh heat per occupant per year, including pipe losses
   dhwHours: 1.5, // hours per day the heat pump makes hot water on a cold day
   dhwTemp: 50, // °C tank temperature
-  dhwLoss: 1, // kWh per day standby loss of the tank
+  dhwLossW: 50, // W standby loss of the tank as on its label (measured at 65 °C in a room of 20 °C)
   etaTap: 0.75, // efficiency of a combi boiler for hot water (gas comparison)
   trv: 'onbekend' // thermostatic radiator valve for the whole house (data/thermostaatkranen.json); per emitter em.trv
 };
@@ -402,6 +403,12 @@ function normalizeProject(p) {
   p.name = String(p.name || 'Project');
   if (typeof p.shared !== 'string') delete p.shared; // fingerprint of the share link this copy came from (js/share.js)
   const legacy = p.settings && !p.settings.ventSys; // projects from before ventilation per room: keep their results
+  // the standby loss used to be kWh per day at the tank temperature; now watts as on the label (65 °C, room 20 °C)
+  if (p.settings && p.settings.dhwLossW == null && Number.isFinite(+p.settings.dhwLoss))
+    p.settings.dhwLossW = Math.round(
+      (((+p.settings.dhwLoss * 1000) / 24) * BOILER_LABEL_DT) / Math.max(5, (+p.settings.dhwTemp || 50) - 20)
+    );
+  if (p.settings) delete p.settings.dhwLoss;
   p.settings = { ...DEFAULT_SETTINGS, ...(p.settings || {}) };
   p.settings.curvePts = (Array.isArray(p.settings.curvePts) ? p.settings.curvePts : DEFAULT_SETTINGS.curvePts)
     .slice(0, 10)

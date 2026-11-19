@@ -836,12 +836,12 @@ function applyField(el, final) {
         dhwKwh: [0, 3000],
         dhwHours: [0, 8],
         dhwTemp: [40, 70],
-        dhwLoss: [0, 5],
+        dhwLossW: [0, 300],
         etaTap: [0.3, 1.1]
       };
       if (RANGE[k] && (n < RANGE[k][0] || n > RANGE[k][1])) {
         toast(
-          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${{ flow: 'l/h', pEl: '€/kWh', pGas: '€/m³', gasFix: '€', etaGas: '', dhwPers: 'personen', dhwKwh: 'kWh', dhwHours: 'uur', dhwLoss: 'kWh', etaTap: '' }[k] ?? '°C'} en is niet overgenomen.`
+          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${{ flow: 'l/h', pEl: '€/kWh', pGas: '€/m³', gasFix: '€', etaGas: '', dhwPers: 'personen', dhwKwh: 'kWh', dhwHours: 'uur', dhwLossW: 'W', etaTap: '' }[k] ?? '°C'} en is niet overgenomen.`
         );
         return;
       }
