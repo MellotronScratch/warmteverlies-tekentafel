@@ -151,11 +151,8 @@ function stairTreads(r, H) {
   if (u1 - u0 < 0.3 || vm < 0.3) return null;
   const N = Math.max(3, Math.round(H / 0.185)),
     T = N - 1; // risers and treads (the last riser steps onto the floor above)
-  // a half turn without landing fills the whole stairwell: two flights side by side, each half its width
-  let w =
-    st.shape === 'spil'
-      ? Math.min((u1 - u0) / 2, vm / 2)
-      : Math.min(st.w, (u1 - u0) / (st.shape === 'half' ? 2 : 1), st.shape === 'recht' ? vm : vm / 2);
+  // (a half turn without landing works out its own width, see below)
+  let w = Math.min(st.w, (u1 - u0) / (st.shape === 'half' ? 2 : 1), st.shape === 'recht' ? vm : vm / 2);
   const A = st.side === 'a',
     sa = A ? [u0, u0 + w] : [u1 - w, u1],
     sb = A ? [u1 - w, u1] : [u0, u0 + w];
@@ -214,21 +211,24 @@ function stairTreads(r, H) {
     if (A) run(n2, sa[1], u1, vm - w, vm, 'u+');
     else run(n2, u0, sa[0], vm - w, vm, 'u-');
   } else if (st.shape === 'spil') {
-    // up along one side, two quarter turns with winders (and straight treads between them if there is room), back down the other side
-    const L1 = vm - w,
-      mid = A ? [sa[1], sb[0]] : [sb[1], sa[0]],
-      Lm = Math.max(0, mid[1] - mid[0]),
-      rest = Math.max(2, T - 6),
-      nm = Lm > 0.15 ? Math.round((rest * Lm) / (2 * L1 + Lm)) : 0,
-      n1 = Math.max(1, Math.floor((rest - nm) / 2)),
-      n2 = Math.max(1, rest - nm - n1);
-    run(n1, sa[0], sa[1], 0, vm - w, 'v+');
-    firstCorner();
-    if (nm > 0) run(nm, mid[0], mid[1], vm - w, vm, A ? 'u+' : 'u-');
-    const si = A ? sb[0] : sb[1],
-      so = A ? sb[1] : sb[0];
-    corner(W(si, vm - w), [W(si, vm), W(so, vm), W(so, vm - w)]);
-    run(n2, sb[0], sb[1], 0, vm - w, 'v-');
+    // a half turn without landing, as in most terraced houses: one flight along the long side of the stairwell over its
+    // full width, with a quarter turn of winders at both ends; you step on and off at the same long side.
+    // Along the start wall when that is the long side, otherwise away from it; the chosen corner gives the end to start at.
+    const du = u1 - u0,
+      alongU = du >= vm,
+      len = alongU ? du : vm,
+      bw = alongU ? vm : du,
+      M = (L, Sx) => (alongU ? W(A ? u0 + L : u1 - L, Sx) : W(A ? u0 + Sx : u1 - Sx, L)),
+      // each turn takes 3 of the T treads, so roughly its share of the length (a drawn stairwell is often shorter than the stair)
+      c = Math.min(bw, len / 2, (len * 3.5) / T),
+      n = Math.max(1, T - 6);
+    corner(M(c, 0), [M(0, 0), M(0, bw), M(c, bw)]);
+    for (let j = 0; j < n; j++) {
+      const a = c + ((len - 2 * c) * j) / n,
+        b = c + ((len - 2 * c) * (j + 1)) / n;
+      out.push({ poly: [M(a, 0), M(a, bw), M(b, bw), M(b, 0)], front: [M(a, 0), M(a, bw)] });
+    }
+    corner(M(len - c, 0), [M(len - c, bw), M(len, bw), M(len, 0)]);
   } else {
     const n1 = Math.max(1, Math.floor((T - 1) / 2)),
       n2 = Math.max(1, T - 1 - n1);
@@ -511,6 +511,9 @@ function render3d() {
       list.forEach(({ r, z0 }) => {
         const isSel = top && sel && sel.r === r.id;
         const k = calcRoom(r);
+        // a vide or stairwell that runs on above the storey on view is cut off at the floor above it, like the other rooms
+        const cut = spans(r) && levelsOf(r)[1] > ci && P.floors[ci + 1] ? el[P.floors[ci + 1].id] - z0 : Infinity,
+          zT = (R, p) => Math.min(cut, zTop(r, R, p));
         out += `<polygon points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="var(--paper)" stroke="var(--line)" stroke-width="1" ${top ? '' : 'pointer-events="none"'}/>`;
         out += `<polygon ${top ? `data-k3="room" data-r="${r.id}"` : 'pointer-events="none"'} points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="${isSel ? 'var(--accent-soft-2)' : heatView && surfLoss(r).floor > 0.5 ? heatCol(surfLoss(r).floor) : 'var(--room)'}" ${heatView && !isSel && surfLoss(r).floor > 0.5 ? 'fill-opacity=".6"' : ''} stroke="none" style="cursor:pointer"/>`;
         (layerOn('emit') ? r.emitters || [] : []).forEach(em => {
@@ -537,7 +540,7 @@ function render3d() {
         // sloped roof surfaces, see-through, so roof windows and dormers have something to sit on
         {
           const rp = roofParts(r),
-            VR = !rp && videRoof(r);
+            VR = !rp && cut === Infinity && videRoof(r);
           // a vide under a sloped roof: the same roof surface over it
           if (VR)
             roofStrips(r.pts, VR).forEach(poly => {
@@ -564,7 +567,7 @@ function render3d() {
                 });
               });
           // Warmtebeeld: a flat ceiling or flat roof with outside or an unheated space above it
-          const qc = heatView ? surfLoss(r).ceilOut : null;
+          const qc = heatView && cut === Infinity ? surfLoss(r).ceilOut : null;
           if (qc != null) {
             const polys = rp
               ? rp.parts.filter(p => p.kind === 'cap').map(p => ({ poly: p.poly, z: p.z }))
@@ -629,7 +632,7 @@ function render3d() {
             }
             ts.sort((x, y) => x - y);
             const bot = ts.map(t => P3(at(t), z0)),
-              tp = ts.map(t => P3(at(t), z0 + zTop(r, R, at(t))));
+              tp = ts.map(t => P3(at(t), z0 + zT(R, at(t))));
             const con = conById(sg.cid),
               col = heatView ? heatCol(surfLoss(r).seg(i, j)) : con ? con.color : 'var(--warn)',
               isSel = top && sel && sel.t === 'seg' && sel.r === r.id && sel.w === i && sel.s === j;
@@ -653,7 +656,7 @@ function render3d() {
               }
               if (bands.some(bd => bd.open)) {
                 bands.forEach(bd => {
-                  const tops = ts.map(t => Math.min(bd.hi, zTop(r, R, at(t))));
+                  const tops = ts.map(t => Math.min(bd.hi, zT(R, at(t))));
                   if (tops.every(z => z <= bd.lo + 1e-3)) return;
                   const qb = ts.map(t => P3(at(t), z0 + bd.lo)),
                     qt = ts.map((t, k) => P3(at(t), z0 + Math.max(bd.lo, tops[k]))),
@@ -695,7 +698,7 @@ function render3d() {
               .forEach(({ o, t0, t1 }) => {
                 const t = t0,
                   ow = t1 - t0,
-                  top = zTop(r, R, at(t + ow / 2)),
+                  top = zT(R, at(t + ow / 2)),
                   sill = opSill(o, top),
                   hh = Math.min(o.h, top - sill - 0.02);
                 if (hh <= 0) return;
