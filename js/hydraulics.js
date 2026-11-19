@@ -52,6 +52,12 @@ function trvDpText(v) {
 function presetFor(o, index) {
   const v = o.trv;
   if (!v || !index) return null;
+  if (v.soort === 'hand') {
+    // a manual valve stays fully open; the lockshield (voetventiel) adds the resistance this circuit has too little
+    const extra = index.dpTot - o.dpTot;
+    if (o === index || !(extra > 0.05)) return { kind: 'voet', open: true, index: o === index };
+    return { kind: 'voet', extra, kvNeed: o.lh / 1000 / Math.sqrt(extra / 100) };
+  }
   const avail = index.dpTot - o.dpPath - TRV.lichaam; // kPa left for the valve
   if (v.soort === 'debiet') {
     const noisy = avail > v.dpMax;
@@ -94,6 +100,10 @@ function presetFor(o, index) {
 }
 // short text for tables: the preset, or the extra resistance for a valve without presets
 function presetText(o, N) {
+  if (o.preset && o.preset.kind === 'voet')
+    return o.preset.open
+      ? 'voetventiel open'
+      : `voetventiel kv ${nv(o.preset.kvNeed, 2)} (+${fmt(o.preset.extra, 1)} kPa)`;
   if (N.index && N.index.em === o.em && (!o.preset || o.preset.kind !== 'debiet'))
     return o.preset ? 'index · ' + o.preset.s : 'index';
   if (o.preset && o.preset.kind === 'kv') return 'stand ' + o.preset.s;
@@ -357,7 +367,9 @@ function buildNetwork() {
           ? TRV.lichaam + kvDp(o.lh, v.standen[v.standen.length - 1][1])
           : v.soort === 'debiet'
             ? TRV.lichaam + trvDpMin(v, o.lh)
-            : +v.dp || EM_DP[o.em.kind] || 3;
+            : v.soort === 'hand'
+              ? TRV.lichaam + kvDp(o.lh, +v.kv || 1.5)
+              : +v.dp || EM_DP[o.em.kind] || 3;
     }
     o.dpPath = o.reach ? o.node.cum : NaN;
     o.dpTot = o.reach ? o.dpPath + o.dpEm : NaN;
@@ -439,7 +451,13 @@ function netEmHtml(em) {
     pr = o.preset,
     vn = o.trv ? esc(o.trv.naam) : '';
   let tune = '';
-  if (pr && pr.kind === 'kv')
+  if (pr && pr.kind === 'voet')
+    tune = pr.index
+      ? `<br><b>Dit is het indexcircuit:</b> handkraan en voetventiel helemaal open.`
+      : pr.open
+        ? '<br>Handkraan en voetventiel helemaal open.'
+        : `<br>Handkraan helemaal open. Inregelen met het <b>voetventiel</b>: ${fmt(pr.extra, 1)} kPa extra weerstand, dat is een kv van ongeveer <b>${nv(pr.kvNeed, 2)}</b>. Hoeveel slagen dicht dat is, staat in de datasheet van het voetventiel.`;
+  else if (pr && pr.kind === 'kv')
     tune = pr.index
       ? `<br><b>Dit is het indexcircuit:</b> ${vn} helemaal open, stand ${esc(pr.s)}.`
       : `<br>Voorinstelling ${vn}: <b>stand ${esc(pr.s)}</b> (kv ${nv(pr.kv, 3)}, nodig ${nv(pr.kvNeed, 3)}; ongeveer ${fmtW(pr.pct)}% van het ontwerpdebiet)${pr.low ? `<br><span style="color:var(--warn)">⚠ Zelfs stand ${esc(o.trv.standen[0][0])} laat nog te veel water door. Knijp de retourkoppeling iets dicht of kies een kraan met een kleinere kv.</span>` : ''}`;
@@ -528,7 +546,7 @@ function networkHtml(rep) {
       ? `<p class="note">Thermostaatkranen: ${esc((TRV.kranen[S.trv] || TRV.kranen.onbekend || {}).naam || '')}.</p>`
       : trvHtml(N)) + fittingsHtml(N, rep);
   h += `<div class="fields">${numField('f-s-fit', 'set.fitPct', 'Opslag bochten en koppelingen', '%', S.fitPct, 0)}</div>
-    <p class="note">Debiet per element: zijn aandeel in het warmteverlies van de ruimte bij ΔT ${nv(N.dT, 1)} K. Drukverlies van de leidingen met Darcy-Weisbach (water van 35 °C, aanvoer + retour), plus de opslag voor bochten en koppelingen. Per element rekent de app ${(TRV.kranen[S.trv] || {}).soort === 'kv' || (TRV.kranen[S.trv] || {}).soort === 'debiet' ? `voor radiator of convector ${nv(TRV.lichaam, 1)} kPa voor radiator en retourkoppeling plus de thermostaatkraan (helemaal open, of het minimum van een debietbegrenzer)` : `indicatief ${nv(EM_DP.rad, 0)} kPa voor radiator of convector met kraan`}, ${nv(EM_DP.fan, 0)} kPa voor een fancoil, en bij vloerverwarming de lussen van 16×2 (verdeeld over groepen van hoogstens 100 m) plus ${nv(VV_MANIFOLD_DP, 0)} kPa voor de verdeler. Bij <i>Inregelen</i> staat de voorinstelling van de kraan, of, als die niet bekend is, hoeveel extra weerstand een element nodig heeft om niet meer water te krijgen dan het indexcircuit.</p>
+    <p class="note">Debiet per element: zijn aandeel in het warmteverlies van de ruimte bij ΔT ${nv(N.dT, 1)} K. Drukverlies van de leidingen met Darcy-Weisbach (water van 35 °C, aanvoer + retour), plus de opslag voor bochten en koppelingen. Per element rekent de app ${['kv', 'debiet', 'hand'].includes((TRV.kranen[S.trv] || {}).soort) ? `voor radiator of convector ${nv(TRV.lichaam, 1)} kPa voor radiator en retourkoppeling plus de thermostaatkraan (helemaal open, of het minimum van een debietbegrenzer)` : `indicatief ${nv(EM_DP.rad, 0)} kPa voor radiator of convector met kraan`}, ${nv(EM_DP.fan, 0)} kPa voor een fancoil, en bij vloerverwarming de lussen van 16×2 (verdeeld over groepen van hoogstens 100 m) plus ${nv(VV_MANIFOLD_DP, 0)} kPa voor de verdeler. Bij <i>Inregelen</i> staat de voorinstelling van de kraan, of, als die niet bekend is, hoeveel extra weerstand een element nodig heeft om niet meer water te krijgen dan het indexcircuit.</p>
     <p class="note">Stijgleidingen: laat een leiding beginnen of eindigen op het punt van een leiding op de verdieping erboven of eronder, of kies bij een leiding <i>Stijgleiding bij het eindpunt</i>. Het indexcircuit licht oranje op in de plattegrond.</p></div>`;
   return h;
 }
@@ -545,11 +563,13 @@ function trvHtml(N) {
     .map(([k, x]) => `<option value="${k}" ${k === cur ? 'selected' : ''}>${esc(x.naam)}</option>`)
     .join('')}</select></label>
     <p class="note">${
-      !v || v.soort === 'vast'
-        ? `Zonder bekende kraan rekent de app met ${nv(v ? v.dp : 3, 0)} kPa over radiator en kraan, en staat bij <i>Inregelen</i> hoeveel extra weerstand een radiator nodig heeft. Kies je kraan, dan rekent de app de voorinstelling uit.`
-        : v.soort === 'kv'
-          ? `De app rekent per radiator uit welke stand de kraan nodig heeft om het ontwerpdebiet te krijgen, als de kraan van het indexcircuit helemaal open staat. De kv-waarden per stand komen uit de datasheet (${esc(v.bron || '')}). Zet daarna de thermostaatkop terug; de voorinstelling blijft staan.`
-          : `Deze kraan begrenst zelf het debiet: je stelt per radiator het debiet in l/h in, en de kraan houdt dat vast, ook als andere kranen dichtgaan. ${Array.isArray(v.standen) && v.standen.length ? `Standen ${v.standen.map(s => `${esc(String(s[0]))}: ${nv(s[1], 0)}`).join(', ')} l/h; de app kiest de kleinste stand die genoeg doorlaat.` : `Instelbereik ${nv(v.min, 0)} tot ${nv(v.max, 0)} l/h.`} Hij heeft minstens ${trvDpText(v)} nodig; dat telt mee in het indexcircuit.`
+      v && v.soort === 'hand'
+        ? `Gewone radiatorkranen zonder thermostaat. Bij een warmtepomp werkt dat goed: zet de kranen helemaal open en laat de stooklijn de temperatuur regelen. Alleen kranen open zetten is niet genoeg, want dan krijgt de radiator met de kortste route het meeste water en de radiator met de hoogste weerstand te weinig. Regel daarom de verdeling met de <b>voetventielen</b> (aan de andere kant van de radiator): bij <i>Inregelen</i> staat per radiator hoeveel extra weerstand het voetventiel moet geven, als kv-waarde. Een kamer reageert niet vanzelf op zon of veel mensen; die stuur je met de hand bij. Draai een kraan liever niet helemaal dicht: in een koude kamer slaat vocht neer op muren en ramen, en als veel kranen dicht staan, krijgt de warmtepomp te weinig water en gaat hij pendelen. Wil je een kamer koeler, draai de kraan dan een stukje dicht en zet de kamer in de app op die lagere temperatuur. Thermostaatkranen met een voorinstelling of debietbegrenzers maken inregelen makkelijker en regelen per kamer, maar nodig zijn ze niet.`
+        : !v || v.soort === 'vast'
+          ? `Zonder bekende kraan rekent de app met ${nv(v ? v.dp : 3, 0)} kPa over radiator en kraan, en staat bij <i>Inregelen</i> hoeveel extra weerstand een radiator nodig heeft. Kies je kraan, dan rekent de app de voorinstelling uit.`
+          : v.soort === 'kv'
+            ? `De app rekent per radiator uit welke stand de kraan nodig heeft om het ontwerpdebiet te krijgen, als de kraan van het indexcircuit helemaal open staat. De kv-waarden per stand komen uit de datasheet (${esc(v.bron || '')}). Zet daarna de thermostaatkop terug; de voorinstelling blijft staan.`
+            : `Deze kraan begrenst zelf het debiet: je stelt per radiator het debiet in l/h in, en de kraan houdt dat vast, ook als andere kranen dichtgaan. ${Array.isArray(v.standen) && v.standen.length ? `Standen ${v.standen.map(s => `${esc(String(s[0]))}: ${nv(s[1], 0)}`).join(', ')} l/h; de app kiest de kleinste stand die genoeg doorlaat.` : `Instelbereik ${nv(v.min, 0)} tot ${nv(v.max, 0)} l/h.`} Hij heeft minstens ${trvDpText(v)} nodig; dat telt mee in het indexcircuit.`
     }${own ? ` ${own} element(en) hebben een eigen kraan, gekozen bij het element zelf.` : ''}</p></div>`;
 }
 // appendages in the main pipe at the heat pump

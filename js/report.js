@@ -264,18 +264,26 @@ function balanceSheetHtml() {
       `<p>Er is nog geen leidingnet met een aangesloten warmtepomp en afgifte. Teken de leidingen en plaats de warmtepomp; dan rekent de app de voorinstellingen uit.</p>`
     );
   const reached = N.ems.filter(o => o.reach && o.lh > 0);
-  const hp = hpList && hpList.find(x => x.id === hpSel);
+  const hp = hpList && hpList.find(x => x.id === hpSel),
+    hand = (TRV.kranen[S.trv] || {}).soort === 'hand';
   h += `<div class="repkpi"><div><span>Aanvoer / retour</span><b>${nv(S.twSup, 0)} / ${fmt(tRet(), 1)} °C</b></div><div><span>Totaal debiet</span><b>${fmtW(N.total)} l/h</b></div><div><span>Pomp moet leveren</span><b>${fmt(N.dpPump, 1)} kPa</b></div><div><span>Elementen</span><b>${reached.length}</b></div></div>
   <section class="rsec"><h2>Zo werk je</h2><ol class="steps">
     <li>Zet de warmtepomp op ${nv(S.twSup, 0)} °C aanvoer${+S.flow > 0 ? ` en een debiet van ${fmtW(+S.flow)} l/h` : ''}${hp ? ` (${esc(hp.merk)} ${esc(hp.model)})` : ''}. De pomp moet bij ${fmtW(N.total)} l/h nog ${fmt(N.dpPump, 1)} kPa overhouden.</li>
-    <li>Haal de thermostaatkoppen van de kranen en zet alle kranen open.</li>
+    ${
+      hand
+        ? `<li>Zet alle handkranen en voetventielen helemaal open.</li>
+    <li>Knijp per radiator het voetventiel dicht tot de kv-waarde uit de tabel. Hoeveel slagen dat is, staat in de datasheet van het voetventiel. ${esc(N.index.em.name)} in ${esc(N.index.room.name)} is het indexcircuit: dat voetventiel blijft open.</li>
+    <li>Laat de handkranen open; de stooklijn regelt de temperatuur.</li>
+    <li>Controleer na een paar dagen stoken de retourleidingen met een thermometer: bij ${nv(S.twSup, 0)} °C aanvoer hoort de retour ongeveer ${fmt(tRet(), 0)} °C te zijn. Is hij warmer, dan krijgt die radiator te veel water: voetventiel iets verder dicht. Is hij kouder, iets verder open.</li>`
+        : `<li>Haal de thermostaatkoppen van de kranen en zet alle kranen open.</li>
     <li>${
       (TRV.kranen[S.trv] || {}).soort === 'debiet'
         ? 'Stel per element het debiet uit de tabel in. De kranen houden dat debiet zelf vast.'
         : `Stel per element de voorinstelling uit de tabel in. ${esc(N.index.em.name)} in ${esc(N.index.room.name)} is het indexcircuit: die kraan blijft helemaal open.`
     }</li>
     <li>Zet de thermostaatkoppen terug; de voorinstelling blijft staan.</li>
-    <li>Controleer na een paar dagen stoken de retourleidingen met een thermometer: bij ${nv(S.twSup, 0)} °C aanvoer hoort de retour ongeveer ${fmt(tRet(), 0)} °C te zijn. Is hij warmer, dan krijgt dat element te veel water: kraan een stand lager. Is hij kouder, een stand hoger.</li>
+    <li>Controleer na een paar dagen stoken de retourleidingen met een thermometer: bij ${nv(S.twSup, 0)} °C aanvoer hoort de retour ongeveer ${fmt(tRet(), 0)} °C te zijn. Is hij warmer, dan krijgt dat element te veel water: kraan een stand lager. Is hij kouder, een stand hoger.</li>`
+    }
   </ol><p class="note">Kranen: ${esc(kraan)}. Vloerverwarming stel je in op de verdeler, met het debiet per groep.</p></section>`;
   P.floors.forEach(f => {
     const rows = reached.filter(o => o.room.floorId === f.id);
@@ -289,7 +297,7 @@ function balanceSheetHtml() {
         const isIndex = N.index === o;
         const set = vv
           ? `${fmtW(o.lh / loops)} l/h per groep${loops > 1 ? ` (${loops} groepen)` : ''}`
-          : isIndex && !(o.preset && o.preset.kind === 'debiet')
+          : isIndex && !(o.preset && (o.preset.kind === 'debiet' || o.preset.kind === 'voet'))
             ? `helemaal open${o.preset && o.preset.kind === 'kv' ? ` (stand ${esc(String(o.preset.s))})` : ''}`
             : presetText(o, N);
         const valve = vv ? 'verdeler' : o.trv ? o.trv.naam : kraan;

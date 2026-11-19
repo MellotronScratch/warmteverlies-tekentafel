@@ -99,6 +99,10 @@ Onder **Installatie → Thermostaatkranen** kies je welke kranen er in het huis 
   | Oventrop AQH | 35–420 l/h | 15 kPa (20 kPa boven 170, 25 kPa boven 300 l/h) |
   | Caleffi Dynamical | standen 1–6: 20–120 l/h | 10 kPa (15 kPa bij stand 5 en 6) |
 
+- **Handkranen** (*Handkraan (geen thermostaatkraan)*): gewone radiatorkranen zonder thermostaat en zonder voorinstelling. Bij een warmtepomp werkt dat goed: de kranen staan helemaal open en de stooklijn regelt de temperatuur. Alleen kranen open zetten is niet genoeg: dan krijgt de radiator met de kortste route het meeste water en de radiator met de hoogste weerstand te weinig. Je regelt de verdeling daarom met de **voetventielen**, aan de andere kant van de radiator. Per radiator staat bij *Inregelen* hoeveel extra weerstand het voetventiel moet geven, in kPa en als kv-waarde; hoeveel slagen dicht dat is, staat in de datasheet van het voetventiel. Het voetventiel van het indexcircuit blijft open. De app rekent een open handkraan met kv 1,5.
+
+  Draai een handkraan liever niet helemaal dicht. In een koude kamer slaat vocht neer op muren en ramen, en als veel kranen dicht staan, krijgt de warmtepomp te weinig water en gaat hij pendelen. Wil je een kamer koeler, draai de kraan dan een stukje dicht en zet de kamer in de app op die lagere temperatuur. Thermostaatkranen met een voorinstelling of debietbegrenzers maken inregelen makkelijker en regelen per kamer op zon en andere warmte, maar nodig zijn ze niet.
+
   Bij een kraan met vaste standen, zoals de Danfoss RA-DV en de Caleffi Dynamical, kiest de app de kleinste stand die genoeg doorlaat.
 
   Vraagt een radiator meer dan de kraan doorlaat, dan zegt de app dat. Bij een convector die meer dan 150 l/h nodig heeft, is een Eclipse 300 of Gampper Vario DP dus de oplossing.
@@ -107,13 +111,15 @@ De standen staan in de tabel onder **Leidingnet en indexcircuit**, in het schema
 
 ### Inregelstaat
 
-Met **Inregelstaat (afdrukken)** onder *Leidingnet en indexcircuit* maak je één overzicht om mee langs de radiatoren te lopen: per verdieping en ruimte de kraan, wat je instelt (de stand, of het debiet bij een debietbegrenzer en bij vloerverwarming per groep), het debiet, het vermogen en een vakje om af te vinken. Bovenaan staan de aanvoer- en retourtemperatuur, het totale debiet en wat de pomp moet leveren, met de stappen:
+Met **Inregelstaat (afdrukken)** onder *Leidingnet en indexcircuit* maak je één overzicht om mee langs de radiatoren te lopen: per verdieping en ruimte de kraan, wat je instelt (de stand, het debiet bij een debietbegrenzer en bij vloerverwarming per groep, of de kv van het voetventiel bij een handkraan), het debiet, het vermogen en een vakje om af te vinken. Bovenaan staan de aanvoer- en retourtemperatuur, het totale debiet en wat de pomp moet leveren, met de stappen:
 
 1. Warmtepomp op de aanvoertemperatuur (en het debiet) zetten.
 2. Thermostaatkoppen eraf, alle kranen open.
 3. Per element de voorinstelling instellen; de kraan van het indexcircuit blijft open.
 4. Koppen terug.
 5. Na een paar dagen de retourleidingen voelen of meten: is een retour warmer dan de berekende retourtemperatuur, dan krijgt dat element te veel water.
+
+Bij handkranen zijn de stappen: alle handkranen en voetventielen open, per radiator het voetventiel dichtknijpen tot de kv-waarde uit de tabel (dat van het indexcircuit blijft open), de handkranen open laten, en na een paar dagen de retourtemperatuur controleren.
 
 Vraagt een element meer dan zijn kraan kan doorlaten, of is de kleinste stand nog te ruim, dan staat dat in rood bij dat element. Kies **Afdrukken of bewaren als PDF** om hem op papier of als PDF te bewaren.
 
