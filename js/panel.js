@@ -294,6 +294,22 @@ function viewNone() {
   <div class="sec"><h3>Ruimtes op ${esc(fl.name)}</h3>${per.length ? `<div class="roomcards">${per.map(roomCard).join('')}</div>` : '<p class="note">Nog geen ruimtes. Kies Rechthoek en sleep in het tekenvlak.</p>'}</div>
   ${P.example ? `<div class="sec"><p class="note">Dit is een voorbeeldproject met verzonnen waarden. Pas het aan, of start een leeg project onder <b>Project</b>.</p></div>` : ''}`;
 }
+// rooms joined by an open connection (no wall) form one space: their floor area and volume together, and a way to see them
+function zoneNote(room) {
+  const z = zoneOf(room);
+  if (!z || !z.multi) return '';
+  const A = z.rooms.reduce((a, r) => a + Math.abs(polyArea(r.pts)), 0),
+    V = z.rooms.reduce((a, r) => a + roomVolume(r), 0);
+  return `<div class="kcard"><div class="kh"><span>Open verbonden ruimte</span><b>${fmt(V, 1)} m³</b></div><div class="det">${z.rooms
+    .map(r =>
+      r === room
+        ? `<b>${esc(r.name)}</b>`
+        : `<button class="crumb" data-act="selroom" data-r="${r.id}">${esc(r.name)}</button>`
+    )
+    .join(
+      ' + '
+    )} · samen ${fmt(A, 1)} m² vloer</div><div class="row"><button class="btn small" data-act="zone3d">Bekijk in 2,5D</button></div></div>`;
+}
 function viewRoom(room) {
   let h = `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-room-name" data-f="room.name" value="${esc(room.name)}" aria-label="Naam ruimte"></div>
   <label class="chk"><input type="checkbox" id="f-room-heated" data-f="room.heated" ${room.heated === false ? '' : 'checked'}> Verwarmde ruimte</label>
@@ -317,6 +333,7 @@ function viewRoom(room) {
       .slice(floorIdx(room.floorId) + 1)
       .map(fl => `<option value="${fl.id}" ${room.spanTo === fl.id ? 'selected' : ''}>${esc(fl.name)}</option>`)
       .join('')}</select></label></div>
+  ${zoneNote(room)}
   ${spans(room) ? `<p class="note">Deze ruimte loopt door tot ${esc(P.floors[levelsOf(room)[1]].name)}. Vul bij Totale hoogte de hoogte over alle verdiepingen in. Wanden van ruimtes op de verdiepingen erboven grenzen nu aan deze ruimte, en op die verdiepingen staat hij gearceerd. Warme lucht stijgt hier vrij op: geef onder <button class="crumb" data-act="gotab" data-tab="vent">Ventilatie</button> de overstroom van en naar deze ruimte op.</p>` : room.kind !== 'normaal' && P.floors.length <= floorIdx(room.floorId) + 1 ? '<p class="note">Er is geen verdieping boven deze. Voeg eerst een verdieping toe om de ruimte te laten doorlopen.</p>' : ''}
   ${
     room.kind === 'trap'

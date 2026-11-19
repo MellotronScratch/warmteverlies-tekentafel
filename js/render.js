@@ -509,13 +509,18 @@ function render3d() {
       }
       // floors
       list.forEach(({ r, z0 }) => {
-        const isSel = top && sel && sel.r === r.id;
+        const isSel = top && sel && sel.r === r.id,
+          selR = sel && sel.r && getRoom(sel.r),
+          zs = selR && zoneOf(selR),
+          inZone = zs && zs.multi && zs === zoneOf(r) && !isSel; // open connected to the selected room
         const k = calcRoom(r);
         // a vide or stairwell that runs on above the storey on view is cut off at the floor above it, like the other rooms
         const cut = spans(r) && levelsOf(r)[1] > ci && P.floors[ci + 1] ? el[P.floors[ci + 1].id] - z0 : Infinity,
           zT = (R, p) => Math.min(cut, zTop(r, R, p));
         out += `<polygon points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="var(--paper)" stroke="var(--line)" stroke-width="1" ${top ? '' : 'pointer-events="none"'}/>`;
         out += `<polygon ${top ? `data-k3="room" data-r="${r.id}"` : 'pointer-events="none"'} points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="${isSel ? 'var(--accent-soft-2)' : heatView && surfLoss(r).floor > 0.5 ? heatCol(surfLoss(r).floor) : 'var(--room)'}" ${heatView && !isSel && surfLoss(r).floor > 0.5 ? 'fill-opacity=".6"' : ''} stroke="none" style="cursor:pointer"/>`;
+        if (inZone || (isSel && zs && zs.multi))
+          out += `<polygon points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="var(--accent)" fill-opacity="${isSel ? 0.2 : 0.3}" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`;
         (layerOn('emit') ? r.emitters || [] : []).forEach(em => {
           if (em.kind === 'vv') {
             out += `<polygon points="${em.pts.map(p => pt(P3(p, z0 + 0.01))).join(' ')}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="1" stroke-dasharray="5 4" pointer-events="none"/>`;
@@ -607,6 +612,34 @@ function render3d() {
         });
         // walls, per wall part, with the top following a sloped roof (also over a vide that runs up under one)
         const R = wallRoof(r);
+        // a room open connected to the selected one: its outline up to the ceiling or roof, so the whole space stands out
+        if (inZone || (isSel && zs && zs.multi)) {
+          let d3 = '';
+          r.pts.forEach((_, i) => {
+            const e = edge(r, i);
+            if (e.L < 1e-6) return;
+            const at = t => ({ x: e.a.x + e.ux * t, y: e.a.y + e.uy * t }),
+              ts = [0, e.L];
+            if (R) {
+              const sa = R.sOf(e.a),
+                ds = e.ux * R.v.x + e.uy * R.v.y;
+              if (Math.abs(ds) > 1e-9)
+                R.crit.forEach(cv => {
+                  const t = (cv - sa) / ds;
+                  if (t > 0 && t < e.L) ts.push(t);
+                });
+            }
+            ts.sort((x, y) => x - y);
+            const q = ts.map(t => P3(at(t), z0 + zT(R, at(t)))),
+              b0 = P3(e.a, z0);
+            d3 += `M${b0.X.toFixed(1)} ${b0.Y.toFixed(1)}L${q.map(v => v.X.toFixed(1) + ' ' + v.Y.toFixed(1)).join('L')}`;
+          });
+          items.push({
+            near: true,
+            d: 1e9,
+            svg: `<path d="${d3}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-opacity=".9" stroke-linejoin="round" pointer-events="none"/>`
+          });
+        }
         r.pts.forEach((_, i) => {
           const e = edge(r, i);
           if (e.L < 1e-6) return;

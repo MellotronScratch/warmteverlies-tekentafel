@@ -1102,6 +1102,19 @@ function act(a, b) {
       renderAll();
       break;
     }
+    case 'zone3d': {
+      // show the whole open-connected space: from the highest storey it reaches, with its rooms lit up
+      const r = sel && sel.r && getRoom(sel.r),
+        z = r && zoneOf(r);
+      if (!z) break;
+      const hi = P.floors[Math.max(...z.rooms.map(o => levelsOf(o)[1]))].id;
+      // the selection has to be on the storey on view: the room itself if it reaches up there, otherwise one of the others
+      if (!presentOn(r, hi)) sel = { t: 'room', r: z.rooms.find(o => presentOn(o, hi)).id };
+      setFloor(hi, true);
+      if (!view3d) set3d(true);
+      renderAll();
+      break;
+    }
     case 'gotab':
       tab = b.dataset.tab;
       confirmDel = false;

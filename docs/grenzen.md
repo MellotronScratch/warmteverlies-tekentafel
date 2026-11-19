@@ -39,6 +39,7 @@ Soms is de scheiding tussen twee ruimtes geen muur, bijvoorbeeld waar de hal ove
 - De andere ruimte op dezelfde verdieping krijgt hier vanzelf ook een open verbinding.
 - Een vide of trappenhuis loopt door over meer verdiepingen. Daar bepaalt per verdieping de ruimte ernaast of er een wand staat of een open verbinding. Zet je de wand van de overloop naar de vide op open, dan geldt dat alleen op die verdieping; de hal eronder houdt zijn wand, tot je die ook open zet. Bij de wand van de vide zelf zie je per verdieping wat er geldt, en in 2,5D is het open stuk gestreept.
 - In de tekening is het een stippellijn, en in de 2,5D-weergave staat er geen muur.
+- Klik je een ruimte aan die zo met andere ruimtes verbonden is, dan zie je in het paneel bij **Open verbonden ruimte** welke ruimtes erbij horen, met hun vloeroppervlak en inhoud (m³) samen. Met **Bekijk in 2,5D** zie je ze opgelicht in de 2,5D-weergave. Alleen verwarmde ruimtes tellen mee.
 - Hebben de twee ruimtes een andere temperatuur, dan waarschuwt de app. Bij een open verbinding is de temperatuur in de praktijk ongeveer gelijk.
 - Lucht stroomt er vrij. Geef onder **Ventilatie** de overstroom op als de ene ruimte lucht toevoert en de andere afzuigt.
 - De ruimtes vormen samen één **verwarmingszone** (zie hieronder).
