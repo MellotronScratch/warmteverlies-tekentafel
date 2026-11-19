@@ -556,9 +556,71 @@ function normalizeProject(p) {
         dn,
         extra: Math.max(0, +x.extra || 0),
         name: String(x.name || 'Leiding'),
-        ...(x.hidden ? { hidden: true } : {}) // in floor, wall or boxing: flow noise not audible
+        ...(x.hidden ? { hidden: true } : {}), // in floor, wall or boxing: flow noise not audible
+        // height: along the floor (default), along the ceiling, or at its own height above the floor (m)
+        ...(x.at === 'plafond'
+          ? { at: 'plafond' }
+          : x.at === 'hoogte'
+            ? { at: 'hoogte', z: Math.max(0, +x.z || 0) }
+            : {})
       };
     });
+  // risers: a vertical pipe at one point, from one floor to another. Older projects joined the same point on two
+  // floors that follow each other; those become risers here, with the material of the pipe on the lower floor.
+  if (!Array.isArray(p.risers)) {
+    const key = (f, q) => f + '|' + Math.round(q.x * 100) + '|' + Math.round(q.y * 100),
+      at = new Map();
+    p.pipes.forEach(pp => pp.pts.forEach(q => at.has(key(pp.floorId, q)) || at.set(key(pp.floorId, q), pp)));
+    p.risers = [];
+    p.floors.slice(0, -1).forEach((f, i) => {
+      const up = p.floors[i + 1].id,
+        done = new Set();
+      p.pipes
+        .filter(pp => pp.floorId === f.id)
+        .forEach(pp =>
+          pp.pts.forEach(q => {
+            const k = key(up, q);
+            if (!at.has(k) || done.has(k)) return;
+            done.add(k);
+            // one riser through several floors in the same place, when it is the same pipe
+            const on = p.risers.find(
+              rs =>
+                rs.to === f.id &&
+                rs.mat === pp.mat &&
+                rs.dn === pp.dn &&
+                Math.abs(rs.x - q.x) < 0.01 &&
+                Math.abs(rs.y - q.y) < 0.01
+            );
+            if (on) on.to = up;
+            else p.risers.push({ x: q.x, y: q.y, from: f.id, to: up, mat: pp.mat, dn: pp.dn, hidden: pp.hidden });
+          })
+        );
+    });
+  }
+  p.risers = p.risers
+    .filter(x => x && Number.isFinite(+x.x) && Number.isFinite(+x.y))
+    .map((x, i) => {
+      let a = p.floors.findIndex(f => f.id === x.from),
+        b = p.floors.findIndex(f => f.id === x.to);
+      if (a > b) [a, b] = [b, a];
+      if (a < 0 || a === b) return null;
+      const mat = PIPES[x.mat] ? x.mat : 'pex';
+      let dn = String(x.dn || '');
+      if (mat === 'staal' && OLD_STEEL[dn]) dn = OLD_STEEL[dn];
+      if (!PIPES[mat].d[dn]) dn = Object.keys(PIPES[mat].d)[0];
+      return {
+        id: x.id || rid(),
+        x: +x.x,
+        y: +x.y,
+        from: p.floors[a].id,
+        to: p.floors[b].id,
+        mat,
+        dn,
+        name: String(x.name || 'Stijgleiding ' + (i + 1)),
+        ...(x.hidden ? { hidden: true } : {})
+      };
+    })
+    .filter(Boolean);
   p.rooms.forEach(r => {
     // an unheated room (crawl space, basement, storage): no heat loss of its own, its temperature counts for its neighbours
     r.heated = r.heated !== false;

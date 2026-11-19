@@ -3,7 +3,11 @@
 'use strict';
 /* ---------- hydraulics ----------
    - Knooppunten: hoekpunten van leidingen (afgerond op 1 cm). Een leiding die eindigt óp een andere leiding maakt daar een T-stuk.
-   - Stijgleidingen: een hoekpunt op dezelfde plek op twee opeenvolgende verdiepingen wordt verbonden met een verticaal stuk.
+   - Elke leiding ligt op een hoogte boven zijn vloer (langs de vloer, langs het plafond of op eigen hoogte).
+   - Stijgleidingen (P.risers): een verticaal stuk op één plek van de ene verdieping naar de andere. Alle leidingpunten binnen
+     RISER_TOL op die verdiepingen zijn erop aangesloten, ook een leiding die er langs loopt (T-stuk).
+   - Leidingen op verschillende hoogte die op dezelfde plek samenkomen, worden verticaal verbonden. Ligt een leiding hoger dan
+     een radiator of de warmtepomp, dan telt het stuk omlaag mee.
    - Een afgifte-element hangt aan het dichtstbijzijnde knooppunt binnen ATTACH m (radiator: langs de lijn, vloerverwarming: rand of binnen).
    - De warmtepomp (P.hpPos) hangt aan het dichtstbijzijnde knooppunt binnen ATTACH m. Vanaf daar wordt het net als boom afgelopen.
    - Debiet per element: het aandeel van het element in het warmteverlies van zijn ruimte, bij de ΔT tussen aanvoer en retour.
@@ -13,6 +17,8 @@ const WATER = { rho: 994, nu: 0.72e-6 }; // kg/m³, m²/s bij ~35 °C
 const ROUGH = { koper: 0.0015e-3, pex: 0.007e-3, staal: 0.045e-3 }; // wandruwheid in m
 const EM_DP = { rad: 3, conv: 3, fan: 10 }; // kPa over element + kraan, indicatief
 const VV_MANIFOLD_DP = 2; // kPa over de verdeler
+const RISER_TOL = 0.05; // m: een leidingpunt zo dicht bij een stijgleiding is erop aangesloten
+const EM_Z = 0.1; // m boven de vloer: waar een radiator of convector is aangesloten
 
 const nodeKey = (f, p) => f + '|' + Math.round(p.x * 100) + '|' + Math.round(p.y * 100);
 const lerpP = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
@@ -132,15 +138,19 @@ function buildNetwork() {
     fit = 1 + Math.max(0, +S.fitPct || 0) / 100;
   const nodes = new Map(),
     edges = [];
-  const node = (f, p) => {
-    const k = nodeKey(f, p);
-    if (!nodes.has(k)) nodes.set(k, { k, f, x: p.x, y: p.y, adj: [], ems: [] });
+  // a node is a point on a floor at a height above that floor (m)
+  const node = (f, p, z) => {
+    const k = nodeKey(f, p) + '|' + Math.round((z || 0) * 100);
+    if (!nodes.has(k)) nodes.set(k, { k, f, x: p.x, y: p.y, z: z || 0, adj: [], ems: [] });
     return nodes.get(k);
   };
-  const pipes = P.pipes || [];
-  // pipe segments, split where another pipe's point lies on them (T-junction)
+  const pipes = P.pipes || [],
+    risers = (P.risers || []).filter(rs => floorIdx(rs.from) >= 0 && floorIdx(rs.to) > floorIdx(rs.from)),
+    onRiser = (rs, f) => floorIdx(f) >= floorIdx(rs.from) && floorIdx(f) <= floorIdx(rs.to);
+  // pipe segments, split where another pipe's point or a riser lies on them (T-junction)
   pipes.forEach(pp => {
     let first = true;
+    const z = pipeZ(pp);
     for (let i = 1; i < pp.pts.length; i++) {
       const a = pp.pts[i - 1],
         b = pp.pts[i],
@@ -155,41 +165,80 @@ function buildNetwork() {
           if (h && h.t > 1e-4 && h.t < 1 - 1e-4) cuts.push({ t: h.t, p: q });
         });
       });
+      risers.forEach(rs => {
+        if (!onRiser(rs, pp.floorId)) return;
+        const h = onSeg(rs, a, b, RISER_TOL);
+        if (h && h.t > 1e-4 && h.t < 1 - 1e-4) cuts.push({ t: h.t, p: { x: rs.x, y: rs.y } });
+      });
       cuts.sort((x, y) => x.t - y.t);
       for (let c = 1; c < cuts.length; c++) {
         if (cuts[c].t - cuts[c - 1].t < 1e-6) continue;
-        const n0 = node(pp.floorId, cuts[c - 1].p),
-          n1 = node(pp.floorId, cuts[c].p);
+        const n0 = node(pp.floorId, cuts[c - 1].p, z),
+          n1 = node(pp.floorId, cuts[c].p, z);
         if (n0 === n1) continue;
         edges.push({ a: n0, b: n1, pp, L: dist(cuts[c - 1].p, cuts[c].p) + (first ? pp.extra : 0), vert: false });
         first = false;
       }
     }
   });
-  // risers: the same point on two consecutive floors
-  const fidx = id => floorIdx(id);
-  [...nodes.values()].forEach(n => {
-    const up = P.floors[fidx(n.f) + 1];
-    if (!up) return;
-    const m = nodes.get(nodeKey(up.id, n));
-    if (m) {
-      // the riser runs from the floor of one storey to the next; the pipe material is that of a pipe at the lower point
-      const pp = (edges.find(e => e.a === n || e.b === n) || {}).pp;
-      edges.push({ a: n, b: m, pp, L: Math.max(0, (el[up.id] || 0) - (el[n.f] || 0)), vert: true });
+  // the pipe at a node: a horizontal one, otherwise the vertical piece it hangs on
+  const pipeAt = n =>
+    (edges.find(e => (e.a === n || e.b === n) && !e.vert) || edges.find(e => (e.a === n || e.b === n) && e.pp) || {})
+      .pp;
+  // vertical pieces: from bottom to top along the nodes in one place, in order of height
+  const chain = (list, ppOf) => {
+    list.sort((x, y) => x.abs - y.abs);
+    for (let i = 1; i < list.length; i++) {
+      const lo = list[i - 1],
+        hi = list[i];
+      edges.push({ a: lo.n, b: hi.n, pp: ppOf(lo.n, hi.n), L: Math.max(0, hi.abs - lo.abs), vert: true });
     }
+  };
+  const abs = n => (el[n.f] || 0) + n.z,
+    inRiser = new Set();
+  // risers: every node on their floors within a few centimetres of them
+  const riserInfo = risers.map(rs => {
+    const list = [];
+    nodes.forEach(n => {
+      if (onRiser(rs, n.f) && dist(n, rs) <= RISER_TOL) {
+        inRiser.add(n);
+        list.push({ n, abs: abs(n) });
+      }
+    });
+    chain(list, () => rs);
+    const lo = list.length ? list[0].abs : el[rs.from] || 0,
+      hiN = list.length ? list[list.length - 1] : null;
+    // length from the lowest to the highest pipe on it; an end without a pipe counts from or to the floor there
+    const bot = list.some(x => x.n.f === rs.from) ? lo : el[rs.from] || 0,
+      top = hiN && hiN.n.f === rs.to ? hiN.abs : el[rs.to] || 0;
+    return { rs, L: Math.max(0, top - bot), floors: [...new Set(list.map(x => x.n.f))], bot, top };
   });
-  edges.forEach(e => {
-    e.a.adj.push(e);
-    e.b.adj.push(e);
+  // within one floor: pipes at different heights that meet in the same place
+  const groups = new Map();
+  nodes.forEach(n => {
+    if (inRiser.has(n)) return;
+    const k = nodeKey(n.f, n);
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push({ n, abs: abs(n) });
   });
+  groups.forEach(list => list.length > 1 && chain(list, (lo, hi) => pipeAt(hi) || pipeAt(lo)));
+  // a drop from a pipe higher up to where an emitter or the heat pump connects
+  const drop = (n, z) => {
+    if (!n || n.z <= z + 0.05) return n;
+    const m = node(n.f, n, z);
+    if (!m.adj.length && !edges.some(e => e.a === m || e.b === m))
+      edges.push({ a: n, b: m, pp: pipeAt(n), L: n.z - z, vert: true });
+    return m;
+  };
+  // the nearest node on a floor; of nodes in the same place, the lowest
   const nearest = (f, distFn) => {
     let best = null,
       bd = ATTACH;
     nodes.forEach(n => {
       if (n.f !== f) return;
       const d = distFn(n);
-      if (d <= bd) {
-        bd = d;
+      if (d < bd - 1e-6 || (d <= bd + 1e-6 && best && n.z < best.z)) {
+        bd = Math.min(bd, d);
         best = n;
       }
     });
@@ -205,14 +254,26 @@ function buildNetwork() {
       need = zoneNeed(z);
     list.forEach(({ em, room: r }, i) => {
       const W = sum > 0 ? (need * outs[i]) / sum : 0,
-        n = nearest(r.floorId, nd => emDist(em, nd));
+        n = drop(
+          nearest(r.floorId, nd => emDist(em, nd)),
+          em.kind === 'vv' ? 0 : EM_Z
+        );
       const o = { em, room: r, node: n, W, lh: lhOf(W, dT), reach: false };
       if (n) n.ems.push(o);
       ems.push(o);
     });
   });
   const hp = P.hpPos;
-  const root = hp ? nearest(hp.floorId, nd => dist(nd, hp)) : null;
+  const root = hp
+    ? drop(
+        nearest(hp.floorId, nd => dist(nd, hp)),
+        0
+      )
+    : null;
+  edges.forEach(e => {
+    e.a.adj.push(e);
+    e.b.adj.push(e);
+  });
   // walk the tree from the heat pump
   let loops = 0;
   const order = [],
@@ -310,6 +371,7 @@ function buildNetwork() {
     total,
     fittings,
     dpFit,
+    risers: riserInfo,
     dpPump: (index ? index.dpTot : 0) + dpFit, // what the pump has to deliver
     dT,
     loose: edges.filter(e => !e.inTree).length
@@ -323,6 +385,7 @@ function network() {
   const key =
     JSON.stringify([
       P.pipes,
+      P.risers,
       P.hpPos,
       P.settings.twSup,
       P.settings.twRet,
@@ -380,7 +443,7 @@ function netEmHtml(em) {
 }
 function netPipeHtml(pp) {
   const N = network(),
-    es = N.edges.filter(e => e.pp === pp && !e.vert);
+    es = N.edges.filter(e => e.pp === pp);
   if (!N.root)
     return '<p class="note">Plaats de warmtepomp met <b>Warmtepomp</b> (K) om debiet en drukverlies te zien.</p>';
   const tr = es.filter(e => e.inTree);
@@ -418,10 +481,7 @@ function networkHtml(rep) {
     loose = N.ems.filter(o => !o.reach),
     small = N.edges.filter(e => e.inTree && vState(e.v, e.pp) === 'bad'),
     noisy = N.edges.filter(e => e.inTree && vState(e.v, e.pp) === 'warn'),
-    pipeNames = es =>
-      [...new Set(es.map(e => (e.pp ? e.pp.name + (e.vert ? ' (stijgleiding)' : '') : 'stijgleiding')))]
-        .map(esc)
-        .join(', ');
+    pipeNames = es => [...new Set(es.map(e => (e.pp ? e.pp.name : 'leiding')))].map(esc).join(', ');
   h += `<div class="kcard"><div class="kh"><span>${N.dpFit > 0.05 ? 'Indexcircuit + appendages' : 'Indexcircuit'}</span><b>${N.index ? fmt(N.dpPump, 1) + ' kPa' : '–'}</b></div>
     <div class="row"><button class="btn small" data-act="schema">Schema van het leidingnet</button>${N.index ? '<button class="btn small" data-act="inregel">Inregelstaat (afdrukken)</button>' : ''}</div>
     <span class="note">${N.index ? `Naar ${esc(N.index.em.name)} in ${esc(N.index.room.name)}: leidingen ${fmt(N.index.dpPath, 1)} kPa + element ${fmt(N.index.dpEm, 1)} kPa${N.dpFit > 0.05 ? ` + appendages bij de warmtepomp ${fmt(N.dpFit, 1)} kPa` : ''}. Dit is het drukverlies dat de pomp moet overwinnen bij ${fmtW(N.total)} l/h (ΔT ${nv(N.dT, 1)} K).` : 'Nog geen aangesloten afgifte met een warmteverlies.'}</span>
@@ -455,7 +515,7 @@ function networkHtml(rep) {
       : trvHtml(N)) + fittingsHtml(N, rep);
   h += `<div class="fields">${numField('f-s-fit', 'set.fitPct', 'Opslag bochten en koppelingen', '%', S.fitPct, 0)}</div>
     <p class="note">Debiet per element: zijn aandeel in het warmteverlies van de ruimte bij ΔT ${nv(N.dT, 1)} K. Drukverlies van de leidingen met Darcy-Weisbach (water van 35 °C, aanvoer + retour), plus de opslag voor bochten en koppelingen. Per element rekent de app ${(TRV.kranen[S.trv] || {}).soort === 'kv' || (TRV.kranen[S.trv] || {}).soort === 'debiet' ? `voor radiator of convector ${nv(TRV.lichaam, 1)} kPa voor radiator en retourkoppeling plus de thermostaatkraan (helemaal open, of het minimum van een debietbegrenzer)` : `indicatief ${nv(EM_DP.rad, 0)} kPa voor radiator of convector met kraan`}, ${nv(EM_DP.fan, 0)} kPa voor een fancoil, en bij vloerverwarming de lussen van 16×2 (verdeeld over groepen van hoogstens 100 m) plus ${nv(VV_MANIFOLD_DP, 0)} kPa voor de verdeler. Bij <i>Inregelen</i> staat de voorinstelling van de kraan, of, als die niet bekend is, hoeveel extra weerstand een element nodig heeft om niet meer water te krijgen dan het indexcircuit.</p>
-    <p class="note">Stijgleidingen: laat leidingen op twee verdiepingen op precies hetzelfde punt eindigen. Dan worden ze verticaal verbonden. Het indexcircuit licht oranje op in de plattegrond.</p></div>`;
+    <p class="note">Stijgleidingen: laat een leiding beginnen of eindigen op het punt van een leiding op de verdieping erboven of eronder, of kies bij een leiding <i>Stijgleiding bij het eindpunt</i>. Het indexcircuit licht oranje op in de plattegrond.</p></div>`;
   return h;
 }
 

@@ -59,6 +59,11 @@ function reportPlanSvg(fl, box, N) {
       const idx = N && N.edges.some(e => e.pp === pp && N.indexEdges.has(e));
       s += `<polyline points="${pts(pp.pts)}" fill="none" stroke="${idx ? '#F59E0B' : '#DC2626'}" stroke-width="2" stroke-linejoin="round"/>`;
     });
+  (P.risers || [])
+    .filter(rs => floorIdx(fl.id) >= floorIdx(rs.from) && floorIdx(fl.id) <= floorIdx(rs.to))
+    .forEach(
+      rs => (s += `<circle cx="${X(rs)}" cy="${Y(rs)}" r="5" fill="#fff" stroke="#DC2626" stroke-width="1.6"/>`)
+    );
   if (P.hpPos && P.hpPos.floorId === fl.id)
     s += `<rect x="${+X(P.hpPos) - 13}" y="${+Y(P.hpPos) - 9}" width="26" height="18" rx="3" fill="#fff" stroke="#DC2626" stroke-width="1.6"/><text x="${X(P.hpPos)}" y="${+Y(P.hpPos) + 3.5}" font-size="9" font-weight="700" text-anchor="middle" fill="#DC2626">WP</text>`;
   through.forEach(r => {

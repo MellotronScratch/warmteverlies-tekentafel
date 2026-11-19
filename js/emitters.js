@@ -56,6 +56,16 @@ const pipeLpm = (mat, dn) => {
   return (Math.PI * d * d) / 4000;
 }; // litres of water per metre of pipe
 const pipeLen = pp => pp.pts.reduce((a, p, i) => (i ? a + dist(pp.pts[i - 1], p) : a), 0);
+// storey height of a floor: from its floor to the floor above (the highest room on it)
+function storeyH(fid) {
+  const rs = P.rooms.filter(r => r.floorId === fid && !spans(r));
+  return rs.length ? Math.max(...rs.map(roomTop)) : P.settings.height;
+}
+// height of a pipe above its floor (m): along the floor, along the ceiling (just under it) or its own height
+const pipeZ = pp =>
+  pp.at === 'plafond' ? Math.max(0, storeyH(pp.floorId) - 0.05) : pp.at === 'hoogte' ? pp.z || 0 : 0;
+const pipeAtText = pp =>
+  pp.at === 'plafond' ? 'langs het plafond' : pp.at === 'hoogte' ? 'op ' + fmt(pp.z || 0, 2) + ' m' : '';
 // water content (litres), indicative: panel radiators per metre at 600 mm high; otherwise per kW of rated output
 function emVolume(em) {
   if (em.kind === 'vv') return vvLoop(em) * pipeLpm('pex', '16');
@@ -74,7 +84,13 @@ function systemVolume() {
       else rad += v;
     })
   );
-  const pipes = (P.pipes || []).reduce((a, x) => a + (pipeLen(x) + x.extra) * 2 * pipeLpm(x.mat, x.dn), 0);
+  // drawn pipes with the vertical pieces to emitters, plus the risers
+  const N = (P.pipes || []).length || (P.risers || []).length ? network() : null,
+    lpm = pp => 2 * pipeLpm(pp.mat, pp.dn),
+    pipes = N
+      ? N.edges.filter(e => e.pp && !e.pp.from).reduce((a, e) => a + e.L * lpm(e.pp), 0) +
+        N.risers.reduce((a, x) => a + x.L * lpm(x.rs), 0)
+      : 0;
   return { pipes, rad, vv, hp: S.hpVol, buf: S.bufVol, total: pipes + rad + vv + S.hpVol + S.bufVol };
 }
 function pipeCapacity(mat, dn, v = V_OK) {
@@ -106,14 +122,75 @@ function viewPipe(pp) {
       )
       .join('')}</select></label>
     ${numField('f-pipe-x', 'pipe.extra', 'Extra lengte', 'm', pp.extra, 1)}</div>
+  <div class="fields"><label class="f" for="f-pipe-at">Hoogte<select class="in" id="f-pipe-at" data-f="pipe.at">${[
+    ['vloer', 'Langs de vloer'],
+    ['plafond', 'Langs het plafond'],
+    ['hoogte', 'Op een eigen hoogte']
+  ]
+    .map(([k, l]) => `<option value="${k}" ${(pp.at || 'vloer') === k ? 'selected' : ''}>${l}</option>`)
+    .join(
+      ''
+    )}</select></label>${pp.at === 'hoogte' ? numField('f-pipe-z', 'pipe.z', 'Boven de vloer', 'm', pp.z || 0, 2) : ''}</div>
+  ${pp.at ? `<p class="note">De leiding loopt ${pipeAtText(pp)} (${fmt(pipeZ(pp), 2)} m boven de vloer). Het stuk omlaag naar een radiator, convector, vloerverwarming of de warmtepomp telt mee in de lengte, en een stijgleiding begint of eindigt op deze hoogte.</p>` : ''}
+  ${pipeRiserHtml(pp)}
   <label class="chk"><input type="checkbox" id="f-pipe-hid" data-f="pipe.hidden" ${pp.hidden ? 'checked' : ''}> Weggewerkt: in de vloer, een muur, een koof of de kruipruimte</label>
   <p class="note">Stromingsgeluid hoor je alleen bij een leiding die in een kamer in het zicht loopt. Een weggewerkte leiding mag daarom sneller stromen: tot ${nv(V_MAX, 1)} m/s in plaats van ${nv(V_OK, 1)} m/s. Daarboven is ook een weggewerkte leiding te klein, omdat het drukverlies snel oploopt. In de tekening is een weggewerkte leiding gestreept.</p>
   ${netPipeHtml(pp)}
   <div class="det">Getekend ${fmt(len)} m + extra ${fmt(pp.extra)} m = ${fmt(tot)} m<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b><br>Draagt bij ${nv(vl, 1)} m/s ongeveer ${fmt(cap, 1)} kW (ΔT ${fmt(sysDT(), 1)} K)</div>
   ${cap < need ? `<p class="note" style="color:var(--warn)">⚠ Is dit de hoofdleiding, dan is hij te klein voor het hele huis (${fmt(need, 2)} kW): het water stroomt dan sneller dan ${nv(vl, 1)} m/s.</p>` : ''}
-  <p class="note">Eén lijn staat voor aanvoer én retour. Vul bij <i>Extra lengte</i> stijgleidingen naar een andere verdieping in, en stukken die je niet tekent. Koppelingen en bochten tellen niet mee. De inhoud gaat mee in de systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>.</p>
+  <p class="note">Eén lijn staat voor aanvoer én retour. Vul bij <i>Extra lengte</i> stukken in die je niet tekent. Koppelingen en bochten tellen niet mee. De inhoud gaat mee in de systeeminhoud onder <button class="crumb" data-act="gotab" data-tab="wp">Warmtepomp</button>.</p>
   <p class="note">Hoekpunt verslepen: sleep het. Klik op een + om een punt toe te voegen, en dubbelklik op een punt om het weg te halen.</p>
   <div class="row"><button class="btn danger" data-act="delpipe">Leiding verwijderen</button></div>`;
+}
+// risers at the ends of a pipe, or buttons to add one
+function pipeRiserHtml(pp) {
+  const fi = floorIdx(pp.floorId),
+    other = P.floors[fi + 1] || P.floors[fi - 1];
+  if (!other) return '';
+  const ends = [
+    ['begin', 'beginpunt', pp.pts[0]],
+    ['eind', 'eindpunt', pp.pts[pp.pts.length - 1]]
+  ];
+  const parts = ends.map(([k, l, q]) => {
+    const rs = riserAt(q, pp.floorId);
+    return rs
+      ? `<button class="crumb" data-act="selriser" data-q="${rs.id}">↕ ${esc(rs.name)}</button> bij het ${l}`
+      : `<button class="btn small" data-act="addriser" data-end="${k}">↕ Stijgleiding bij het ${l}</button>`;
+  });
+  return `<div class="row">${parts.join(' ')}</div>`;
+}
+// the riser at a point on a floor (within a few centimetres)
+const riserAt = (q, fid) =>
+  (P.risers || []).find(
+    rs => dist(rs, q) <= RISER_TOL && floorIdx(fid) >= floorIdx(rs.from) && floorIdx(fid) <= floorIdx(rs.to)
+  );
+function viewRiser(rs) {
+  const N = network(),
+    info = N.risers.find(x => x.rs === rs) || { L: 0, floors: [] },
+    fl = id => esc(P.floors[floorIdx(id)].name),
+    open = [rs.from, rs.to].filter(f => !info.floors.includes(f)),
+    vol = info.L * 2 * pipeLpm(rs.mat, rs.dn);
+  return `<div class="sec"><button class="crumb" data-act="desel">← Alle ruimtes</button><input class="title" id="f-rs-name" data-f="riser.name" value="${esc(rs.name)}" aria-label="Naam stijgleiding"></div>
+  <div class="fields">${floorSelect('f-rs-from', 'riser.from', rs.from, 'Van')}${floorSelect('f-rs-to', 'riser.to', rs.to, 'Tot en met')}</div>
+  <div class="fields"><label class="f" for="f-rs-mat">Materiaal<select class="in" id="f-rs-mat" data-f="riser.mat">${Object.entries(
+    PIPES
+  )
+    .map(([k, v]) => `<option value="${k}" ${rs.mat === k ? 'selected' : ''}>${v.label}</option>`)
+    .join('')}</select></label>
+    <label class="f" for="f-rs-dn">Diameter<select class="in" id="f-rs-dn" data-f="riser.dn">${Object.keys(
+      PIPES[rs.mat].d
+    )
+      .map(
+        d =>
+          `<option value="${esc(d)}" ${rs.dn === d ? 'selected' : ''}>${esc(dnLabel(rs.mat, d))} (inwendig ${nv(PIPES[rs.mat].d[d], 1)} mm)</option>`
+      )
+      .join('')}</select></label></div>
+  <label class="chk"><input type="checkbox" id="f-rs-hid" data-f="riser.hidden" ${rs.hidden ? 'checked' : ''}> Weggewerkt: in een koker, muur of kast</label>
+  ${netPipeHtml(rs)}
+  <div class="det">Lengte ${fmt(info.L, 2)} m (van de leiding onderaan tot de leiding bovenaan)<br>Inhoud aanvoer + retour: <b>${fmt(vol, 1)} liter</b>${info.floors.length ? `<br>Aangesloten op ${info.floors.map(fl).join(', ')}` : ''}</div>
+  ${open.length ? `<p class="note" style="color:var(--warn)">⚠ Op ${open.map(fl).join(' en ')} sluit nog geen leiding aan. Ga naar die verdieping en teken een leiding vanaf het ↕-teken.</p>` : ''}
+  <p class="note">Een stijgleiding verbindt de leidingen die op deze plek beginnen, eindigen of langslopen, op alle verdiepingen van <i>Van</i> tot en met <i>Tot en met</i>. Sleep het ↕-teken om hem te verplaatsen: de leidingpunten erop gaan mee.</p>
+  <div class="row"><button class="btn danger" data-act="delriser">Stijgleiding verwijderen</button></div>`;
 }
 function volumeHtml() {
   if (!hpList) return '';

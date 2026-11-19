@@ -262,6 +262,8 @@ function renderPanel() {
   let h = '';
   if (tab === 'sel' && sel && sel.t === 'pipe' && (validateSel(), sel)) {
     h = viewPipe(P.pipes.find(x => x.id === sel.p));
+  } else if (tab === 'sel' && sel && sel.t === 'riser' && (validateSel(), sel)) {
+    h = viewRiser(P.risers.find(x => x.id === sel.q));
   } else if (tab === 'sel' && sel && sel.t === 'hp' && (validateSel(), sel)) {
     h = viewHp();
   } else if (tab === 'sel') {
@@ -521,8 +523,59 @@ function applyField(el, final) {
         const n = num(v);
         if (n == null || n < 0) return;
         pp.extra = n;
+      } else if (k === 'at') {
+        delete pp.at;
+        delete pp.z;
+        if (v === 'plafond') pp.at = 'plafond';
+        else if (v === 'hoogte') {
+          pp.at = 'hoogte';
+          pp.z = r3(pipeZ({ ...pp, at: 'plafond' }) / 2);
+        }
+        markDirty();
+        renderAll();
+        return;
+      } else if (k === 'z') {
+        const n = num(v);
+        if (n == null || n < 0 || n > 20) return;
+        pp.z = n;
       }
       lastPipeSpec = { mat: pp.mat, dn: pp.dn };
+      changed = true;
+      break;
+    }
+    case 'riser': {
+      const rs = sel && sel.t === 'riser' && (P.risers || []).find(x => x.id === sel.q);
+      if (!rs) return;
+      const k = parts[1];
+      if (k === 'from' || k === 'to') {
+        // the other end stays; a riser always spans at least two floors
+        const i = floorIdx(v),
+          o = floorIdx(k === 'from' ? rs.to : rs.from);
+        if (i < 0 || i === o) {
+          toast('Een stijgleiding loopt over minstens twee verdiepingen.');
+          renderPanel();
+          return;
+        }
+        const ids = [P.floors[Math.min(i, o)].id, P.floors[Math.max(i, o)].id];
+        rs.from = ids[0];
+        rs.to = ids[1];
+        if (floorIdx(curFloor) < Math.min(i, o) || floorIdx(curFloor) > Math.max(i, o)) setFloor(v, true);
+        markDirty();
+        renderAll();
+        return;
+      }
+      if (k === 'name') rs.name = v;
+      else if (k === 'hidden') {
+        if (el.checked) rs.hidden = true;
+        else delete rs.hidden;
+      } else if (k === 'mat') {
+        if (!PIPES[v]) return;
+        rs.mat = v;
+        if (!PIPES[v].d[rs.dn]) rs.dn = v === 'pex' ? '26' : '22';
+      } else if (k === 'dn') {
+        if (!PIPES[rs.mat].d[v]) return;
+        rs.dn = v;
+      }
       changed = true;
       break;
     }
@@ -1261,6 +1314,45 @@ function act(a, b) {
       );
       break;
     }
+    case 'selriser': {
+      sel = { t: 'riser', q: b.dataset.q };
+      tab = 'sel';
+      renderAll();
+      break;
+    }
+    case 'addriser': {
+      const pp = sel && sel.t === 'pipe' && P.pipes.find(x => x.id === sel.p);
+      if (!pp) return;
+      const q = b.dataset.end === 'begin' ? pp.pts[0] : pp.pts[pp.pts.length - 1],
+        fi = floorIdx(pp.floorId),
+        oi = P.floors[fi + 1] ? fi + 1 : fi - 1;
+      if (!P.floors[oi]) return;
+      pushUndo();
+      const rs = {
+        id: rid(),
+        x: q.x,
+        y: q.y,
+        from: P.floors[Math.min(fi, oi)].id,
+        to: P.floors[Math.max(fi, oi)].id,
+        mat: pp.mat,
+        dn: pp.dn,
+        name: 'Stijgleiding ' + (P.risers.length + 1),
+        ...(pp.hidden ? { hidden: true } : {})
+      };
+      P.risers.push(rs);
+      sel = { t: 'riser', q: rs.id };
+      markDirty();
+      renderAll();
+      toast(
+        `${rs.name} naar ${P.floors[oi].name}. Ga naar die verdieping en teken daar een leiding vanaf het ↕-teken.`,
+        true
+      );
+      break;
+    }
+    case 'delriser': {
+      deleteSelection();
+      break;
+    }
     case 'delpipe': {
       pushUndo();
       P.pipes = P.pipes.filter(x => x.id !== sel.p);
@@ -1310,6 +1402,16 @@ function act(a, b) {
       pushUndo();
       P.rooms = P.rooms.filter(r => !gone.has(r.id));
       P.pipes = (P.pipes || []).filter(x => x.floorId !== fid);
+      // a riser that started or ended on this floor now starts or ends on the floor next to it inside its range
+      P.risers = (P.risers || []).filter(rs => {
+        const ids = P.floors
+          .slice(floorIdx(rs.from), floorIdx(rs.to) + 1)
+          .map(f => f.id)
+          .filter(id => id !== fid);
+        rs.from = ids[0];
+        rs.to = ids[ids.length - 1];
+        return ids.length >= 2;
+      });
       if (P.hpPos && P.hpPos.floorId === fid) P.hpPos = null;
       P.transfers = (P.transfers || []).filter(t => !gone.has(t.from) && !gone.has(t.to));
       P.floors.splice(i, 1);
@@ -1323,7 +1425,7 @@ function act(a, b) {
         }
       });
       if (curFloor === fid) curFloor = P.floors[Math.max(0, i - 1)].id;
-      if (sel && !getRoom(sel.r) && sel.t !== 'hp' && sel.t !== 'pipe') sel = null;
+      if (sel && !getRoom(sel.r) && sel.t !== 'hp' && sel.t !== 'pipe' && sel.t !== 'riser') sel = null;
       validateSel();
       markDirty();
       renderAll();

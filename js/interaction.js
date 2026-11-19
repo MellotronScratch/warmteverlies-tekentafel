@@ -82,6 +82,12 @@ function validateSel() {
     if (!P.hpPos || P.hpPos.floorId !== curFloor) sel = null;
     return;
   }
+  if (sel.t === 'riser') {
+    const rs = (P.risers || []).find(x => x.id === sel.q),
+      fi = floorIdx(curFloor);
+    if (!rs || fi < floorIdx(rs.from) || fi > floorIdx(rs.to)) sel = null;
+    return;
+  }
   const r = getRoom(sel.r);
   if (!r || !presentOn(r, curFloor)) {
     sel = null;
@@ -205,6 +211,12 @@ function pipeSnap(wp, o) {
       })
     );
     const fi = floorIdx(curFloor);
+    (P.risers || []).forEach(rs => {
+      const a = floorIdx(rs.from),
+        b = floorIdx(rs.to);
+      if (fi >= a && fi <= b) tryP(rs, 'vtx');
+      else if (fi === a - 1 || fi === b + 1) tryP(rs, 'riser'); // the riser grows to this floor
+    });
     (P.pipes || []).forEach(pp => {
       const pf = floorIdx(pp.floorId);
       if (Math.abs(pf - fi) > 1) return;
@@ -250,11 +262,48 @@ function finishPipe() {
     name: 'Leiding ' + (P.pipes.length + 1)
   };
   P.pipes.push(pp);
+  const nr = autoRisers(pp);
   sel = { t: 'pipe', p: pp.id };
   tab = 'sel';
   markDirty();
   renderAll();
-  toast(`${pp.name} getekend (${fmt(pipeLen(pp))} m). Kies het leidingtype en de diameter.`);
+  toast(
+    `${pp.name} getekend (${fmt(pipeLen(pp))} m).${nr ? ` Met ${nr === 1 ? 'een stijgleiding' : nr + ' stijgleidingen'} naar de verdieping ernaast.` : ''} Kies het leidingtype en de diameter.`
+  );
+}
+// a point of a pipe exactly on a point of a pipe one floor up or down, without a riser there yet: add a riser
+function autoRisers(pp) {
+  const fi = floorIdx(pp.floorId);
+  let n = 0;
+  pp.pts.forEach(q => {
+    if (riserAt(q, pp.floorId)) return;
+    [fi - 1, fi + 1].forEach(oi => {
+      const of = P.floors[oi];
+      if (!of || riserAt(q, pp.floorId)) return;
+      // an existing riser that ends on the other floor grows to this one
+      const ext = riserAt(q, of.id),
+        o = (P.pipes || []).find(x => x.floorId === of.id && x.pts.some(p => dist(p, q) < 0.01));
+      if (!o && !ext) return;
+      const lo = oi < fi ? o : pp;
+      if (ext) {
+        if (oi < fi) ext.to = pp.floorId;
+        else ext.from = pp.floorId;
+      } else
+        P.risers.push({
+          id: rid(),
+          x: q.x,
+          y: q.y,
+          from: P.floors[Math.min(fi, oi)].id,
+          to: P.floors[Math.max(fi, oi)].id,
+          mat: lo.mat,
+          dn: lo.dn,
+          name: 'Stijgleiding ' + (P.risers.length + 1),
+          ...(lo.hidden ? { hidden: true } : {})
+        });
+      n++;
+    });
+  });
+  return n;
 }
 // floor heating that fills a whole room, 10 cm from the walls
 function insetPoly(pts, d) {
@@ -365,6 +414,15 @@ function deleteSelection() {
     markDirty();
     renderAll();
     toast('Leiding verwijderd.', true);
+    return;
+  }
+  if (sel.t === 'riser') {
+    pushUndo();
+    P.risers = P.risers.filter(x => x.id !== sel.q);
+    sel = null;
+    markDirty();
+    renderAll();
+    toast('Stijgleiding verwijderd.', true);
     return;
   }
   const room = getRoom(sel.r);
@@ -1066,6 +1124,23 @@ svg.addEventListener('pointerdown', e => {
       renderAll();
       return;
     }
+    if (k === 'riser') {
+      const rs = (P.risers || []).find(x => x.id === tgt.dataset.q);
+      if (!rs) return;
+      sel = { t: 'riser', q: rs.id };
+      tab = 'sel';
+      // the pipe points on it move along
+      const glued = [];
+      (P.pipes || []).forEach(pp => {
+        const fi = floorIdx(pp.floorId);
+        if (fi < floorIdx(rs.from) || fi > floorIdx(rs.to)) return;
+        pp.pts.forEach((p, i) => dist(p, rs) <= RISER_TOL && glued.push({ pp, i }));
+      });
+      drag = { type: 'riser', q: rs.id, glued, moved: false };
+      capture(e);
+      renderAll();
+      return;
+    }
     if (k === 'pipe') {
       sel = { t: 'pipe', p: tgt.dataset.p };
       tab = 'sel';
@@ -1407,6 +1482,21 @@ svg.addEventListener('pointermove', e => {
       renderCanvas();
       return;
     }
+    if (drag.type === 'riser') {
+      const rs = (P.risers || []).find(x => x.id === drag.q);
+      if (!rs) return;
+      const p = snapPoint(wp, { alt: e.altKey });
+      if (rs.x === p.x && rs.y === p.y) return;
+      if (!drag.moved) {
+        pushUndo();
+        drag.moved = true;
+      }
+      rs.x = p.x;
+      rs.y = p.y;
+      drag.glued.forEach(g => (g.pp.pts[g.i] = { x: p.x, y: p.y }));
+      renderCanvas();
+      return;
+    }
     if (drag.type === 'vvpt' || drag.type === 'pipept') {
       const pts =
         drag.type === 'vvpt'
@@ -1564,6 +1654,10 @@ function endPointer() {
         makeRoom(rectPts(x0, y0, x0 + w, y0 + h));
       } else renderCanvas();
       return;
+    }
+    if (d.type === 'pipept' && d.moved) {
+      const pp = P.pipes.find(x => x.id === d.p);
+      if (pp && autoRisers(pp)) toast('Stijgleiding naar de verdieping ernaast gemaakt.', true);
     }
     if (d.moved) {
       const r = getRoom(d.r);

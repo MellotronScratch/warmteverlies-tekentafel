@@ -25,8 +25,8 @@ function schemaTree(N) {
         seg.L += e.L;
         seg.dp += e.dp || 0;
         seg.v = Math.max(seg.v, e.v || 0);
-        if (e.vert) seg.floors.push(m.f);
-        else if (e.pp && !seg.pipes.includes(e.pp)) seg.pipes.push(e.pp);
+        if (e.vert && e.a.f !== e.b.f) seg.floors.push(m.f);
+        if (e.pp && !seg.pipes.includes(e.pp)) seg.pipes.push(e.pp);
         const nx = kids(m);
         if (nx.length !== 1 || m.ems.some(o => o.reach)) break;
         e = nx[0];
