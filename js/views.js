@@ -812,8 +812,8 @@ function applyField(el, final) {
         changed = true;
         break;
       }
-      if ((k === 'pEl' || k === 'pGas') && String(v).trim() === '') {
-        P.settings[k] = null; // empty: back to the CBS average
+      if ((k === 'pEl' || k === 'pGas' || k === 'dhwHours') && String(v).trim() === '') {
+        P.settings[k] = null; // empty: back to the calculated or average value
         changed = true;
         break;
       }
@@ -846,13 +846,14 @@ function applyField(el, final) {
         dhwPers: [0, 20],
         dhwKwh: [0, 3000],
         dhwHours: [0, 8],
+        dhwVol: [0, 2000],
         dhwTemp: [40, 70],
         dhwLossW: [0, 300],
         etaTap: [0.3, 1.1]
       };
       if (RANGE[k] && (n < RANGE[k][0] || n > RANGE[k][1])) {
         toast(
-          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${{ flow: 'l/h', pEl: '€/kWh', pGas: '€/m³', gasFix: '€', etaGas: '', dhwPers: 'personen', dhwKwh: 'kWh', dhwHours: 'uur', dhwLossW: 'W', etaTap: '' }[k] ?? '°C'} en is niet overgenomen.`
+          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${{ flow: 'l/h', pEl: '€/kWh', pGas: '€/m³', gasFix: '€', etaGas: '', dhwPers: 'personen', dhwKwh: 'kWh', dhwHours: 'uur', dhwVol: 'liter', dhwLossW: 'W', etaTap: '' }[k] ?? '°C'} en is niet overgenomen.`
         );
         return;
       }

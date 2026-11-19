@@ -108,7 +108,8 @@ const DEFAULT_SETTINGS = {
   dhwOn: true,
   dhwPers: 2, // occupants
   dhwKwh: 800, // kWh heat per occupant per year, including pipe losses
-  dhwHours: 1.5, // hours per day the heat pump makes hot water on a cold day
+  dhwHours: null, // hours per day the heat pump makes hot water on a cold day; null = hot water per day / its power
+  dhwVol: 200, // litre: content of the hot water tank
   dhwTemp: 50, // °C tank temperature
   dhwLossW: 50, // W standby loss of the tank as on its label (measured at 65 °C in a room of 20 °C)
   etaTap: 0.75, // efficiency of a combi boiler for hot water (gas comparison)
@@ -418,6 +419,11 @@ function normalizeProject(p) {
     .map(t => (t === null || t === '' || !Number.isFinite(+t) ? null : Math.max(-30, Math.min(25, +t))));
   if (typeof p.settings.gasNet !== 'string') p.settings.gasNet = '';
   // energy prices: an own price, or null for the current average. The old built-in prices (0,25 and 1,35) become the average.
+  // hot water hours: the old built-in 1,5 hours becomes the calculated value
+  {
+    const v = p.settings.dhwHours;
+    p.settings.dhwHours = v == null || v === '' || !Number.isFinite(+v) || +v === 1.5 ? null : +v;
+  }
   ['pEl', 'pGas'].forEach(k => {
     const v = p.settings[k];
     if (v == null || v === '' || !Number.isFinite(+v) || +v === { pEl: 0.25, pGas: 1.35 }[k]) p.settings[k] = null;

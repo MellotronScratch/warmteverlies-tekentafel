@@ -150,11 +150,30 @@ function lossLine(c, save) {
 }
 const fmtT = t => (t > 0 ? '+' : t < 0 ? '−' : '') + nv(Math.abs(t), 0) + ' °C';
 // while the heat pump heats the hot water tank it does not heat the house: the rest of the day it has to make up for it
-const dhwHoursOn = () => (P.settings.dhwOn ? Math.min(8, Math.max(0, +P.settings.dhwHours || 0)) : 0);
-const dhwFactor = () => 24 / (24 - dhwHoursOn());
+// hot water per day (kWh heat): the use per occupant plus the standby loss of the tank
+const dhwDayKwh = () =>
+  (Math.max(0, +P.settings.dhwPers || 0) * Math.max(0, +P.settings.dhwKwh || 0)) / 365 + boilerLossDay();
+// what the heat pump delivers for hot water at the design temperature (kW): its power at 55 °C supply, or without
+// those figures 80% of its power at the normal supply temperature (about the ratio of the heat pumps that state both)
+function dhwPower(h) {
+  if (!h) return 0;
+  const te = P.settings.te;
+  return Array.isArray(h.punten55) && h.punten55.length >= 2
+    ? hpAt({ punten: h.punten55.slice().sort((a, b) => a.buiten - b.buiten) }, te, 'max')
+    : 0.8 * hpAt(h, te, 'max');
+}
+// hours per day on a cold day for hot water: the user's own number, otherwise hot water per day / power for hot water
+function dhwHoursOn(h) {
+  const S = P.settings;
+  if (!S.dhwOn) return 0;
+  if (S.dhwHours != null) return Math.min(8, Math.max(0, +S.dhwHours || 0));
+  const p = dhwPower(h === undefined ? curHp() : h);
+  return p > 0 ? Math.min(8, dhwDayKwh() / p) : 1.5;
+}
+const dhwFactor = h => 24 / (24 - dhwHoursOn(h));
 function hpJudge(h, L) {
   const te = P.settings.te,
-    f = dhwFactor(),
+    f = dhwFactor(h),
     need = L.at(te) * f,
     need10 = L.at(10),
     max = hpAt(h, te, 'max'),
@@ -253,8 +272,8 @@ function hpSectionHtml(c) {
   let h = `<div class="sec"><h3>Warmtepomp kiezen</h3>
     <p class="note">${save > 0 ? `<b>Beoordeeld op het warmteverlies na de aangevinkte maatregelen.</b> ` : ''}Bij ${nv(L.te, 0)} °C is het warmteverlies ${fmt(L.at(L.te), 2)} kW; bij +10 °C nog ${fmt(L.at(10), 2)} kW. Een geschikte warmtepomp levert bij ${nv(L.te, 0)} °C minstens dat vermogen, en kan bij +10 °C terugregelen tot onder het warmteverlies, zodat hij niet steeds aan- en afslaat (pendelen). Bij <i>pendelt boven</i> staat vanaf welke buitentemperatuur het minimale vermogen groter is dan het warmteverlies. Hoe hoger die temperatuur, hoe minder uren hij pendelt. De lijst is gesorteerd op beide: hoeveel te groot bij de ontwerptemperatuur, en hoeveel het minimum bij +10 °C boven het verlies ligt.</p>`;
   if (hpErr) h += `<div class="warnbox">${esc(hpErr)}</div>`;
-  if (dhwFactor() > 1)
-    h += `<p class="note">Op koude dagen maakt de warmtepomp ongeveer ${nv(dhwHoursOn(), 1)} uur per dag warm tapwater (zie <i>Warm tapwater</i> hierboven). In die tijd verwarmt hij het huis niet, dus moet hij in de overige uren meer leveren: bij ${nv(L.te, 0)} °C is minstens ${fmt(L.at(L.te) * dhwFactor(), 2)} kW nodig in plaats van ${fmt(L.at(L.te), 2)} kW. Daarop is de lijst beoordeeld.</p>`;
+  if (cur && dhwFactor(cur.h) > 1)
+    h += `<p class="note">Op koude dagen maakt de ${esc(cur.h.model)} ongeveer ${nv(dhwHoursOn(cur.h), 1)} uur per dag warm tapwater (zie <i>Warm tapwater</i> hierboven). In die tijd verwarmt hij het huis niet, dus moet hij in de overige uren meer leveren: bij ${nv(L.te, 0)} °C is minstens ${fmt(L.at(L.te) * dhwFactor(cur.h), 2)} kW nodig in plaats van ${fmt(L.at(L.te), 2)} kW. ${P.settings.dhwHours == null ? 'Elke warmtepomp in de lijst is beoordeeld met zijn eigen tijd voor tapwater: een grotere is sneller klaar.' : 'Daarop is de lijst beoordeeld.'}</p>`;
   if (cur) h += hpChartHtml(cur.h, cur.j, L, L0);
   h += `<div class="hplist" role="list" aria-label="Warmtepompen">`;
   h += rows
@@ -285,7 +304,7 @@ function hpChartHtml(hp, j, L, L0) {
     x1 = 15;
   const te = L.te < x0 ? L.te : x0;
   const xs = t => ml + ((t - te) / (x1 - te)) * (W - ml - mr);
-  let ymax = Math.max(L.at(te) * dhwFactor(), L0 ? L0.at(te) : 0, hpAt(hp, x1, 'max'), hpAt(hp, te, 'max')) * 1.1;
+  let ymax = Math.max(L.at(te) * dhwFactor(hp), L0 ? L0.at(te) : 0, hpAt(hp, x1, 'max'), hpAt(hp, te, 'max')) * 1.1;
   const step = ymax <= 4 ? 1 : ymax <= 10 ? 2 : ymax <= 20 ? 4 : 5;
   ymax = Math.ceil(ymax / step) * step;
   const ys = v => H - mb - (v / ymax) * (H - mt - mb);
@@ -314,7 +333,7 @@ function hpChartHtml(hp, j, L, L0) {
   if (L0)
     o += `<path d="${path(t => L0.at(t))}" fill="none" stroke="var(--c-loss)" stroke-opacity=".4" stroke-width="2" stroke-dasharray="2 4"/>`;
   o += `<path d="${path(t => L.at(t))}" fill="none" stroke="var(--c-loss)" stroke-width="2.4"/>`;
-  const fD = dhwFactor();
+  const fD = dhwFactor(hp);
   if (fD > 1)
     o += `<path d="${path(t => L.at(t) * fD)}" fill="none" stroke="var(--c-loss)" stroke-width="1.6" stroke-dasharray="6 4"/>`;
   // the two check points

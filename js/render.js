@@ -1027,6 +1027,9 @@ function renderCanvas() {
   // pipe network: index circuit (orange glow) and risers
   const NET = layerOn('pipes') && ((P.pipes || []).length || P.hpPos) ? network() : null;
   if (NET) {
+    // each piece fully opaque inside a group that is transparent as a whole: where the round ends of two pieces
+    // overlap at a bend, the colour does not get darker
+    const g = { bad: '', warn: '', idx: '' };
     NET.edges.forEach(e => {
       if (e.vert || e.a.f !== curFloor) return;
       const a = S(e.a),
@@ -1034,10 +1037,15 @@ function renderCanvas() {
       // pipes that are too small: purple, bright above V_MAX, faint for flow noise in a visible pipe
       const vs = e.inTree ? vState(e.v, e.pp) : 'ok';
       if (vs !== 'ok')
-        out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${PIPE_FAST}" stroke-opacity="${vs === 'bad' ? 0.75 : 0.35}" stroke-width="22" stroke-linecap="round" pointer-events="none"><title>${fmt(e.v, 2)} m/s: ${vs === 'bad' ? 'leiding te klein' : 'stromingsgeluid'}</title></line>`;
-      if (!NET.indexEdges.has(e)) return;
-      out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#F59E0B" stroke-opacity=".55" stroke-width="15" stroke-linecap="round" pointer-events="none"/>`;
+        g[vs] +=
+          `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"><title>${fmt(e.v, 2)} m/s: ${vs === 'bad' ? 'leiding te klein' : 'stromingsgeluid'}</title></line>`;
+      if (NET.indexEdges.has(e)) g.idx += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
     });
+    const grp = (lines, col, op, w) =>
+      lines
+        ? `<g opacity="${op}" stroke="${col}" stroke-width="${w}" stroke-linecap="round" pointer-events="none">${lines}</g>`
+        : '';
+    out += grp(g.warn, PIPE_FAST, 0.35, 22) + grp(g.bad, PIPE_FAST, 0.75, 22) + grp(g.idx, '#F59E0B', 0.55, 15);
   }
   // pipe network: one line = supply (red) and return (blue)
   const pipeLabels = [];

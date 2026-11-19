@@ -58,7 +58,7 @@ function annualCalc(c, hp) {
     gain = L.at(S.stook),
     ts = supplyFn(),
     cf = copFactor(hp),
-    avail = 1 / dhwFactor(); // share of the hours left for space heating
+    avail = 1 / dhwFactor(hp || null); // share of the hours left for space heating
   const R = {
     heat: 0,
     el: 0,
@@ -242,7 +242,11 @@ function costHtml(c) {
 // settings for domestic hot water (tab Warmtepomp): the heat pump's pause while it heats the tank, and the annual energy
 function dhwHtml() {
   const S = P.settings,
-    pct = (dhwFactor() - 1) * 100;
+    hp = curHp(),
+    hrs = dhwHoursOn(hp),
+    pct = (dhwFactor(hp) - 1) * 100,
+    full = (Math.max(0, +S.dhwVol || 0) * 1.163 * Math.max(0, S.dhwTemp - 10)) / 1000, // kWh: the whole tank from 10 °C
+    pw = dhwPower(hp);
   let h = `<div class="sec"><h3>Warm tapwater</h3>
     <label class="chk"><input type="checkbox" id="f-s-dhw" data-f="set.dhwOn" ${S.dhwOn ? 'checked' : ''}> De warmtepomp maakt ook het warme tapwater (met een boiler)</label>`;
   if (!S.dhwOn)
@@ -255,11 +259,18 @@ function dhwHtml() {
     `<div class="fields">
       ${numField('f-s-dhwp', 'set.dhwPers', 'Bewoners', 'personen', S.dhwPers, 0)}
       ${numField('f-s-dhwk', 'set.dhwKwh', 'Warmte per bewoner', 'kWh per jaar', S.dhwKwh, 0)}
-      ${numField('f-s-dhwh', 'set.dhwHours', 'Tapwater op een koude dag', 'uur per dag', S.dhwHours, 1)}
+      ${numField('f-s-dhwh', 'set.dhwHours', 'Tapwater op een koude dag', S.dhwHours != null ? 'uur per dag, eigen waarde' : 'uur per dag, berekend', hrs, 1)}
+      ${numField('f-s-dhwv', 'set.dhwVol', 'Inhoud boiler', 'liter', S.dhwVol, 0)}
       ${numField('f-s-dhwt', 'set.dhwTemp', 'Boilertemperatuur', '°C', S.dhwTemp, 0)}
       ${numField('f-s-dhwl', 'set.dhwLossW', 'Warmhoudverlies boiler', 'W, zoals op het label', S.dhwLossW, 0)}
     </div>
-    <p class="note">Terwijl de warmtepomp de boiler opwarmt, verwarmt hij het huis niet. Op een koude dag duurt dat bij veel warmtepompen 1 tot 2 uur. In de overige uren moet hij dat inhalen: met ${nv(dhwHoursOn(), 1)} uur per dag is ${fmt(pct, 0)}% meer vermogen nodig. Daarmee rekenen de warmtepompkeuze hieronder en het jaarverbruik.</p>
+    <p class="note">Terwijl de warmtepomp de boiler opwarmt, verwarmt hij het huis niet. ${
+      S.dhwHours != null
+        ? `Je rekent met ${nv(hrs, 1)} uur per dag op een koude dag; maak het vakje leeg om het te laten berekenen.`
+        : pw > 0
+          ? `Per dag is ${fmt(dhwDayKwh(), 1)} kWh warmte nodig voor tapwater (bewoners plus warmhoudverlies). De ${esc(hp.model)} levert bij ${nv(S.te, 0)} °C buiten voor tapwater ongeveer ${fmt(pw, 1)} kW${Array.isArray(hp.punten55) && hp.punten55.length >= 2 ? ' (opgave bij 55 °C aanvoer)' : ' (80% van zijn vermogen, omdat hij voor de boiler warmer water maakt)'}: dat is ${nv(hrs, 1)} uur per dag. De hele boiler van ${fmt(S.dhwVol, 0)} liter opwarmen van 10 naar ${nv(S.dhwTemp, 0)} °C (${fmt(full, 1)} kWh) duurt ${fmt((full / pw) * 60, 0)} minuten. De spiraal in de boiler kan het langzamer maken; die rekent de app niet mee. Vul zelf een aantal uren in als je dat weet.`
+          : `Kies een warmtepomp, dan rekent de app uit hoe lang hij per dag tapwater maakt. Tot die tijd geldt ${nv(hrs, 1)} uur.`
+    } In de overige uren moet hij dat inhalen: met ${nv(hrs, 1)} uur per dag is ${fmt(pct, 0)}% meer vermogen nodig. Daarmee rekenen de warmtepompkeuze hieronder en het jaarverbruik.</p>
     <p class="note">Voor het jaarverbruik telt de warmte voor tapwater (gemiddeld zo'n 800 kWh per bewoner per jaar, met het leidingverlies) plus het warmhoudverlies van de boiler. Dat staat in watt op het energielabel of in de datasheet (een boiler van 200 liter zit meestal tussen 35 en 70 W). Die waarde is gemeten met de boiler op 65 °C; op ${nv(S.dhwTemp, 0)} °C verliest hij ${fmtW((boilerLossDay() * 1000) / 24)} W, ${fmt(boilerLossDay(), 2)} kWh per dag. De COP volgt uit de boilertemperatuur: hoe warmer de boiler, hoe lager.</p></div>`
   );
 }
