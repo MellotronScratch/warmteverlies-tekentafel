@@ -806,6 +806,11 @@ function applyField(el, final) {
         changed = true;
         break;
       }
+      if ((k === 'pEl' || k === 'pGas') && String(v).trim() === '') {
+        P.settings[k] = null; // empty: back to the CBS average
+        changed = true;
+        break;
+      }
       if (k === 'ventSys' || k === 'infMode') {
         P.settings[k] = v;
         changed = true;
@@ -1285,6 +1290,13 @@ function act(a, b) {
     case 'schema':
       track('schema');
       openSchema();
+      break;
+    case 'pricesavg':
+      pushUndo();
+      P.settings.pEl = null;
+      P.settings.pGas = null;
+      markDirty();
+      renderAll();
       break;
     case 'bgpick':
       $('bg-in').value = '';

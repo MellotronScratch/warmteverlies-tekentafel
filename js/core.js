@@ -67,6 +67,9 @@ const AIR = {
     [300, 0.23]
   ]
 };
+// the energy prices this project counts with: its own, otherwise the CBS average
+const priceEl = () => (P.settings.pEl != null ? P.settings.pEl : PRICES.stroom);
+const priceGas = () => (P.settings.pGas != null ? P.settings.pGas : PRICES.gas);
 const BOILER_LABEL_DT = 45; // K: the standby loss on a boiler label is measured with the tank at 65 °C in a room of 20 °C
 const DEFAULT_SETTINGS = {
   te: -10,
@@ -96,8 +99,8 @@ const DEFAULT_SETTINGS = {
   flow: 0, // l/h; 0 = flow follows from the supply/return difference
   // annual use and costs (js/annual.js)
   stook: 15, // °C outside: above this the house needs no heating (internal and solar gains)
-  pEl: 0.25, // € per kWh electricity
-  pGas: 1.35, // € per m³ gas
+  pEl: null, // € per kWh electricity; null = the CBS average in data/energieprijzen.json
+  pGas: null, // € per m³ gas; null = the CBS average
   gasFix: 0, // € per year fixed costs of the gas connection, saved when the gas goes
   gasNet: '', // id in data/netbeheer.json whose amount was put in gasFix ('' = own amount)
   etaGas: 0.9, // efficiency of the gas boiler (on the gross calorific value)
@@ -414,6 +417,12 @@ function normalizeProject(p) {
     .slice(0, 10)
     .map(t => (t === null || t === '' || !Number.isFinite(+t) ? null : Math.max(-30, Math.min(25, +t))));
   if (typeof p.settings.gasNet !== 'string') p.settings.gasNet = '';
+  // energy prices: an own price, or null for the current average. The old built-in prices (0,25 and 1,35) become the average.
+  ['pEl', 'pGas'].forEach(k => {
+    const v = p.settings[k];
+    if (v == null || v === '' || !Number.isFinite(+v) || +v === { pEl: 0.25, pGas: 1.35 }[k]) p.settings[k] = null;
+    else p.settings[k] = +v;
+  });
   p.settings.dhwOn = p.settings.dhwOn !== false;
   if (p.settings.trv === 'heimeier-eclipse') p.settings.trv = 'heimeier-eclipse-150'; // key renamed (11-2026)
   const adv = p.settings.advice || {};

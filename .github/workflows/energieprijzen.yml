@@ -1,0 +1,39 @@
+# Werkt elke maand data/energieprijzen.json bij met de gemiddelde stroom- en gasprijs van het CBS (tools/energieprijzen.mjs).
+# Is er iets veranderd, dan commit hij dat op main en start hij het uitrollen. Een commit van een workflow start
+# 'Uitrollen naar hosting' niet vanzelf, daarom roept deze workflow hem zelf aan.
+# Met de hand draaien: Actions → Energieprijzen bijwerken → Run workflow.
+name: Energieprijzen bijwerken
+
+on:
+  schedule:
+    - cron: '17 6 5,20 * *' # de 5e en 20e van elke maand; het CBS publiceert de cijfers van de vorige maand rond het midden
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  prijzen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Prijzen ophalen bij het CBS
+        run: node tools/energieprijzen.mjs
+      - name: Committen en uitrollen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet data/energieprijzen.json; then
+            echo "Geen nieuwe prijzen."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/energieprijzen.json
+          git commit -m "Energieprijzen bijgewerkt ($(node -p "require('./data/energieprijzen.json').maandNaam"))"
+          git push
+          gh workflow run deploy.yml --ref main

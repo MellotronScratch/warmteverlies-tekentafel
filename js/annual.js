@@ -132,8 +132,8 @@ function annualCalc(c, hp) {
   R.elHeat = R.el;
   R.el += R.dhwEl;
   R.gas = R.gasHeat + R.dhwGas;
-  R.costHp = R.el * S.pEl;
-  R.costGas = R.gas * S.pGas + S.gasFix;
+  R.costHp = R.el * priceEl();
+  R.costGas = R.gas * priceGas() + S.gasFix;
   return R;
 }
 
@@ -193,13 +193,18 @@ function annualHtml(c) {
   }
   h += `<div class="fields">
       ${numField('f-s-stook', 'set.stook', 'Stookgrens', '°C buiten', S.stook, 1)}
-      ${numField('f-s-pel', 'set.pEl', 'Stroomprijs', '€ per kWh', S.pEl, 3)}
-      ${numField('f-s-pgas', 'set.pGas', 'Gasprijs', '€ per m³', S.pGas, 3)}
+      ${numField('f-s-pel', 'set.pEl', 'Stroomprijs', S.pEl != null ? '€ per kWh, eigen prijs' : '€ per kWh, gemiddeld', priceEl(), 3)}
+      ${numField('f-s-pgas', 'set.pGas', 'Gasprijs', S.pGas != null ? '€ per m³, eigen prijs' : '€ per m³, gemiddeld', priceGas(), 3)}
       ${gridField(S)}
       ${numField('f-s-gfix', 'set.gasFix', 'Vaste kosten gas', '€ per jaar', S.gasFix, 2)}
       ${numField('f-s-eta', 'set.etaGas', 'Rendement cv-ketel', '0 tot 1', S.etaGas, 2)}
     </div>
-    <p class="note">Vul de prijzen van je eigen contract in, inclusief belastingen. De stookgrens is de buitentemperatuur waarboven je huis geen verwarming meer nodig heeft door warmte van mensen, apparaten en zon: in een goed geïsoleerd huis lager (13–15 °C), in een oud huis hoger (16–18 °C). Bij <i>Vaste kosten gas</i> vul je in wat je bespaart als de gasaansluiting eruit gaat. Kies je je netbeheerder, dan vult de app de netbeheerkosten voor gas${GRID.jaar ? ` van ${GRID.jaar}` : ''} in (gewone huisaansluiting, 500 tot 4.000 m³ per jaar, inclusief btw). Tel daar de vaste leveringskosten van je energieleverancier bij op: die vervallen ook. Beide staan op je energierekening.</p>
+    <p class="note">${
+      S.pEl == null && S.pGas == null
+        ? `De stroom- en gasprijs zijn het gemiddelde van het CBS${PRICES.maandNaam ? ` over ${esc(PRICES.maandNaam)}` : ''}: het leveringstarief van een vast of variabel contract plus energiebelasting, inclusief btw. De app werkt ze elke maand bij. Vul de prijzen van je eigen contract in als je die weet; leeg maken zet het gemiddelde terug.`
+        : `${S.pEl != null ? 'De stroomprijs' : ''}${S.pEl != null && S.pGas != null ? ' en de gasprijs zijn' : S.pEl != null ? ' is' : 'De gasprijs is'} je eigen prijs. Het gemiddelde van het CBS${PRICES.maandNaam ? ` over ${esc(PRICES.maandNaam)}` : ''} is € ${fmt(PRICES.stroom, 3)} per kWh en € ${fmt(PRICES.gas, 3)} per m³. <button class="crumb" data-act="pricesavg">Actuele prijzen gebruiken</button>`
+    }</p>
+    <p class="note">Vul de prijzen in inclusief belastingen. De stookgrens is de buitentemperatuur waarboven je huis geen verwarming meer nodig heeft door warmte van mensen, apparaten en zon: in een goed geïsoleerd huis lager (13–15 °C), in een oud huis hoger (16–18 °C). Bij <i>Vaste kosten gas</i> vul je in wat je bespaart als de gasaansluiting eruit gaat. Kies je je netbeheerder, dan vult de app de netbeheerkosten voor gas${GRID.jaar ? ` van ${GRID.jaar}` : ''} in (gewone huisaansluiting, 500 tot 4.000 m³ per jaar, inclusief btw). Tel daar de vaste leveringskosten van je energieleverancier bij op: die vervallen ook. Beide staan op je energierekening.</p>
     <p class="note">De COP volgt uit het verschil tussen de aanvoertemperatuur van de stooklijn hierboven en de buitenlucht${R.cf.own ? `, geschaald naar de opgegeven COP-waarden van deze warmtepomp (factor ${fmt(R.cf.f, 2)})` : ', met een gemiddelde lijn voor lucht/water-warmtepompen. Staan er COP-waarden van de fabrikant bij de warmtepomp in de lijst, dan rekent de app daarmee'}. Een lagere stooklijn geeft een hogere COP.</p></div>`;
   return h;
 }

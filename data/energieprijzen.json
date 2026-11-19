@@ -1,0 +1,19 @@
+{
+  "versie": 1,
+  "maand": "2026-10",
+  "maandNaam": "oktober 2026",
+  "toelichting": "Gemiddelde prijs per kWh stroom en per m³ gas voor consumenten met een vast of variabel contract: het variabele leveringstarief plus de energiebelasting, inclusief btw. Vaste kosten (vastrecht, transport, vermindering energiebelasting) zitten er niet in. Bron: CBS, Gemiddelde energietarieven voor consumenten (tabel 85592NED). De app gebruikt deze prijzen tenzij je in een project zelf een prijs invult. Dit bestand wordt elke maand bijgewerkt door tools/energieprijzen.mjs; met de hand aanpassen kan, maar wordt bij de volgende update overschreven.",
+  "bron": "https://www.cbs.nl/nl-nl/cijfers/detail/85592NED",
+  "stroom": 0.271,
+  "gas": 1.4233,
+  "detail": {
+    "stroom": {
+      "levering": 0.1601,
+      "belasting": 0.11085
+    },
+    "gas": {
+      "levering": 0.6965,
+      "belasting": 0.7268
+    }
+  }
+}

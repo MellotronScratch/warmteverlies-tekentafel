@@ -14,6 +14,7 @@ let FITTINGS = {}; // data/appendages.json: {vuilfilter: {naam, kv}, ...}
 let FANS = { doorlaat: 0.7, ijking: {}, modellen: {} }; // data/ventilatoren.json: pc-ventilatoren als booster
 let CLIMATE = { bron: '', uren: {} }; // data/klimaat.json: uren per jaar per buitentemperatuur (°C), voor het jaarverbruik
 let GRID = { jaar: null, gas: {} }; // data/netbeheer.json: vaste kosten gasaansluiting per netbeheerder
+let PRICES = { stroom: 0.25, gas: 1.35, maandNaam: '' }; // data/energieprijzen.json: CBS-gemiddelde, elke maand bijgewerkt
 
 async function loadData() {
   const get = f =>
@@ -21,7 +22,7 @@ async function loadData() {
       if (!r.ok) throw new Error(f + ' (' + r.status + ')');
       return r.json();
     });
-  const [hp, mat, pipes, rad, vv, trv, fit, fans, klimaat, netbeheer] = await Promise.all([
+  const [hp, mat, pipes, rad, vv, trv, fit, fans, klimaat, netbeheer, prijzen] = await Promise.all([
     get('warmtepompen.json'),
     get('materialen.json'),
     get('leidingen.json'),
@@ -31,7 +32,8 @@ async function loadData() {
     get('appendages.json'),
     get('ventilatoren.json'),
     get('klimaat.json'),
-    get('netbeheer.json')
+    get('netbeheer.json'),
+    get('energieprijzen.json').catch(() => null) // optional: without it the app uses the built-in prices
   ]);
   HP_DEFAULT = hp;
   MAT_PRESETS = mat.materialen.map(m => [m.id, m.naam, m.soort, +m.waarde || 0, m.kleur]);
@@ -49,6 +51,8 @@ async function loadData() {
   FANS = fans;
   CLIMATE = klimaat;
   GRID = { jaar: netbeheer.jaar, gas: netbeheer.gas || {} };
+  if (prijzen && +prijzen.stroom > 0 && +prijzen.gas > 0)
+    PRICES = { stroom: +prijzen.stroom, gas: +prijzen.gas, maandNaam: String(prijzen.maandNaam || '') };
 }
 
 function showDataError(err) {

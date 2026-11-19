@@ -36,6 +36,7 @@ Naast wat je zelf invult, rekent de app met een aantal vaste tabellen:
 - **Ventilatoren** voor boosters: luchtdebiet en toerental.
 - **Klimaat**: hoeveel uur per jaar het elke buitentemperatuur is, uit de KNMI-metingen in De Bilt van 2011 tot en met 2025.
 - **Netbeheerkosten** voor gas per netbeheerder, voor 2026.
+- **Energieprijzen**: de gemiddelde stroom- en gasprijs voor consumenten van het CBS (leveringstarief plus energiebelasting, inclusief btw), elke maand bijgewerkt.
 
 De warmtepomplijst kun je in de app downloaden, aanvullen en als eigen lijst weer importeren (**Warmtepomp → Warmtepomp kiezen**). Die eigen lijst staat dan alleen in je browser. Mist er een warmtepomp, radiator, kraan of ventilator, of klopt een waarde niet? [Meld het](../README.md#fouten-suggesties-en-bijdragen) met de gegevens en de bron van de fabrikant.
 
