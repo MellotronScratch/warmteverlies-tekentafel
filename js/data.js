@@ -7,6 +7,7 @@ let MAT_PRESETS = []; // data/materialen.json, als [id, naam, soort, waarde, kle
 let PIPES = {}; // data/leidingen.json: {koper: {label, d: {buitendiameter: binnendiameter}}, ...}
 let RAD_TYPES = {}; // data/radiatoren.json: {T22: [watt per meter bij 600 mm, omschrijving], ...}
 let RAD_L = {}; // data/radiatoren.json: {T22: liter per meter bij 600 mm, ...}
+let RAD_COL = {}; // data/radiatoren.json, kolomradiatoren: {K3: {pitch: mm per lid, w: watt per lid, l: liter per lid, depth}}
 let VV_COVER = {}; // data/vloerverwarming.json: {tegels: [naam, R], ...}
 let VV_KH = {}; // data/vloerverwarming.json: {15: [afgiftecoëfficiënt bij R = 0 / 0,05 / 0,10 / 0,15], ...}
 let TRV = { lichaam: 0.5, kranen: {} }; // data/thermostaatkranen.json: kv per voorinstelling, debietbegrenzers
@@ -44,6 +45,16 @@ async function loadData() {
     Object.entries(rad.paneelradiatoren).map(([k, v]) => [k, [v.wattPerMeter, v.omschrijving]])
   );
   RAD_L = Object.fromEntries(Object.entries(rad.paneelradiatoren).map(([k, v]) => [k, v.literPerMeter]));
+  // column radiators: per section; per metre as well, so everything that works with the length keeps working
+  RAD_COL = Object.fromEntries(
+    Object.entries(rad.kolomradiatoren || {})
+      .filter(([, v]) => +v.lidbreedte > 0 && +v.wattPerLid > 0)
+      .map(([k, v]) => [k, { pitch: +v.lidbreedte, w: +v.wattPerLid, l: +v.literPerLid || 0, depth: +v.diepte || 0 }])
+  );
+  for (const [k, c] of Object.entries(RAD_COL)) {
+    RAD_TYPES[k] = [(c.w * 1000) / c.pitch, rad.kolomradiatoren[k].omschrijving];
+    RAD_L[k] = (c.l * 1000) / c.pitch;
+  }
   VV_COVER = Object.fromEntries(Object.entries(vv.vloerafwerkingen).map(([k, v]) => [k, [v.naam, v.R]]));
   VV_KH = vv.afgifteCoefficient;
   TRV = trv;

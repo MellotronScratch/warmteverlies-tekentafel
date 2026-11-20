@@ -222,7 +222,7 @@ function reportHtml() {
     ems.forEach(({ r, em }) => {
       const o = emOutput(em, r),
         pc = pipeCheck(em, o, N);
-      h += `<tr><td>${esc(r.name)}<small>${esc(em.name)}</small></td><td class="txt">${EM_KINDS[em.kind]}${em.kind === 'rad' && RAD_TYPES[em.rt] ? ` ${esc(em.rt)} ${fmtW(em.rh)}×${fmtW(em.rl)}` : ''}${em.boost ? ' + boosters' : ''}</td><td>${em.kind === 'vv' ? fmt(emArea(em), 1) + ' m², h.o.h. ' + nv(em.spacing, 0) + ' cm' : fmtW(em.p) + ' W'}</td><td>${fmtW(o)} W</td><td class="txt">${pc.pp ? `${esc(pc.pp.name)} · ${esc(dnLabel(pc.pp.mat, pc.pp.dn))}<small>${fmtW(pc.lh)} l/h · ${fmt(pc.v, 2)} m/s${pipeBad(pc) ? ' ⚠ ' + pc.state : ''}</small>` : (P.pipes || []).length ? 'niet aangesloten' : '–'}</td></tr>`;
+      h += `<tr><td>${esc(r.name)}<small>${esc(em.name)}</small></td><td class="txt">${EM_KINDS[em.kind]}${em.kind === 'rad' && RAD_TYPES[em.rt] ? ` ${esc(radText(em))}` : ''}${em.boost ? ' + boosters' : ''}</td><td>${em.kind === 'vv' ? fmt(emArea(em), 1) + ' m², h.o.h. ' + nv(em.spacing, 0) + ' cm' : fmtW(em.p) + ' W'}</td><td>${fmtW(o)} W</td><td class="txt">${pc.pp ? `${esc(pc.pp.name)} · ${esc(dnLabel(pc.pp.mat, pc.pp.dn))}<small>${fmtW(pc.lh)} l/h · ${fmt(pc.v, 2)} m/s${pipeBad(pc) ? ' ⚠ ' + pc.state : ''}</small>` : (P.pipes || []).length ? 'niet aangesloten' : '–'}</td></tr>`;
     });
     h += `</tbody></table>${emitOverviewHtml(c)
       .replace(twFieldsHtml(), '')

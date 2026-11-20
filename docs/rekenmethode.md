@@ -36,7 +36,7 @@ Naast wat je zelf invult, rekent de app met een aantal vaste tabellen:
 - **Warmtepompen**: minimaal en maximaal vermogen bij een paar buitentemperaturen, en waar bekend de minimale systeeminhoud, de restopvoerhoogte, het minimale debiet en de COP. Het gaat om R290-warmtepompen van onder meer Itho Daalderop, Vaillant, WeHeat, NIBE, Viessmann, Bosch en Stiebel Eltron, met waarden uit de installatiehandleidingen en datasheets. Bij elke warmtepomp staat de bron, en welke waarden geschat zijn.
 - **Materialen** voor de laagopbouw van constructies: λ-waarde, vaste R of luchtspouw.
 - **Leidingen**: koper, alupex en staal, met per maat de binnendiameter.
-- **Radiatoren**: paneeltypes T10 tot en met T33, met vermogen en waterinhoud per meter.
+- **Radiatoren**: paneeltypes T10 tot en met T33, met vermogen en waterinhoud per meter, en kolomradiatoren (staal en gietijzer) met vermogen, waterinhoud en breedte per lid.
 - **Vloerverwarming**: vloerafwerkingen en de afgifte per hart-op-hartafstand.
 - **Thermostaatkranen**: de kv-waarde per voorinstelling, of het instelbereik van een debietbegrenzer, uit de datasheets van de fabrikanten.
 - **Appendages** in de hoofdleiding, zoals een vuilfilter of driewegklep, met een typische kv-waarde.

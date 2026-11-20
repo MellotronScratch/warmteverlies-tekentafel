@@ -29,10 +29,13 @@ const tRet = () => P.settings.twSup - sysDT();
 const sysFlow = () => (+P.settings.flow > 0 ? +P.settings.flow : designLoad() / (1.163 * sysDT()));
 // rule of thumb for steel panel radiators: output per metre length at 75/65/20 °C (EN 442) for a height of 600 mm,
 // scaled with (height/600)^0.9. Within ±10 % of common brands; the manufacturer's table is always better.
+// Column radiators (data/radiatoren.json) are given per section; data.js turns that into output per metre as well.
 const radP = (t, h, l) =>
   RAD_TYPES[t]
     ? Math.round((RAD_TYPES[t][0] * Math.pow(Math.max(100, h) / 600, 0.9) * Math.max(0, l)) / 1000 / 10) * 10
     : 0;
+// short text for reports: "T22 600×1200"
+const radText = em => `${em.rt} ${fmtW(em.rh)}×${fmtW(em.rl)}`;
 // change the length of a radiator/convector line: the start stays, the end moves along the same direction
 function setEmLen(em, mm) {
   const L = emLen(em),
@@ -224,7 +227,7 @@ function volumeHtml() {
         : '<p class="note">Kies hierboven een warmtepomp om de inhoud te beoordelen.</p>'
     }
     <p class="note">Een warmtepomp heeft genoeg water in het systeem nodig om te kunnen ontdooien en niet te vaak aan en uit te gaan. Tel alleen kringen mee die altijd open staan. Hebben radiatoren thermostaatkranen of heeft de vloerverwarming ruimteregeling, dan is de werkelijke inhoud lager. Is de inhoud te klein, dan vergroot een <b>schakelvat</b> de systeeminhoud. Een <b>buffervat</b> tussen aanvoer en retour (hydraulische scheiding) is iets anders: dat heb je nodig als de warmtepomp meer water moet rondpompen dan het afgiftesysteem aankan, of bij meerdere pompgroepen, zoals vloerverwarming met een eigen mengpomp. Dat volgt niet uit de inhoud maar uit het debiet. Overleg het met de installateur.</p>
-    <p class="note">Indicatieve inhoud: paneelradiatoren per meter (bij 600 mm hoog: T11 3 l, T22 5,8 l, T33 8,5 l), andere radiatoren 3,4 l per kW, convectoren een of meer lussen koperbuis 15 mm over de lengte min 15 cm (een lus is twee buizen), fancoils 0,5 l per kW. Aansluitleidingen naar de radiatoren tellen alleen mee als je ze tekent.</p></div>`;
+    <p class="note">Indicatieve inhoud: paneelradiatoren per meter (bij 600 mm hoog: T11 3 l, T22 5,8 l, T33 8,5 l), kolomradiatoren per lid (staal 0,4 tot 1 l, gietijzer 0,8 tot 1,3 l), andere radiatoren 3,4 l per kW, convectoren een of meer lussen koperbuis 15 mm over de lengte min 15 cm (een lus is twee buizen), fancoils 0,5 l per kW. Aansluitleidingen naar de radiatoren tellen alleen mee als je ze tekent.</p></div>`;
 }
 const V_OK = 0.5, // m/s: above this a visible pipe gives audible flow noise
   V_MAX = 0.8; // m/s: above this a pipe is too small (much pressure drop), also when it is hidden away
@@ -733,7 +736,14 @@ function viewEm(room, em) {
       )
         .map(([k, v]) => `<option value="${k}" ${em.rt === k ? 'selected' : ''}>${v[1]}</option>`)
         .join('')}</select></label>`;
-    if (byType)
+    const col = byType && RAD_COL[em.rt];
+    if (col) {
+      const wL = Math.round(col.w * Math.pow(Math.max(100, em.rh) / 600, 0.9));
+      h += `<div class="fields">${numField('f-em-rh', 'em.rh', 'Hoogte', 'mm', em.rh, 0)}${numField('f-em-rl', 'em.rl', 'Breedte', 'mm', em.rl, 0)}</div>${Math.abs(em.rl - emLen(em) * 1000) > 5 ? `<p class="note">In de tekening is deze radiator ${fmt(emLen(em))} m lang. Vul de breedte opnieuw in of sleep een uiteinde om ze gelijk te maken.</p>` : ''}
+      <div class="det">${esc(em.rt)}: ${fmtW(col.w)} W per lid van ${fmtW(col.pitch)} mm bij 600 mm hoog${em.rh !== 600 ? `<br>× (${fmtW(em.rh)}/600)^0,9 = ${fmtW(wL)} W per lid` : ''}<br>× ${fmt(em.rl / col.pitch, 1)} leden (${fmtW(em.rl)} / ${fmtW(col.pitch)} mm)<br><b>= ${fmtW(em.p)} W bij 75/65/20 °C</b></div>
+      <div class="fields">${numField('f-em-n', 'em.n', 'Exponent n', '–', em.n, 2)}</div>
+      <p class="note">Een lid is één kolomstuk van de radiator; uit de breedte rekent de app hoeveel leden erin zitten. Het aantal kolommen zie je aan de diepte${col.depth ? ` (deze: ongeveer ${fmtW(col.depth)} mm)` : ''}. Indicatief, ongeveer ±10 %${em.rt.startsWith('G') ? '; bij oude gietijzeren radiatoren lopen de maten en vermogens meer uiteen' : ''}. Weet je merk en model, kies dan <i>Zelf invullen</i> en neem de waarde uit de tabel van de fabrikant. Een kolomradiator bevat meer water dan een paneelradiator met hetzelfde vermogen; dat telt mee in de inhoud van de installatie.</p>`;
+    } else if (byType)
       h += `<div class="fields">${numField('f-em-rh', 'em.rh', 'Hoogte', 'mm', em.rh, 0)}${numField('f-em-rl', 'em.rl', 'Lengte', 'mm', em.rl, 0)}</div>${Math.abs(em.rl - emLen(em) * 1000) > 5 ? `<p class="note">In de tekening is deze radiator ${fmt(emLen(em))} m lang. Vul de lengte opnieuw in of sleep een uiteinde om ze gelijk te maken.</p>` : ''}
       ${em.rh < 250 ? `<div class="warnbox">Een hoogte van ${fmtW(em.rh)} mm is ongebruikelijk laag voor een paneelradiator (meestal 300 tot 900 mm). Klopt de hoogte, of zijn hoogte en lengte verwisseld?</div>` : ''}
       ${em.rh > 1000 ? `<p class="note">Bij een hoge, smalle radiator wijkt het vermogen vaak meer af van deze vuistregel. Neem liever het vermogen uit de tabel van de fabrikant (kies <i>Zelf invullen</i>).</p>` : ''}

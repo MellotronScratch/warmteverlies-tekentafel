@@ -1,5 +1,5 @@
 {
-  "toelichting": "Vuistregel voor stalen paneelradiatoren. wattPerMeter: afgifte per meter lengte bij 75/65/20 °C (EN 442) en 600 mm hoogte; voor een andere hoogte rekent de app met (hoogte / 600)^0,9. literPerMeter: waterinhoud per meter bij 600 mm hoogte, naar verhouding van de hoogte. Indicatieve waarden, ongeveer ±10 %; de tabel van de fabrikant is altijd beter.",
+  "toelichting": "Vuistregel voor stalen paneelradiatoren en kolomradiatoren. Paneelradiatoren: wattPerMeter is de afgifte per meter lengte bij 75/65/20 °C (EN 442) en 600 mm hoogte; literPerMeter de waterinhoud per meter bij 600 mm hoogte. Kolomradiatoren (ledenradiatoren): wattPerLid en literPerLid per lid bij 600 mm hoogte, lidbreedte in mm (hart op hart van de leden), diepte in mm ter informatie. Voor een andere hoogte rekent de app het vermogen met (hoogte / 600)^0,9 en de inhoud naar verhouding van de hoogte. Indicatieve waarden, ongeveer ±10 % (gietijzer meer); de tabel van de fabrikant is altijd beter.",
   "paneelradiatoren": {
     "T10": {
       "omschrijving": "Type 10 · één plaat, geen lamellen",
@@ -30,6 +30,64 @@
       "omschrijving": "Type 33 · drie platen met lamellen",
       "wattPerMeter": 2450,
       "literPerMeter": 8.5
+    }
+  },
+  "kolomradiatoren": {
+    "K2": {
+      "omschrijving": "Kolomradiator staal · 2 kolommen (± 62 mm diep)",
+      "lidbreedte": 46,
+      "diepte": 62,
+      "wattPerLid": 44,
+      "literPerLid": 0.42
+    },
+    "K3": {
+      "omschrijving": "Kolomradiator staal · 3 kolommen (± 100 mm diep)",
+      "lidbreedte": 46,
+      "diepte": 100,
+      "wattPerLid": 61,
+      "literPerLid": 0.57
+    },
+    "K4": {
+      "omschrijving": "Kolomradiator staal · 4 kolommen (± 136 mm diep)",
+      "lidbreedte": 46,
+      "diepte": 136,
+      "wattPerLid": 78,
+      "literPerLid": 0.72
+    },
+    "K5": {
+      "omschrijving": "Kolomradiator staal · 5 kolommen (± 172 mm diep)",
+      "lidbreedte": 46,
+      "diepte": 172,
+      "wattPerLid": 96,
+      "literPerLid": 0.88
+    },
+    "K6": {
+      "omschrijving": "Kolomradiator staal · 6 kolommen (± 208 mm diep)",
+      "lidbreedte": 46,
+      "diepte": 208,
+      "wattPerLid": 113,
+      "literPerLid": 1.04
+    },
+    "G2": {
+      "omschrijving": "Gietijzeren ledenradiator · 2 kolommen",
+      "lidbreedte": 60,
+      "diepte": 110,
+      "wattPerLid": 50,
+      "literPerLid": 0.8
+    },
+    "G3": {
+      "omschrijving": "Gietijzeren ledenradiator · 3 kolommen",
+      "lidbreedte": 60,
+      "diepte": 160,
+      "wattPerLid": 65,
+      "literPerLid": 1.0
+    },
+    "G4": {
+      "omschrijving": "Gietijzeren ledenradiator · 4 kolommen",
+      "lidbreedte": 60,
+      "diepte": 220,
+      "wattPerLid": 80,
+      "literPerLid": 1.3
     }
   }
 }
