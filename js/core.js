@@ -98,6 +98,8 @@ const DEFAULT_SETTINGS = {
   twRet: 30,
   flow: 0, // l/h; 0 = flow follows from the supply/return difference
   // annual use and costs (js/annual.js)
+  postcode: '', // 4 digits: picks the nearest KNMI weather station for the annual figures (data/klimaat.json)
+  station: '', // KNMI station number for the annual figures; '' = nearest to the postcode
   stook: 15, // °C outside: above this the house needs no heating (internal and solar gains)
   pEl: null, // € per kWh electricity; null = the CBS average in data/energieprijzen.json
   pGas: null, // € per m³ gas; null = the CBS average
@@ -418,6 +420,11 @@ function normalizeProject(p) {
     .slice(0, 10)
     .map(t => (t === null || t === '' || !Number.isFinite(+t) ? null : Math.max(-30, Math.min(25, +t))));
   if (typeof p.settings.gasNet !== 'string') p.settings.gasNet = '';
+  p.settings.postcode = String(p.settings.postcode == null ? '' : p.settings.postcode)
+    .replace(/\s/g, '')
+    .slice(0, 6);
+  p.settings.station =
+    typeof p.settings.station === 'string' || typeof p.settings.station === 'number' ? String(p.settings.station) : '';
   // energy prices: an own price, or null for the current average. The old built-in prices (0,25 and 1,35) become the average.
   // hot water hours: the old built-in 1,5 hours becomes the calculated value
   {

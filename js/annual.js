@@ -15,6 +15,29 @@
      verdeeld over alle uren van het jaar, met een COP uit boilertemperatuur + 5 K tegen de buitenlucht. Terwijl hij
      tapwater maakt, verwarmt hij niet: voor verwarming is zijn maximum dus (24 − uren tapwater) / 24 van de opgave.
      Bij gas rekent de app met een combiketel (geen boiler, wel een lager rendement voor tapwater). */
+// weather station for the annual figures: chosen in the project, otherwise the nearest one to the postcode, otherwise De Bilt
+function stationFor(pc) {
+  const n = parseInt(String(pc || '').slice(0, 4), 10),
+    L = CLIMATE.postcodes;
+  if (!(n >= 1000 && n <= 9999) || !L.length) return '';
+  let lo = 0,
+    hi = L.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (L[mid][0] <= n) lo = mid;
+    else hi = mid - 1;
+  }
+  return L[lo][0] <= n ? String(L[lo][1]) : '';
+}
+function climId() {
+  const S = P.settings,
+    st = CLIMATE.stations;
+  if (S.station && st[S.station]) return S.station;
+  const near = stationFor(S.postcode);
+  return st[near] ? near : st[CLIMATE.standaard] ? CLIMATE.standaard : Object.keys(st)[0] || '';
+}
+const climate = () => CLIMATE.stations[climId()] || { naam: '', uren: {} };
+const climOk = () => Object.keys(climate().uren || {}).length > 0;
 const GAS_KWH = 9.77; // kWh per m³ aardgas (bovenwaarde, 35,17 MJ/m³)
 const CYCLE_LOSS = 0.9;
 const copLift = dT => Math.max(1.5, 6.08 - 0.09 * dT + 0.0005 * dT * dT);
@@ -76,7 +99,7 @@ function annualCalc(c, hp) {
   };
   const edges = [-Infinity, -5, 0, 5, 10, Infinity];
   const G = edges.slice(1).map((hi, i) => ({ lo: edges[i], hi, hours: 0, heat: 0, el: 0 }));
-  Object.entries(CLIMATE.uren || {}).forEach(([k, hours]) => {
+  Object.entries(climate().uren || {}).forEach(([k, hours]) => {
     const t = +k;
     const q = Math.max(0, L.at(t) - gain); // kW
     if (q <= 0 || !(hours > 0)) return;
@@ -121,7 +144,7 @@ function annualCalc(c, hp) {
   R.dhwHeat = R.dhw ? R.dhwUse + R.dhwLossDay * 365 : 0; // plus the standby loss of the tank
   R.dhwEl = 0;
   if (R.dhw && hp && R.dhwHeat > 0) {
-    const all = Object.entries(CLIMATE.uren || {}),
+    const all = Object.entries(climate().uren || {}),
       tot = all.reduce((a, [, h]) => a + h, 0) || 8760;
     all.forEach(([k, hours]) => {
       R.dhwEl += (R.dhwHeat * hours) / tot / (copLift(S.dhwTemp + 5 - +k) * cf.f);
@@ -149,14 +172,14 @@ function gridField(S) {
     .join('')}</select></label>`;
 }
 
-function annualHtml(c) {
-  if (c.total <= 0 || !CLIMATE.uren || !Object.keys(CLIMATE.uren).length) return '';
+function annualHtml(c, rep) {
+  if (c.total <= 0 || !climOk()) return '';
   const S = P.settings,
     hp = curHp(c),
     R = annualCalc(c, hp),
     kwh = v => fmt(v, 0) + ' kWh';
   let h = `<div class="sec"><h3>Jaarverbruik</h3>
-    <p class="note">Een schatting voor een gemiddeld jaar in De Bilt (KNMI, 2011–2025)${hp ? `, met de ${esc(hp.merk)} ${esc(hp.model)} die hierboven is gekozen` : ''}. ${S.dhwOn ? 'Verwarming en warm tapwater' : 'Alleen ruimteverwarming (warm tapwater staat uit)'}; nachtverlaging en je eigen stookgedrag zitten er niet in.</p>`;
+    <p class="note">Een schatting voor een gemiddeld jaar bij weerstation ${esc(climate().naam)}${climate().jaren ? ` (KNMI, ${esc(climate().jaren)})` : ''}${hp ? `, met de ${esc(hp.merk)} ${esc(hp.model)} die hierboven is gekozen` : ''}. ${S.dhwOn ? 'Verwarming en warm tapwater' : 'Alleen ruimteverwarming (warm tapwater staat uit)'}; nachtverlaging en je eigen stookgedrag zitten er niet in.</p>`;
   if (R.heat <= 0) return h + `<p class="note">Geen warmtevraag boven de stookgrens.</p></div>`;
   h += `<div class="kcard"><div class="kh"><span>Warmtevraag per jaar</span><b>${kwh(R.heat)}</b></div><span class="note">Voor verwarming. Zoveel warmte als ${fmt(R.gasHeat, 0)} m³ gas in een cv-ketel met ${fmt(S.etaGas * 100, 0)}% rendement.${R.dhw ? ` Daarbij komt ${kwh(R.dhwHeat)} voor warm tapwater (${fmt(S.dhwPers, 0)} ${+S.dhwPers === 1 ? 'bewoner' : 'bewoners'}, met het warmhoudverlies van de boiler).` : ''}</span></div>`;
   h += `<div class="tablewrap"><table class="calc"><tbody>`;
@@ -187,10 +210,33 @@ function annualHtml(c) {
       )
       .join('')}</tbody></table></div>`;
   }
+  if (!rep) h += climateFields(); // the report names the station in the first line
   h += `<div class="fields">${numField('f-s-stook', 'set.stook', 'Stookgrens', '°C buiten', S.stook, 1)}</div>
     <p class="note">De stookgrens is de buitentemperatuur waarboven je huis geen verwarming meer nodig heeft door warmte van mensen, apparaten en zon: in een goed geïsoleerd huis lager (13–15 °C), in een oud huis hoger (16–18 °C). Wat dit verbruik kost, staat onder <button class="crumb" data-act="gotab" data-tab="kost">Kosten</button>.</p>
     <p class="note">De COP volgt uit het verschil tussen de aanvoertemperatuur van de stooklijn hierboven en de buitenlucht${R.cf.own ? `, geschaald naar de opgegeven COP-waarden van deze warmtepomp (factor ${fmt(R.cf.f, 2)})` : ', met een gemiddelde lijn voor lucht/water-warmtepompen. Staan er COP-waarden van de fabrikant bij de warmtepomp in de lijst, dan rekent de app daarmee'}. Een lagere stooklijn geeft een hogere COP.</p></div>`;
   return h;
+}
+
+// postcode and weather station of the project
+function climateFields() {
+  const S = P.settings,
+    st = CLIMATE.stations,
+    near = stationFor(S.postcode),
+    auto = st[near] ? near : CLIMATE.standaard,
+    C = climate(),
+    ids = Object.keys(st).sort((a, b) => st[a].naam.localeCompare(st[b].naam, 'nl'));
+  if (ids.length < 2) return '';
+  const def = st[CLIMATE.standaard] || {},
+    pcBad = String(S.postcode || '').trim() !== '' && !near;
+  return `<div class="fields"><label class="f" for="f-s-pc">Postcode <span class="u">4 cijfers</span><input class="in num" id="f-s-pc" data-f="set.postcode" inputmode="numeric" maxlength="7" value="${esc(S.postcode || '')}"></label>
+    <label class="f grow" for="f-s-station">Weerstation<select class="in" id="f-s-station" data-f="set.station"><option value="" ${S.station && st[S.station] ? '' : 'selected'}>${st[near] ? `Dichtstbij: ${esc(st[near].naam)}` : `Automatisch: ${esc((st[auto] || {}).naam || '')}`}</option>${ids
+      .map(
+        id =>
+          `<option value="${esc(id)}" ${S.station === id ? 'selected' : ''}>${esc(st[id].naam)}${st[id].graaddagen ? ` (${fmt(st[id].graaddagen, 0)} graaddagen)` : ''}</option>`
+      )
+      .join('')}</select></label></div>
+    ${pcBad ? `<div class="warnbox">Postcode ${esc(S.postcode)} kent de app niet. Vul de 4 cijfers van een Nederlandse postcode in.</div>` : ''}
+    <p class="note">Hoe koud het in een gemiddeld jaar is, verschilt per regio: ${C.graaddagen ? `${esc(C.naam)} heeft ${fmt(C.graaddagen, 0)} graaddagen per jaar${def.graaddagen && C !== def ? `, ${esc(def.naam)} ${fmt(def.graaddagen, 0)}` : ''}. ` : ''}Met de postcode (alleen de 4 cijfers) kiest de app het dichtstbijzijnde weerstation van het KNMI${S.postcode ? '' : '; zonder postcode rekent hij met ' + esc(def.naam || 'De Bilt')}. Ligt een ander station meer in jouw soort omgeving (bijvoorbeeld niet aan de kust), kies dat dan zelf. Het warmteverlies en de warmtepompkeuze rekenen in heel Nederland met dezelfde ontwerptemperatuur (${fmtT(S.te)}); dit gaat alleen over het jaarverbruik en de kosten.</p>`;
 }
 
 // tab Kosten: what the annual use costs with the heat pump and with gas, and the prices
@@ -198,7 +244,7 @@ function annualHtml(c) {
 function costTableHtml(c, rep) {
   const S = P.settings,
     hp = curHp(c),
-    ok = c.total > 0 && CLIMATE.uren && Object.keys(CLIMATE.uren).length,
+    ok = c.total > 0 && climOk(),
     R = ok ? annualCalc(c, hp) : null,
     eur = v => '€ ' + fmt(v, 0);
   let h = '';

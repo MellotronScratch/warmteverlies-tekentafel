@@ -41,7 +41,7 @@ Naast wat je zelf invult, rekent de app met een aantal vaste tabellen:
 - **Thermostaatkranen**: de kv-waarde per voorinstelling, of het instelbereik van een debietbegrenzer, uit de datasheets van de fabrikanten.
 - **Appendages** in de hoofdleiding, zoals een vuilfilter of driewegklep, met een typische kv-waarde.
 - **Ventilatoren** voor boosters: luchtdebiet en toerental.
-- **Klimaat**: hoeveel uur per jaar het elke buitentemperatuur is, uit de KNMI-metingen in De Bilt van 2011 tot en met 2025.
+- **Klimaat**: hoeveel uur per jaar het elke buitentemperatuur is, uit de uurmetingen van 32 KNMI-weerstations van 2011 tot en met 2025, en per postcode het dichtstbijzijnde station (gemeten vanaf het midden van het postcodegebied, CBS).
 - **Netbeheerkosten** voor gas per netbeheerder, voor 2026.
 - **Energieprijzen**: de gemiddelde stroom- en gasprijs voor consumenten van het CBS (leveringstarief plus energiebelasting, inclusief btw), elke maand bijgewerkt.
 

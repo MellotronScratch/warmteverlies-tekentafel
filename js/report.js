@@ -244,7 +244,7 @@ function reportHtml() {
         ''
       )}</tbody></table>${chosen.length ? `<p>Met de meegenomen maatregelen: ${fmt((c.total - adviceSaving(c, adv)) / 1000, 2)} kW in plaats van ${fmt(c.total / 1000, 2)} kW.</p>` : ''}</section>`;
   h += reportHpHtml(c);
-  const yr = annualHtml(c);
+  const yr = annualHtml(c, true);
   if (yr)
     h += `<section class="rsec"><h2>Jaarverbruik en kosten</h2>${yr.replace('<h3>Jaarverbruik</h3>', '').replace(/ Wat dit verbruik kost, staat onder <button[^>]*>Kosten<\/button>\./, '')}<h3>Kosten per jaar</h3>${costTableHtml(c, true)}<p class="note">Gerekend met stroom € ${fmt(priceEl(), 3)} per kWh, gas € ${fmt(priceGas(), 3)} per m³${S.pEl == null || S.pGas == null ? ` (${S.pEl == null && S.pGas == null ? '' : 'deels '}gemiddelde van het CBS${PRICES.maandNaam ? ' over ' + esc(PRICES.maandNaam) : ''})` : ''}${S.gasFix > 0 ? `, vaste kosten gas € ${fmt(S.gasFix, 0)} per jaar` : ''}, een cv-ketel met ${fmt(S.etaGas * 100, 0)}% rendement en een stookgrens van ${nv(S.stook, 1)} °C.</p></section>`;
   h += `<footer class="repfoot">Gemaakt met Warmtepomp Tekentafel · ${esc(date)}. Indicatieve berekening; controleer de uitkomst voordat je erop dimensioneert.</footer>`;

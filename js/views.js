@@ -781,6 +781,16 @@ function applyField(el, final) {
         changed = true;
         break;
       }
+      if (k === 'postcode') {
+        P.settings.postcode = String(v).replace(/\s/g, '').toUpperCase().slice(0, 6);
+        changed = true;
+        break;
+      }
+      if (k === 'station') {
+        P.settings.station = CLIMATE.stations[v] ? v : '';
+        changed = true;
+        break;
+      }
       if (k === 'gasNet') {
         P.settings.gasNet = GRID.gas[v] ? v : '';
         if (GRID.gas[v]) P.settings.gasFix = +GRID.gas[v].perJaar || 0;

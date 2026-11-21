@@ -13,7 +13,7 @@ let VV_KH = {}; // data/vloerverwarming.json: {15: [afgiftecoëfficiënt bij R =
 let TRV = { lichaam: 0.5, kranen: {} }; // data/thermostaatkranen.json: kv per voorinstelling, debietbegrenzers
 let FITTINGS = {}; // data/appendages.json: {vuilfilter: {naam, kv}, ...}
 let FANS = { doorlaat: 0.7, ijking: {}, modellen: {} }; // data/ventilatoren.json: pc-ventilatoren als booster
-let CLIMATE = { bron: '', uren: {} }; // data/klimaat.json: uren per jaar per buitentemperatuur (°C), voor het jaarverbruik
+let CLIMATE = { bron: '', standaard: '', stations: {}, postcodes: [] }; // data/klimaat.json: per KNMI-station uren per jaar per buitentemperatuur (°C), en per postcode het dichtstbijzijnde station
 let GRID = { jaar: null, gas: {} }; // data/netbeheer.json: vaste kosten gasaansluiting per netbeheerder
 let PRICES = { stroom: 0.25, gas: 1.35, maandNaam: '' }; // data/energieprijzen.json: CBS-gemiddelde, elke maand bijgewerkt
 
@@ -60,7 +60,18 @@ async function loadData() {
   TRV = trv;
   FITTINGS = fit.appendages;
   FANS = fans;
-  CLIMATE = klimaat;
+  // an own klimaat.json in the old form (one set of hours) still works: it becomes the only station
+  CLIMATE =
+    klimaat && klimaat.stations
+      ? { ...klimaat, postcodes: Array.isArray(klimaat.postcodes) ? klimaat.postcodes : [] }
+      : {
+          bron: (klimaat && klimaat.bron) || '',
+          standaard: 'eigen',
+          stations: {
+            eigen: { naam: (klimaat && klimaat.bron) || 'eigen klimaat', uren: (klimaat && klimaat.uren) || {} }
+          },
+          postcodes: []
+        };
   GRID = { jaar: netbeheer.jaar, gas: netbeheer.gas || {} };
   if (prijzen && +prijzen.stroom > 0 && +prijzen.gas > 0)
     PRICES = { stroom: +prijzen.stroom, gas: +prijzen.gas, maandNaam: String(prijzen.maandNaam || '') };
