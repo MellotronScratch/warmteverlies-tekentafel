@@ -1308,6 +1308,16 @@ function act(a, b) {
       track('schema');
       openSchema();
       break;
+    case 'itip': {
+      const id = b.dataset.tip,
+        box = $('itx-' + id),
+        open = !OPEN_TIPS.has(id);
+      if (open) OPEN_TIPS.add(id);
+      else OPEN_TIPS.delete(id);
+      b.setAttribute('aria-expanded', open);
+      if (box) box.hidden = !open;
+      break;
+    }
     case 'pricesavg':
       pushUndo();
       P.settings.pEl = null;

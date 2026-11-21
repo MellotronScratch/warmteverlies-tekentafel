@@ -197,7 +197,7 @@ function annualHtml(c, rep) {
       <tr><td>Gemiddelde aanvoertemperatuur<small>gewogen naar de geleverde warmte</small></td><td>${fmt(R.tsAvg, 0)} °C</td></tr>
       ${R.cycHours > 0 ? `<tr><td>Uren waarin hij pendelt<small>vraag onder het minimale vermogen</small></td><td>${fmt(R.cycHours, 0)} uur</td></tr>` : ''}`;
   }
-  h += `<tr><td>Gas bij een cv-ketel<small>ter vergelijking${R.dhwGas > 0 ? `, waarvan ${fmt(R.dhwGas, 0)} m³ voor tapwater met een combiketel` : ''}</small></td><td>${fmt(R.gas, 0)} m³</td></tr>`;
+  h += `<tr><td>Gas bij een cv-ketel ${rep ? '' : itip('gas', 'gasverbruik')}<small>ter vergelijking${R.dhwGas > 0 ? `, waarvan ${fmt(R.dhwGas, 0)} m³ voor tapwater met een combiketel` : ''}</small>${rep ? '' : itipBox('gas', gasHow(R))}</td><td>${fmt(R.gas, 0)} m³</td></tr>`;
   h += `</tbody></table></div>`;
   if (!hp) h += `<p class="note">Kies hierboven een warmtepomp om het stroomverbruik te zien.</p>`;
   if (hp && R.atMax)
@@ -214,6 +214,19 @@ function annualHtml(c, rep) {
   h += `<div class="fields">${numField('f-s-stook', 'set.stook', 'Stookgrens', '°C buiten', S.stook, 1)}</div>
     <p class="note">De stookgrens is de buitentemperatuur waarboven je huis geen verwarming meer nodig heeft door warmte van mensen, apparaten en zon: in een goed geïsoleerd huis lager (13–15 °C), in een oud huis hoger (16–18 °C). Wat dit verbruik kost, staat onder <button class="crumb" data-act="gotab" data-tab="kost">Kosten</button>.</p>
     <p class="note">De COP volgt uit het verschil tussen de aanvoertemperatuur van de stooklijn hierboven en de buitenlucht${R.cf.own ? `, geschaald naar de opgegeven COP-waarden van deze warmtepomp (factor ${fmt(R.cf.f, 2)})` : ', met een gemiddelde lijn voor lucht/water-warmtepompen. Staan er COP-waarden van de fabrikant bij de warmtepomp in de lijst, dan rekent de app daarmee'}. Een lagere stooklijn geeft een hogere COP.</p></div>`;
+  return h;
+}
+
+// how the gas use for the comparison comes about
+function gasHow(R, onCost) {
+  const S = P.settings,
+    eta = v => fmt(v * 100, 0) + '%';
+  let h = `<p>Zo komt de app aan het gas dat een cv-ketel voor hetzelfde huis zou verbruiken:</p>
+    <p><b>Verwarming</b>: de warmtevraag van ${fmt(R.heat, 0)} kWh gedeeld door ${fmt(GAS_KWH, 2)} kWh per m³ gas en door het rendement van de ketel (${eta(S.etaGas)}):<br>${fmt(R.heat, 0)} / (${fmt(GAS_KWH, 2)} × ${fmt(S.etaGas, 2)}) = <b>${fmt(R.gasHeat, 0)} m³</b></p>`;
+  if (R.dhwGas > 0)
+    h += `<p><b>Warm tapwater</b>: ${fmt(R.dhwUse, 0)} kWh warmte aan de kraan (${fmt(S.dhwPers, 0)} × ${fmt(S.dhwKwh, 0)} kWh per bewoner), met een combiketel met een rendement van ${eta(S.etaTap)} voor tapwater:<br>${fmt(R.dhwUse, 0)} / (${fmt(GAS_KWH, 2)} × ${fmt(S.etaTap, 2)}) = <b>${fmt(R.dhwGas, 0)} m³</b>. Een combiketel heeft geen boiler, dus geen warmhoudverlies.</p>`;
+  h += `<p>Eén m³ aardgas bevat ${fmt(GAS_KWH, 2)} kWh (de bovenwaarde, zoals op de energierekening). Een moderne HR-ketel haalt daarvan in de praktijk 85 tot 95%; een oude ketel minder. Het rendement en de vaste kosten pas je aan ${onCost ? 'hieronder bij <i>Vergelijking met gas</i>' : 'onder <button class="crumb" data-act="gotab" data-tab="kost">Kosten</button>'}.</p>
+    <p>Wijkt dit veel af van je werkelijke gasverbruik, dan klopt er misschien iets niet in de invoer, zoals de isolatie of de ventilatie. Ook je stookgedrag telt: de app rekent met een vaste binnentemperatuur, zonder nachtverlaging.</p>`;
   return h;
 }
 
@@ -256,7 +269,7 @@ function costTableHtml(c, rep) {
     h += `<div class="tablewrap"><table class="calc"><tbody>`;
     if (hp)
       h += `<tr><td>Warmtepomp<small>${fmt(R.el, 0)} kWh stroom × € ${fmt(priceEl(), 3)}</small></td><td>${eur(R.costHp)}</td></tr>`;
-    h += `<tr><td>Gas met een cv-ketel<small>${fmt(R.gas, 0)} m³ × € ${fmt(priceGas(), 3)}${S.gasFix > 0 ? ` + ${eur(S.gasFix)} vaste kosten` : ''}</small></td><td>${eur(R.costGas)}</td></tr>`;
+    h += `<tr><td>Gas met een cv-ketel ${rep ? '' : itip('gas', 'gasverbruik')}<small>${fmt(R.gas, 0)} m³ × € ${fmt(priceGas(), 3)}${S.gasFix > 0 ? ` + ${eur(S.gasFix)} vaste kosten` : ''}</small>${rep ? '' : itipBox('gas', gasHow(R, true))}</td><td>${eur(R.costGas)}</td></tr>`;
     if (hp)
       h += `<tr class="sum"><td>${R.costGas >= R.costHp ? 'Goedkoper met de warmtepomp' : 'Duurder met de warmtepomp'}</td><td>${eur(Math.abs(R.costGas - R.costHp))} per jaar</td></tr>`;
     h += `</tbody></table></div>`;

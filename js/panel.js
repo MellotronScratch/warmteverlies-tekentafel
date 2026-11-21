@@ -32,6 +32,11 @@ function adjOptions(selected, withAuto, withOpen) {
     h += `<option value="open" ${selected === 'open' ? 'selected' : ''}>Open verbinding (geen wand)</option>`;
   return h;
 }
+// small "i" button that shows how a number comes about; stays open when the panel redraws
+const OPEN_TIPS = new Set();
+const itip = (id, what) =>
+  `<button type="button" class="itip" data-act="itip" data-tip="${id}" aria-expanded="${OPEN_TIPS.has(id)}" aria-controls="itx-${id}" title="Hoe komt de app hieraan?" aria-label="Uitleg: ${what}">i</button>`;
+const itipBox = (id, html) => `<div class="itxt" id="itx-${id}" ${OPEN_TIPS.has(id) ? '' : 'hidden'}>${html}</div>`;
 function numField(id, f, label, unit, val, d) {
   return `<label class="f" for="${id}">${label} <span class="u">${unit}</span><input class="in num" id="${id}" data-f="${f}" inputmode="decimal" value="${nv(val, d == null ? 3 : d)}"></label>`;
 }

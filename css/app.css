@@ -1963,3 +1963,67 @@ a.linkrow {
   padding-bottom: 10px;
   white-space: nowrap;
 }
+
+/* "i" button with an explanation of how a number comes about */
+.itip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  padding: 0;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--accent);
+  font:
+    italic 700 12px/1 Georgia,
+    'Times New Roman',
+    serif;
+  vertical-align: 1px;
+  cursor: pointer;
+  animation: itip-glow 2.4s ease-in-out 3;
+}
+.itip:hover,
+.itip:focus-visible,
+.itip[aria-expanded='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  animation: none;
+}
+.itip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@keyframes itip-glow {
+  0%,
+  100% {
+    outline: 0 solid transparent;
+  }
+  50% {
+    outline: 4px solid var(--accent-soft-2);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .itip {
+    animation: none;
+  }
+}
+.itxt {
+  margin: 6px 0 2px;
+  padding: 7px 9px;
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r);
+  background: var(--accent-soft);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink);
+  white-space: normal;
+}
+.itxt p {
+  margin: 0 0 6px;
+}
+.itxt p:last-child {
+  margin-bottom: 0;
+}
