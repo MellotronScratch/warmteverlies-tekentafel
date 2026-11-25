@@ -9,3 +9,20 @@
     Header set Cache-Control "public, max-age=604800"
   </FilesMatch>
 </IfModule>
+
+# Beveiliging voor de hele site (de Content-Security-Policy voor de app zelf staat als meta-tag in index.html):
+# - frame-ancestors / X-Frame-Options: geen andere site mag deze pagina's in een frame tonen (tegen clickjacking:
+#   onzichtbaar over een andere pagina gelegd, zodat iemand ongemerkt op knoppen klikt). Kan niet in een meta-tag.
+# - nosniff: de browser neemt het bestandstype van de server over en gaat niet zelf raden.
+# - Referrer-Policy: andere sites zien alleen het domein waar een bezoeker vandaan komt, niet de hele link.
+# - Permissions-Policy: de app gebruikt geen camera, microfoon of locatie; dan mag niets op de site daarom vragen.
+# - HSTS: browsers gebruiken voortaan altijd https voor dit domein (een jaar lang). Alleen als https overal werkt.
+# De server is LiteSpeed: daarom alleen eenvoudige 'Header set'-regels (een regel die hij niet kent, geeft een 500).
+<IfModule mod_headers.c>
+  Header set Content-Security-Policy "frame-ancestors 'self'"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+  Header set Strict-Transport-Security "max-age=31536000"
+</IfModule>

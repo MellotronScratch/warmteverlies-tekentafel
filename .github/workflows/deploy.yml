@@ -11,6 +11,7 @@
 # De handleiding (warmtepomptekentafel.nl/handleiding/) en sitemap.xml maakt tools/handleiding.mjs bij het uitrollen
 # uit README.md en docs/*.md; ze staan niet in git.
 # Bestanden die niet in de repo staan (zoals api/config.php) worden niet overschreven of verwijderd.
+# De acties van GitHub staan op een vaste commit (met de versie erachter): een tag kan later naar andere code wijzen.
 name: Uitrollen naar hosting
 
 on:
@@ -28,7 +29,7 @@ jobs:
     env:
       FTP_SERVER: ${{ secrets.FTP_SERVER }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         if: env.FTP_SERVER != ''
         with:
           fetch-depth: 0 # git history for the lastmod dates in sitemap.xml

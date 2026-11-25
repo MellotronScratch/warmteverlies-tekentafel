@@ -557,7 +557,7 @@ function xsecSvg(c, r) {
     if (m && m.type === 'spouw')
       out += `<rect x="${x}" y="${top}" width="${w}" height="${hh}" fill="none" stroke="var(--muted)" stroke-dasharray="2 2" opacity="${op}"/>`;
     else
-      out += `<rect x="${x}" y="${top}" width="${w}" height="${hh}" fill="${esc(m ? m.color : '#999999')}" opacity="${op}"/>`;
+      out += `<rect x="${x}" y="${top}" width="${w}" height="${hh}" fill="${esc(m ? m.color : 'var(--field)')}" opacity="${op}"/>`;
     if (l.mix && m && m.type === 'lambda') {
       const mm = matById(l.mix.mid);
       const bh = (hh * Math.max(0, Math.min(100, l.mix.pct))) / 100;

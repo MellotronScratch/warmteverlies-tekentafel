@@ -23,49 +23,50 @@ function reportPlanSvg(fl, box, N) {
       sg = stairTreads(r, el[P.floors[i + 1].id] - el[P.floors[i].id]);
     if (!sg) return '';
     let o = sg.treads
-      .map(q => `<polygon points="${pts(q.poly)}" fill="none" stroke="#8a9a9f" stroke-width=".8"/>`)
+      .map(q => `<polygon points="${pts(q.poly)}" fill="none" stroke="var(--field)" stroke-width=".8"/>`)
       .join('');
     const mids = sg.treads.map(q => centroid(q.poly)).map(p => ({ x: +X(p), y: +Y(p) })),
       a = mids[mids.length - 2] || mids[0],
       b = mids[mids.length - 1],
       ang = Math.atan2(b.y - a.y, b.x - a.x),
       hd = 6;
-    o += `<polyline points="${mids.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="none" stroke="#5b6f76" stroke-width="1"/>`;
-    o += `<path d="M${b.x} ${b.y}L${(b.x - hd * Math.cos(ang - 0.45)).toFixed(1)} ${(b.y - hd * Math.sin(ang - 0.45)).toFixed(1)}M${b.x} ${b.y}L${(b.x - hd * Math.cos(ang + 0.45)).toFixed(1)} ${(b.y - hd * Math.sin(ang + 0.45)).toFixed(1)}" stroke="#5b6f76" stroke-width="1"/><circle cx="${mids[0].x}" cy="${mids[0].y}" r="2" fill="#5b6f76"/>`;
+    o += `<polyline points="${mids.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="none" stroke="var(--muted)" stroke-width="1"/>`;
+    o += `<path d="M${b.x} ${b.y}L${(b.x - hd * Math.cos(ang - 0.45)).toFixed(1)} ${(b.y - hd * Math.sin(ang - 0.45)).toFixed(1)}M${b.x} ${b.y}L${(b.x - hd * Math.cos(ang + 0.45)).toFixed(1)} ${(b.y - hd * Math.sin(ang + 0.45)).toFixed(1)}" stroke="var(--muted)" stroke-width="1"/><circle cx="${mids[0].x}" cy="${mids[0].y}" r="2" fill="var(--muted)"/>`;
     return o;
   };
   let s =
-    '<defs><pattern id="rephatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="#8a9a9f" stroke-width="1"/></pattern></defs>';
+    '<defs><pattern id="rephatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="8" stroke="var(--field)" stroke-width="1"/></pattern></defs>';
   through.forEach(r => {
-    s += `<polygon points="${pts(r.pts)}" fill="${r.kind === 'trap' ? '#fff' : 'url(#rephatch)'}" stroke="#1f3b44" stroke-width="1.6"/>`;
+    s += `<polygon points="${pts(r.pts)}" fill="${r.kind === 'trap' ? 'var(--surface)' : 'url(#rephatch)'}" stroke="var(--wall)" stroke-width="1.6"/>`;
     s += stair(r);
   });
   rooms.forEach(r => {
     const un = r.heated === false;
-    s += `<polygon points="${pts(r.pts)}" fill="${un ? '#eef1f1' : '#fff'}" stroke="#1f3b44" stroke-width="1.6" ${un ? 'stroke-dasharray="5 3"' : ''}/>`;
+    s += `<polygon points="${pts(r.pts)}" fill="${un ? 'var(--surface-2)' : 'var(--surface)'}" stroke="var(--wall)" stroke-width="1.6" ${un ? 'stroke-dasharray="5 3"' : ''}/>`;
     s += stair(r);
   });
   rooms.forEach(r =>
     (r.emitters || []).forEach(em => {
       if (em.kind === 'vv')
-        s += `<polygon points="${pts(em.pts)}" fill="rgba(0,121,184,.10)" stroke="#0079b8" stroke-width="1" stroke-dasharray="4 3"/>`;
+        s += `<polygon points="${pts(em.pts)}" fill="var(--c-hp)" fill-opacity=".1" stroke="var(--c-hp)" stroke-width="1" stroke-dasharray="4 3"/>`;
       else if (em.a && em.b)
-        s += `<line x1="${X(em.a)}" y1="${Y(em.a)}" x2="${X(em.b)}" y2="${Y(em.b)}" stroke="#0079b8" stroke-width="4" stroke-linecap="round"/>`;
+        s += `<line x1="${X(em.a)}" y1="${Y(em.a)}" x2="${X(em.b)}" y2="${Y(em.b)}" stroke="var(--c-hp)" stroke-width="4" stroke-linecap="round"/>`;
     })
   );
   (P.pipes || [])
     .filter(pp => pp.floorId === fl.id)
     .forEach(pp => {
       const idx = N && N.edges.some(e => e.pp === pp && N.indexEdges.has(e));
-      s += `<polyline points="${pts(pp.pts)}" fill="none" stroke="${idx ? '#F59E0B' : '#DC2626'}" stroke-width="2" stroke-linejoin="round"/>`;
+      s += `<polyline points="${pts(pp.pts)}" fill="none" stroke="${idx ? 'var(--c-index)' : 'var(--c-supply)'}" stroke-width="2" stroke-linejoin="round"/>`;
     });
   (P.risers || [])
     .filter(rs => floorIdx(fl.id) >= floorIdx(rs.from) && floorIdx(fl.id) <= floorIdx(rs.to))
     .forEach(
-      rs => (s += `<circle cx="${X(rs)}" cy="${Y(rs)}" r="5" fill="#fff" stroke="#DC2626" stroke-width="1.6"/>`)
+      rs =>
+        (s += `<circle cx="${X(rs)}" cy="${Y(rs)}" r="5" fill="var(--surface)" stroke="var(--c-supply)" stroke-width="1.6"/>`)
     );
   if (P.hpPos && P.hpPos.floorId === fl.id)
-    s += `<rect x="${+X(P.hpPos) - 13}" y="${+Y(P.hpPos) - 9}" width="26" height="18" rx="3" fill="#fff" stroke="#DC2626" stroke-width="1.6"/><text x="${X(P.hpPos)}" y="${+Y(P.hpPos) + 3.5}" font-size="9" font-weight="700" text-anchor="middle" fill="#DC2626">WP</text>`;
+    s += `<rect x="${+X(P.hpPos) - 13}" y="${+Y(P.hpPos) - 9}" width="26" height="18" rx="3" fill="var(--surface)" stroke="var(--c-supply)" stroke-width="1.6"/><text x="${X(P.hpPos)}" y="${+Y(P.hpPos) + 3.5}" font-size="9" font-weight="700" text-anchor="middle" fill="var(--c-supply)">WP</text>`;
   through.forEach(r => {
     const c = centroid(r.pts),
       xs = r.pts.map(p => p.x),
@@ -73,17 +74,17 @@ function reportPlanSvg(fl, box, N) {
       kw = r.kind === 'trap' ? 'Trap' : 'Vide',
       lab = r.name.toLowerCase().startsWith(kw.toLowerCase()) ? r.name : `${kw} · ${r.name}`;
     if (wPx < lab.length * 5.5) return; // too narrow for a label, e.g. a duct
-    s += `<text x="${X(c)}" y="${+Y(c) - 2}" font-size="10.5" font-weight="600" text-anchor="middle" fill="#15313a" paint-order="stroke" stroke="#fff" stroke-width="3">${esc(lab)}</text><text x="${X(c)}" y="${+Y(c) + 11}" font-size="9" text-anchor="middle" fill="#5b6f76" paint-order="stroke" stroke="#fff" stroke-width="3">vanaf ${esc(P.floors[floorIdx(r.floorId)].name)}</text>`;
+    s += `<text x="${X(c)}" y="${+Y(c) - 2}" font-size="10.5" font-weight="600" text-anchor="middle" fill="var(--ink)" paint-order="stroke" stroke="var(--surface)" stroke-width="3">${esc(lab)}</text><text x="${X(c)}" y="${+Y(c) + 11}" font-size="9" text-anchor="middle" fill="var(--muted)" paint-order="stroke" stroke="var(--surface)" stroke-width="3">vanaf ${esc(P.floors[floorIdx(r.floorId)].name)}</text>`;
   });
   rooms.forEach(r => {
     const c = centroid(r.pts),
       k = calcRoom(r);
-    s += `<text x="${X(c)}" y="${+Y(c) - 2}" font-size="11" font-weight="600" text-anchor="middle" fill="#15313a" paint-order="stroke" stroke="#fff" stroke-width="3">${esc(r.name)}</text><text x="${X(c)}" y="${+Y(c) + 11}" font-size="9.5" text-anchor="middle" fill="#5b6f76" paint-order="stroke" stroke="#fff" stroke-width="3">${k.unheated ? 'onverwarmd' : fmtW(k.total) + ' W · ' + fmt(k.Af, 1) + ' m²'}</text>`;
+    s += `<text x="${X(c)}" y="${+Y(c) - 2}" font-size="11" font-weight="600" text-anchor="middle" fill="var(--ink)" paint-order="stroke" stroke="var(--surface)" stroke-width="3">${esc(r.name)}</text><text x="${X(c)}" y="${+Y(c) + 11}" font-size="9.5" text-anchor="middle" fill="var(--muted)" paint-order="stroke" stroke="var(--surface)" stroke-width="3">${k.unheated ? 'onverwarmd' : fmtW(k.total) + ' W · ' + fmt(k.Af, 1) + ' m²'}</text>`;
   });
   // scale bar
   const m = box.w > 12 ? 5 : 1,
     y = H - 10;
-  s += `<line x1="${pad}" y1="${y}" x2="${pad + m * sc}" y2="${y}" stroke="#15313a" stroke-width="2"/><text x="${pad + m * sc + 6}" y="${y + 3.5}" font-size="9" fill="#5b6f76">${m} m</text>`;
+  s += `<line x1="${pad}" y1="${y}" x2="${pad + m * sc}" y2="${y}" stroke="var(--ink)" stroke-width="2"/><text x="${pad + m * sc + 6}" y="${y + 3.5}" font-size="9" fill="var(--muted)">${m} m</text>`;
   return `<svg class="repplan" viewBox="0 0 ${W} ${H.toFixed(0)}" width="${W}" role="img" aria-label="Plattegrond ${esc(fl.name)}">${s}</svg>`;
 }
 

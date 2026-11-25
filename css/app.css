@@ -37,6 +37,13 @@
   --seg-track: #e6e6e6;
   --c-loss: #d45800;
   --c-hp: #007bc7;
+  /* the heating installation in the drawing: pipes and heat pump (red), return line (blue), index circuit,
+     pipes that are too small, surfaces without heat loss */
+  --c-supply: #dc2626;
+  --c-return: #2563eb;
+  --c-index: #f59e0b;
+  --c-fast: #c026d3;
+  --heat-none: #a9b4b7;
   --shadow: none;
   --radius: 0;
   --r: 4px;
@@ -81,6 +88,11 @@
     --seg-track: #2e2e2e;
     --c-loss: #e07a2e;
     --c-hp: #4fb3f0;
+    --c-supply: #f87171;
+    --c-return: #60a5fa;
+    --c-index: #fbbf24;
+    --c-fast: #e879f9;
+    --heat-none: #5f6b6e;
     color-scheme: dark;
   }
 }
@@ -120,6 +132,11 @@
   --seg-track: #2e2e2e;
   --c-loss: #e07a2e;
   --c-hp: #4fb3f0;
+  --c-supply: #f87171;
+  --c-return: #60a5fa;
+  --c-index: #fbbf24;
+  --c-fast: #e879f9;
+  --heat-none: #5f6b6e;
   color-scheme: dark;
 }
 html,
@@ -1732,7 +1749,7 @@ a.linkrow {
 }
 .repplan text {
   font-family: var(--font-body);
-  stroke: #fff;
+  stroke: var(--surface);
   stroke-width: 3px;
 }
 .repdoc .chart {
@@ -1876,11 +1893,31 @@ a.linkrow {
   body.rep-open > *:not(.report) {
     display: none !important;
   }
+  /* paper is white: the report always prints in the light colours, also when the app is dark */
   .report {
     position: static;
     padding: 0;
     overflow: visible;
     background: none;
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f3f3f3;
+    --ink: #1e1e1e;
+    --muted: #535353;
+    --line: #cccccc;
+    --field: #8c8c8c;
+    --accent: #154273;
+    --link: #01689b;
+    --heat: #d45800;
+    --warn: #c3291c;
+    --ok: #39870c;
+    --wall: #1e1e1e;
+    --c-loss: #d45800;
+    --c-hp: #007bc7;
+    --c-supply: #dc2626;
+    --c-return: #2563eb;
+    --c-index: #f59e0b;
   }
   .reptools {
     display: none;

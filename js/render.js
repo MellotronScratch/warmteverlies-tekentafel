@@ -289,7 +289,7 @@ function setHeatView(on) {
   renderCanvas();
 }
 const HEAT_MAX = 60, // W/m², everything above is full red
-  HEAT_NONE = '#A9B4B7',
+  HEAT_NONE = 'var(--heat-none)',
   HEAT_STOPS = [
     [0, [26, 150, 65]],
     [10, [140, 200, 70]],
@@ -491,7 +491,7 @@ function render3d() {
             items.push({
               mid: true,
               d,
-              svg: `<polyline points="${pl}" fill="none" stroke="#2563EB" stroke-width="5" stroke-linejoin="round" pointer-events="none"/><polyline points="${pl}" fill="none" stroke="#DC2626" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`
+              svg: `<polyline points="${pl}" fill="none" stroke="var(--c-return)" stroke-width="5" stroke-linejoin="round" pointer-events="none"/><polyline points="${pl}" fill="none" stroke="var(--c-supply)" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`
             });
           });
         // vertical pieces: risers starting on this floor (cut off at the floor above the one on view) and drops
@@ -504,7 +504,7 @@ function render3d() {
               items.push({
                 mid: true,
                 d: (a.d + b.d) / 2,
-                svg: `<line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="#2563EB" stroke-width="5" pointer-events="none"/><line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="#DC2626" stroke-width="2" pointer-events="none"/>`
+                svg: `<line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--c-return)" stroke-width="5" pointer-events="none"/><line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--c-supply)" stroke-width="2" pointer-events="none"/>`
               });
             };
           N.risers
@@ -1045,7 +1045,7 @@ function renderCanvas() {
       lines
         ? `<g opacity="${op}" stroke="${col}" stroke-width="${w}" stroke-linecap="round" pointer-events="none">${lines}</g>`
         : '';
-    out += grp(g.warn, PIPE_FAST, 0.35, 22) + grp(g.bad, PIPE_FAST, 0.75, 22) + grp(g.idx, '#F59E0B', 0.55, 15);
+    out += grp(g.warn, PIPE_FAST, 0.35, 22) + grp(g.bad, PIPE_FAST, 0.75, 22) + grp(g.idx, 'var(--c-index)', 0.55, 15);
   }
   // pipe network: one line = supply (red) and return (blue)
   const pipeLabels = [];
@@ -1061,7 +1061,7 @@ function renderCanvas() {
       if (isSel)
         out += `<polyline points="${pts}" fill="none" stroke="var(--heat)" stroke-opacity=".35" stroke-width="16" stroke-linejoin="round" stroke-linecap="round" pointer-events="none"/>`;
       const dash = pp.hidden ? ' stroke-dasharray="9 6"' : ''; // hidden in floor, wall or boxing: dashed, as on a building drawing
-      out += `<polyline points="${pts}" fill="none" stroke="#2563EB" stroke-width="7" stroke-linejoin="round" stroke-linecap="${pp.hidden ? 'butt' : 'round'}"${dash} pointer-events="none"/><polyline points="${pts}" fill="none" stroke="#DC2626" stroke-width="3" stroke-linejoin="round" stroke-linecap="${pp.hidden ? 'butt' : 'round'}"${dash} pointer-events="none"/>`;
+      out += `<polyline points="${pts}" fill="none" stroke="var(--c-return)" stroke-width="7" stroke-linejoin="round" stroke-linecap="${pp.hidden ? 'butt' : 'round'}"${dash} pointer-events="none"/><polyline points="${pts}" fill="none" stroke="var(--c-supply)" stroke-width="3" stroke-linejoin="round" stroke-linecap="${pp.hidden ? 'butt' : 'round'}"${dash} pointer-events="none"/>`;
       if (tool === 'select')
         out += `<polyline class="hit" data-k="pipe" data-p="${pp.id}" points="${pts}" fill="none" stroke-width="14"/>`;
       let bi = 1,
@@ -1097,9 +1097,9 @@ function renderCanvas() {
           const q = S(p);
           if (i < pp.pts.length - 1) {
             const r2 = S(pp.pts[i + 1]);
-            pipeHandles += `<circle data-k="pipemid" data-p="${pp.id}" data-i="${i}" cx="${(q.x + r2.x) / 2}" cy="${(q.y + r2.y) / 2}" r="5" fill="var(--surface)" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="2 2" style="cursor:copy"/>`;
+            pipeHandles += `<circle data-k="pipemid" data-p="${pp.id}" data-i="${i}" cx="${(q.x + r2.x) / 2}" cy="${(q.y + r2.y) / 2}" r="5" fill="var(--surface)" stroke="var(--c-supply)" stroke-width="1.5" stroke-dasharray="2 2" style="cursor:copy"/>`;
           }
-          pipeHandles += `<circle data-k="pipept" data-p="${pp.id}" data-i="${i}" cx="${q.x}" cy="${q.y}" r="6" fill="var(--surface)" stroke="#DC2626" stroke-width="2" style="cursor:grab"/>`;
+          pipeHandles += `<circle data-k="pipept" data-p="${pp.id}" data-i="${i}" cx="${q.x}" cy="${q.y}" r="6" fill="var(--surface)" stroke="var(--c-supply)" stroke-width="2" style="cursor:grab"/>`;
         });
       }
     });
@@ -1113,7 +1113,7 @@ function renderCanvas() {
         dir = fi === floorIdx(rs.from) ? '↑' : fi === floorIdx(rs.to) ? '↓' : '↕';
       if (isSel)
         out += `<circle cx="${q.x}" cy="${q.y}" r="14" fill="var(--heat)" fill-opacity=".3" stroke="none" pointer-events="none"/>`;
-      out += `<circle cx="${q.x}" cy="${q.y}" r="9" fill="var(--surface)" stroke="#DC2626" stroke-width="${isSel ? 2.5 : 1.8}" ${rs.hidden ? 'stroke-dasharray="3 2"' : ''} pointer-events="none"/><text x="${q.x}" y="${q.y + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="#DC2626" stroke="none" pointer-events="none">${dir}</text>`;
+      out += `<circle cx="${q.x}" cy="${q.y}" r="9" fill="var(--surface)" stroke="var(--c-supply)" stroke-width="${isSel ? 2.5 : 1.8}" ${rs.hidden ? 'stroke-dasharray="3 2"' : ''} pointer-events="none"/><text x="${q.x}" y="${q.y + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--c-supply)" stroke="none" pointer-events="none">${dir}</text>`;
       if (tool === 'select')
         out += `<circle data-k="riser" data-q="${rs.id}" cx="${q.x}" cy="${q.y}" r="11" fill="transparent" style="cursor:grab"><title>${esc(rs.name)}: klik om te bewerken, sleep om te verplaatsen</title></circle>`;
     });
@@ -1223,7 +1223,7 @@ function renderCanvas() {
   // heat pump: start of the pipe network
   const hpMark = (p, ghost) => {
     const q = S(p);
-    return `<g pointer-events="none" ${ghost ? 'opacity=".5"' : ''}><rect x="${q.x - 15}" y="${q.y - 11}" width="30" height="22" rx="4" fill="var(--surface)" stroke="#DC2626" stroke-width="2"/><text x="${q.x}" y="${q.y + 4}" text-anchor="middle" font-size="10" font-weight="700" fill="#DC2626" stroke="none">WP</text></g>`;
+    return `<g pointer-events="none" ${ghost ? 'opacity=".5"' : ''}><rect x="${q.x - 15}" y="${q.y - 11}" width="30" height="22" rx="4" fill="var(--surface)" stroke="var(--c-supply)" stroke-width="2"/><text x="${q.x}" y="${q.y + 4}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--c-supply)" stroke="none">WP</text></g>`;
   };
   if (layerOn('pipes') && P.hpPos && P.hpPos.floorId === curFloor) {
     out += hpMark(P.hpPos, false);
@@ -1237,9 +1237,9 @@ function renderCanvas() {
   if (tool === 'pipe' && hover && !drag) {
     const q = S(hover),
       big = hover.kind && hover.kind !== 'grid' && hover.kind !== 'align';
-    out += `<circle cx="${q.x}" cy="${q.y}" r="${big ? 7 : 4}" fill="none" stroke="#DC2626" stroke-width="1.8" ${hover.kind === 'riser' ? 'stroke-dasharray="3 2"' : ''}/>`;
+    out += `<circle cx="${q.x}" cy="${q.y}" r="${big ? 7 : 4}" fill="none" stroke="var(--c-supply)" stroke-width="1.8" ${hover.kind === 'riser' ? 'stroke-dasharray="3 2"' : ''}/>`;
     if (hover.kind === 'riser')
-      out += `<text x="${q.x + 10}" y="${q.y - 8}" class="dim" font-size="10" fill="#DC2626">stijgleiding</text>`;
+      out += `<text x="${q.x + 10}" y="${q.y - 8}" class="dim" font-size="10" fill="var(--c-supply)">stijgleiding</text>`;
   }
   // roof windows and dormers: their outline in the plan (dashed)
   curRooms().forEach(r =>
@@ -1523,7 +1523,7 @@ function renderCanvas() {
   }
   // drawing previews
   if ((tool === 'poly' || tool === 'vv' || tool === 'pipe') && drawPts.length) {
-    const col = tool === 'poly' ? 'var(--accent)' : tool === 'vv' ? 'var(--c-hp)' : '#DC2626',
+    const col = tool === 'poly' ? 'var(--accent)' : tool === 'vv' ? 'var(--c-hp)' : 'var(--c-supply)',
       closed = tool !== 'pipe';
     const pts = drawPts.map(S);
     let d = 'M' + pts.map(p => p.x + ' ' + p.y).join('L');
@@ -1573,7 +1573,7 @@ function renderScale() {
   }
   $('scalebar').innerHTML = `<span>${nv(m, 1)} m</span><i style="width:${(m * view.s).toFixed(0)}px"></i>`;
 }
-const PIPE_FAST = '#C026D3';
+const PIPE_FAST = 'var(--c-fast)';
 // pipe colours in the legend, only for what is on this floor
 function pipeLegendHtml() {
   if (!layerOn('pipes') || !(P.pipes || []).length || view3d) return '';
@@ -1581,13 +1581,13 @@ function pipeLegendHtml() {
     es = N.edges.filter(e => !e.vert && e.a.f === curFloor);
   const row = (st, txt) => `<div><span class="sw" style="${st}"></span><span>${txt}</span></div>`;
   let h = '';
-  if (es.some(e => N.indexEdges.has(e))) h += row('background:#F59E0B;opacity:.7', 'Indexcircuit');
+  if (es.some(e => N.indexEdges.has(e))) h += row('background:var(--c-index);opacity:.7', 'Indexcircuit');
   if (es.some(e => e.inTree && vState(e.v, e.pp) === 'bad'))
     h += row(`background:${PIPE_FAST};opacity:.8`, `Leiding te klein (boven ${nv(V_MAX, 1)} m/s)`);
   if (es.some(e => e.inTree && vState(e.v, e.pp) === 'warn'))
     h += row(`background:${PIPE_FAST};opacity:.4`, `Stromingsgeluid (${nv(V_OK, 1)}–${nv(V_MAX, 1)} m/s)`);
   if ((P.pipes || []).some(pp => pp.hidden && pp.floorId === curFloor))
-    h += row('background:none;height:0;border-top:3px dashed #DC2626', 'Leiding weggewerkt');
+    h += row('background:none;height:0;border-top:3px dashed var(--c-supply)', 'Leiding weggewerkt');
   return h;
 }
 function renderLegend() {

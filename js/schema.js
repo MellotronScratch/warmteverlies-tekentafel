@@ -90,7 +90,7 @@ function schemaSvg(N) {
     H = Y(rows - 1) + SCH.row / 2 + SCH.pad;
   let s = '';
   const line = (pts, idx, warn) =>
-    `<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="${idx ? '#F59E0B' : warn ? 'var(--warn)' : 'var(--c-hp)'}" stroke-width="${idx ? 3.2 : 2}" stroke-linejoin="round"/>`;
+    `<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="${idx ? 'var(--c-index)' : warn ? 'var(--warn)' : 'var(--c-hp)'}" stroke-width="${idx ? 3.2 : 2}" stroke-linejoin="round"/>`;
   const draw = t => {
     const x = X(t.d),
       y = Y(t.y),
@@ -129,7 +129,7 @@ function schemaSvg(N) {
         idx,
         false
       );
-      s += `<g class="schem" data-r="${o.room.id}" data-e="${o.em.id}" style="cursor:pointer"><rect x="${xBox}" y="${yo - 19}" width="${box}" height="38" rx="7" fill="var(--surface)" stroke="${idx ? '#F59E0B' : 'var(--line)'}" stroke-width="${idx ? 2 : 1}"/>
+      s += `<g class="schem" data-r="${o.room.id}" data-e="${o.em.id}" style="cursor:pointer"><rect x="${xBox}" y="${yo - 19}" width="${box}" height="38" rx="7" fill="var(--surface)" stroke="${idx ? 'var(--c-index)' : 'var(--line)'}" stroke-width="${idx ? 2 : 1}"/>
         <text x="${xBox + 10}" y="${yo - 3}" font-size="12" class="schl"><tspan font-weight="600">${esc(o.em.name)}</tspan> · ${esc(o.room.name)}${P.floors.length > 1 ? ' <tspan class="schs">(' + esc(fname(o.room.floorId)) + ')</tspan>' : ''}</text>
         <text x="${xBox + 10}" y="${yo + 12}" font-size="10" class="schs">${fmt(o.W / 1000, 2)} kW · ${fmtW(o.lh)} l/h · Δp ${fmt(o.dpTot, 1)} kPa · ${idx ? 'indexcircuit' + (o.preset && o.preset.kind !== 'voet' ? ' · ' + (o.preset.kind === 'debiet' ? presetText(o, N) : 'stand ' + o.preset.s) : '') : o.preset ? 'inregelen ' + presetText(o, N) : 'inregelen +' + fmt(extra, 1) + ' kPa'}</text><title>Klik om dit element te openen</title></g>`;
     });
@@ -141,7 +141,7 @@ function schemaSvg(N) {
   draw(T);
   // heat pump
   const yr = Y(T.y);
-  s += `<rect x="${SCH.pad}" y="${yr - 20}" width="66" height="40" rx="6" fill="var(--surface)" stroke="#DC2626" stroke-width="2"/><text x="${SCH.pad + 33}" y="${yr - 2}" font-size="12" text-anchor="middle" fill="#DC2626" font-weight="700">WP</text><text x="${SCH.pad + 33}" y="${yr + 12}" font-size="9.5" text-anchor="middle" class="schs">${fmtW(N.total)} l/h</text>`;
+  s += `<rect x="${SCH.pad}" y="${yr - 20}" width="66" height="40" rx="6" fill="var(--surface)" stroke="var(--c-supply)" stroke-width="2"/><text x="${SCH.pad + 33}" y="${yr - 2}" font-size="12" text-anchor="middle" fill="var(--c-supply)" font-weight="700">WP</text><text x="${SCH.pad + 33}" y="${yr + 12}" font-size="9.5" text-anchor="middle" class="schs">${fmtW(N.total)} l/h</text>`;
   return `<svg class="schsvg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Schema van het leidingnet">${s}</svg>`;
 }
 
