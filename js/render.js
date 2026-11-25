@@ -409,22 +409,13 @@ function set3d(on) {
   if (on) fit3d();
   renderCanvas();
 }
-function render3d() {
-  const c = Math.cos(v3.th),
-    sn = Math.sin(v3.th),
-    ci = floorIdx(curFloor);
-  const P3 = (p, z) => pr3(p, z);
-  const pt = q => q.X.toFixed(1) + ',' + q.Y.toFixed(1);
-  const L = { x: -0.5, y: -0.8 },
-    Ll = Math.hypot(L.x, L.y);
-  let out = '';
-  const labels = [];
-  const byFloor = {};
-  rooms3d().forEach(o => (byFloor[o.fi] = byFloor[o.fi] || []).push(o));
-  // staircases: one flight per storey the stairwell runs through. A flight is sorted together with the storey it leads to,
-  // so the walls of that storey cover it (or not) depending on what is in front.
-  const stairItems = {},
-    el = floorElev();
+// 2.5D helpers: a projected point as "x,y" for SVG points, and the light (from the top left) for shading the walls
+const pt3 = q => q.X.toFixed(1) + ',' + q.Y.toFixed(1);
+const LIGHT3 = { x: -0.5, y: -0.8, l: Math.hypot(-0.5, -0.8) };
+// 2.5D staircases: one flight per storey the stairwell runs through, up to the storey on view (ci). A flight is
+// sorted together with the storey it leads to, so the walls of that storey cover it (or not). Per storey a list.
+function stairs3d(ci, el) {
+  const stairItems = {};
   rooms3d().forEach(({ r }) => {
     if (r.kind !== 'trap' || !spans(r)) return;
     const l = levelsOf(r);
@@ -439,13 +430,13 @@ function render3d() {
       sg.treads.forEach((q, k) => {
         const z = zb + q.z,
           zp = zb + (k ? sg.treads[k - 1].z : 0);
-        const tp = q.poly.map(p => P3(p, z)),
-          fr = [P3(q.front[0], zp), P3(q.front[1], zp), P3(q.front[1], z), P3(q.front[0], z)];
+        const tp = q.poly.map(p => pr3(p, z)),
+          fr = [pr3(q.front[0], zp), pr3(q.front[1], zp), pr3(q.front[1], z), pr3(q.front[0], z)];
         const d = tp.reduce((a, p) => a + p.d, 0) / tp.length;
         arr.push({
           mid: true,
           d: d - 0.001,
-          svg: `<polygon points="${fr.map(pt).join(' ')}" fill="#8A6236" fill-opacity=".9" stroke="#5C4022" stroke-width=".6" pointer-events="none"/>`
+          svg: `<polygon points="${fr.map(pt3).join(' ')}" fill="#8A6236" fill-opacity=".9" stroke="#5C4022" stroke-width=".6" pointer-events="none"/>`
         });
         // sides one riser high: under the stair is usually a cupboard (trapkast) or open space, so it is not filled down to the floor
         q.poly.forEach((a, i) => {
@@ -455,22 +446,363 @@ function render3d() {
             (dist(b, q.front[0]) < 1e-6 && dist(a, q.front[1]) < 1e-6)
           )
             return;
-          const f4 = [P3(a, z - sg.rise), P3(b, z - sg.rise), P3(b, z), P3(a, z)],
+          const f4 = [pr3(a, z - sg.rise), pr3(b, z - sg.rise), pr3(b, z), pr3(a, z)],
             ds = f4.reduce((x, p) => x + p.d, 0) / 4;
           arr.push({
             mid: true,
             d: ds - 0.002,
-            svg: `<polygon points="${f4.map(pt).join(' ')}" fill="#9C7040" fill-opacity=".95" stroke="#5C4022" stroke-width=".4" pointer-events="none"/>`
+            svg: `<polygon points="${f4.map(pt3).join(' ')}" fill="#9C7040" fill-opacity=".95" stroke="#5C4022" stroke-width=".4" pointer-events="none"/>`
           });
         });
         arr.push({
           mid: true,
           d,
-          svg: `<polygon points="${tp.map(pt).join(' ')}" fill="${q.landing ? '#B88E5A' : '#C9A46A'}" fill-opacity=".95" stroke="#5C4022" stroke-width=".6" pointer-events="none"/>`
+          svg: `<polygon points="${tp.map(pt3).join(' ')}" fill="${q.landing ? '#B88E5A' : '#C9A46A'}" fill-opacity=".95" stroke="#5C4022" stroke-width=".6" pointer-events="none"/>`
         });
       });
     }
   });
+  return stairItems;
+}
+// 2.5D pipes on floor fi (at their height), the risers starting there (cut off at the floor above the one on view)
+// and the vertical drops to the emitters
+function pipes3d(fi, ci, el) {
+  const items = [];
+  const fid = P.floors[fi].id;
+  (layerOn('pipes') ? P.pipes || [] : [])
+    .filter(pp => pp.floorId === fid)
+    .forEach(pp => {
+      const z = el[pp.floorId] + Math.max(0.12, pipeZ(pp)),
+        ps = pp.pts.map(p => pr3(p, z)),
+        d = ps.reduce((a, p) => a + p.d, 0) / ps.length,
+        pl = ps.map(pt3).join(' ');
+      items.push({
+        mid: true,
+        d,
+        svg: `<polyline points="${pl}" fill="none" stroke="var(--c-return)" stroke-width="5" stroke-linejoin="round" pointer-events="none"/><polyline points="${pl}" fill="none" stroke="var(--c-supply)" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`
+      });
+    });
+  // vertical pieces: risers starting on this floor (cut off at the floor above the one on view) and drops
+  if (layerOn('pipes') && ((P.pipes || []).length || (P.risers || []).length)) {
+    const N = network(),
+      topZ = P.floors[ci + 1] ? el[P.floors[ci + 1].id] : Infinity,
+      vline = (p, z0, z1) => {
+        const a = pr3(p, z0),
+          b = pr3(p, z1);
+        items.push({
+          mid: true,
+          d: (a.d + b.d) / 2,
+          svg: `<line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--c-return)" stroke-width="5" pointer-events="none"/><line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--c-supply)" stroke-width="2" pointer-events="none"/>`
+        });
+      };
+    N.risers
+      .filter(x => x.rs.from === fid)
+      .forEach(x => {
+        const z1 = Math.min(topZ, x.top);
+        if (z1 > x.bot) vline(x.rs, Math.max(x.bot, el[fid] + 0.12), z1);
+      });
+    N.edges
+      .filter(e => e.vert && e.a.f === fid && e.b.f === fid && !(e.pp && e.pp.from))
+      .forEach(e => vline(e.a, el[fid] + Math.max(0.12, e.a.z), el[fid] + Math.max(0.12, e.b.z)));
+  }
+
+  return items;
+}
+// 2.5D roof surfaces over a room, see-through (also over a vide under a sloped roof), and in the Warmtebeeld a flat
+// ceiling or roof with outside above it. cut: where a room that runs on above the storey on view is cut off
+function roofs3d(r, z0, cut) {
+  const items = [];
+  const rp = roofParts(r),
+    VR = !rp && cut === Infinity && videRoof(r);
+  // a vide under a sloped roof: the same roof surface over it
+  if (VR)
+    roofStrips(r.pts, VR).forEach(poly => {
+      const q = poly.map(v => pr3(v, z0 + VR.z(VR.sOf(v))));
+      items.push({
+        near: true,
+        d: q.reduce((a, v) => a + v.d, 0) / q.length,
+        svg: heatView
+          ? `<polygon points="${q.map(pt3).join(' ')}" fill="${heatCol(surfLoss(r).roof)}" fill-opacity=".45" stroke="var(--wall)" stroke-opacity=".5" stroke-width="1" pointer-events="none"/>`
+          : `<polygon points="${q.map(pt3).join(' ')}" fill="var(--muted)" fill-opacity=".1" stroke="var(--muted)" stroke-opacity=".45" stroke-width="1" pointer-events="none"/>`
+      });
+    });
+  if (rp)
+    rp.parts
+      .filter(p => p.kind === 'slope')
+      .forEach(p => {
+        const q = p.poly.map(v => pr3(v, z0 + rp.R.z(rp.R.sOf(v))));
+        items.push({
+          near: true,
+          d: q.reduce((a, v) => a + v.d, 0) / q.length,
+          svg: heatView
+            ? `<polygon points="${q.map(pt3).join(' ')}" fill="${heatCol(surfLoss(r).roof)}" fill-opacity=".45" stroke="var(--wall)" stroke-opacity=".5" stroke-width="1" pointer-events="none"/>`
+            : `<polygon points="${q.map(pt3).join(' ')}" fill="var(--muted)" fill-opacity=".1" stroke="var(--muted)" stroke-opacity=".45" stroke-width="1" pointer-events="none"/>`
+        });
+      });
+  // Warmtebeeld: a flat ceiling or flat roof with outside or an unheated space above it
+  const qc = heatView && cut === Infinity ? surfLoss(r).ceilOut : null;
+  if (qc != null) {
+    const polys = rp
+      ? rp.parts.filter(p => p.kind === 'cap').map(p => ({ poly: p.poly, z: p.z }))
+      : [{ poly: r.pts, z: r.height }];
+    polys.forEach(({ poly, z }) => {
+      const q = poly.map(v => pr3(v, z0 + z));
+      items.push({
+        near: true,
+        d: q.reduce((a, v) => a + v.d, 0) / q.length,
+        svg: `<polygon points="${q.map(pt3).join(' ')}" fill="${heatCol(qc)}" fill-opacity=".4" stroke="var(--wall)" stroke-opacity=".5" stroke-width="1" pointer-events="none"/>`
+      });
+    });
+  }
+
+  return items;
+}
+// 2.5D roof windows (glass in the slope), dormers (front, cheeks, flat roof) and knee walls (dashed)
+function roofItems3d(r, z0) {
+  const items = [];
+  // roof windows (glass in the slope) and dormers (front with window, cheeks, flat roof)
+  roofItemGeom(r).forEach(g =>
+    g.polys.forEach(pl => {
+      const q = pl.pts.map(p => pr3(p, z0 + p.z)),
+        fill = pl.kind === 'glass' ? 'var(--heat)' : pl.kind === 'roof' ? 'var(--muted)' : 'var(--surface)',
+        op = pl.kind === 'glass' ? 0.6 : 0.85;
+      items.push({
+        mid: true,
+        d: q.reduce((a, p) => a + p.d, 0) / q.length + 0.01,
+        svg: `<polygon points="${q.map(pt3).join(' ')}" fill="${fill}" fill-opacity="${op}" stroke="${pl.kind === 'glass' ? 'var(--heat)' : 'var(--ink)'}" stroke-opacity=".8" stroke-width="1.2" stroke-linejoin="round" pointer-events="none"/>`
+      });
+    })
+  );
+  // knee walls: a low partition under the slope (dashed outline)
+  kneeSegs(r).forEach(sg => {
+    const h = r.roof.kneeH,
+      q = [pr3(sg[0], z0), pr3(sg[1], z0), pr3(sg[1], z0 + h), pr3(sg[0], z0 + h)];
+    items.push({
+      mid: true,
+      d: q.reduce((a, p) => a + p.d, 0) / 4,
+      svg: `<polygon points="${q.map(pt3).join(' ')}" fill="var(--surface)" fill-opacity=".35" stroke="var(--ink)" stroke-opacity=".7" stroke-width="1.4" stroke-dasharray="6 4" pointer-events="none"/>`
+    });
+  });
+  return items;
+}
+// 2.5D outline of a room that is open connected to the selected one, up to its ceiling or roof, so the whole space
+// stands out
+function zoneOutline3d(r, z0, R, zT) {
+  let d3 = '';
+  r.pts.forEach((_, i) => {
+    const e = edge(r, i);
+    if (e.L < 1e-6) return;
+    const at = t => ({ x: e.a.x + e.ux * t, y: e.a.y + e.uy * t }),
+      ts = [0, e.L];
+    if (R) {
+      const sa = R.sOf(e.a),
+        ds = e.ux * R.v.x + e.uy * R.v.y;
+      if (Math.abs(ds) > 1e-9)
+        R.crit.forEach(cv => {
+          const t = (cv - sa) / ds;
+          if (t > 0 && t < e.L) ts.push(t);
+        });
+    }
+    ts.sort((x, y) => x - y);
+    const q = ts.map(t => pr3(at(t), z0 + zT(R, at(t)))),
+      b0 = pr3(e.a, z0);
+    d3 += `M${b0.X.toFixed(1)} ${b0.Y.toFixed(1)}L${q.map(v => v.X.toFixed(1) + ' ' + v.Y.toFixed(1)).join('L')}`;
+  });
+  return {
+    near: true,
+    d: 1e9,
+    svg: `<path d="${d3}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-opacity=".9" stroke-linejoin="round" pointer-events="none"/>`
+  };
+}
+// 2.5D walls of a room, per wall part: the top follows a sloped roof; a vide through several floors gets per floor a
+// wall or an open connection; near walls (facing the viewer) are drawn see-through
+function walls3d(r, z0, R, zT, top) {
+  const items = [];
+  const c = Math.cos(v3.th),
+    sn = Math.sin(v3.th);
+  r.pts.forEach((_, i) => {
+    const e = edge(r, i);
+    if (e.L < 1e-6) return;
+    const b = bounds(r, i),
+      w = r.walls[i];
+    const nyr = e.nx * sn + e.ny * c,
+      near = nyr > 0.02,
+      lit = (e.nx * LIGHT3.x + e.ny * LIGHT3.y) / LIGHT3.l;
+    const at = t => ({ x: e.a.x + e.ux * t, y: e.a.y + e.uy * t });
+    w.segs.forEach((sg, j) => {
+      const s0 = b[j],
+        s1 = b[j + 1];
+      if (s1 - s0 < 1e-4) return;
+      const ts = [s0, s1];
+      if (R) {
+        const sa = R.sOf(e.a),
+          ds = e.ux * R.v.x + e.uy * R.v.y;
+        if (Math.abs(ds) > 1e-9)
+          R.crit.forEach(cv => {
+            const t = (cv - sa) / ds;
+            if (t > s0 && t < s1) ts.push(t);
+          });
+      }
+      ts.sort((x, y) => x - y);
+      const bot = ts.map(t => pr3(at(t), z0)),
+        tp = ts.map(t => pr3(at(t), z0 + zT(R, at(t))));
+      const con = conById(sg.cid),
+        col = heatView ? heatCol(surfLoss(r).seg(i, j)) : con ? con.color : 'var(--warn)',
+        isSel = top && sel && sel.t === 'seg' && sel.r === r.id && sel.w === i && sel.s === j;
+      const poly = bot.concat(tp.slice().reverse()).map(pt3).join(' ');
+      const d = bot.concat(tp).reduce((a, q) => a + q.d, 0) / (bot.length * 2);
+      // a vide through several floors: per floor a wall or an open connection, decided by the room next to it there
+      if (spans(r)) {
+        const el = floorElev(),
+          base = el[r.floorId] || 0,
+          [la, lb] = levelsOf(r),
+          sp = sharedParts(r, i, s0, s1),
+          bands = [];
+        for (let fi = la; fi <= lb; fi++) {
+          const fl = P.floors[fi],
+            nbs = [...new Set(sp.filter(p => p.o.floorId === fl.id && !spans(p.o)).map(p => p.o))];
+          bands.push({
+            lo: (el[fl.id] || 0) - base,
+            hi: fi < lb ? (el[P.floors[fi + 1].id] || 0) - base : Infinity,
+            open: nbs.length > 0 && nbs.every(o => videOpenShare(r, i, s0, s1, o) > 0.99)
+          });
+        }
+        if (bands.some(bd => bd.open)) {
+          bands.forEach(bd => {
+            const tops = ts.map(t => Math.min(bd.hi, zT(R, at(t))));
+            if (tops.every(z => z <= bd.lo + 1e-3)) return;
+            const qb = ts.map(t => pr3(at(t), z0 + bd.lo)),
+              qt = ts.map((t, k) => pr3(at(t), z0 + Math.max(bd.lo, tops[k]))),
+              pl = qb.concat(qt.slice().reverse()).map(pt3).join(' '),
+              dd = qb.concat(qt).reduce((a, q) => a + q.d, 0) / (qb.length * 2);
+            items.push({
+              d: dd + (near ? 0.0001 : 0),
+              near,
+              svg: bd.open
+                ? `<polygon points="${pl}" fill="none" stroke="var(--muted)" stroke-opacity=".6" stroke-width="1" stroke-dasharray="5 5" pointer-events="none"/>`
+                : `<polygon points="${pl}" fill="${col}" fill-opacity="${!top ? (near ? 0.18 : 0.55) : near ? 0.22 : 0.9}" stroke="var(--wall)" stroke-opacity="${near ? 0.35 : 0.8}" stroke-width="1" stroke-linejoin="round" pointer-events="none"/>`
+            });
+          });
+          if (top)
+            items.push({
+              d: d + 0.0002,
+              near,
+              svg: `<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="${isSel ? 'var(--heat)' : 'transparent'}" fill-opacity=".2" stroke="${isSel ? 'var(--heat)' : 'none'}" stroke-width="3" style="cursor:pointer"/>`
+            });
+          return;
+        }
+      }
+      if (sg.adj === 'open' && !spans(r)) {
+        items.push({
+          d,
+          near: true,
+          svg: `<polygon ${top ? `data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}"` : ''} points="${poly}" fill="${isSel ? 'var(--heat)' : 'none'}" fill-opacity=".15" stroke="var(--muted)" stroke-opacity=".6" stroke-width="1" stroke-dasharray="5 5" pointer-events="${top ? 'stroke' : 'none'}" style="cursor:pointer"/>`
+        });
+        return;
+      }
+      const op = !top ? (near ? 0.18 : 0.55) : near ? 0.22 : 0.9;
+      const shade = Math.max(0, Math.min(0.45, 0.22 - 0.22 * lit));
+      let g = `<polygon points="${poly}" fill="${col}" fill-opacity="${op}" stroke="var(--wall)" stroke-opacity="${near ? 0.35 : 0.8}" stroke-width="1" stroke-linejoin="round" pointer-events="none"/>`;
+      if (!near)
+        g += `<polygon points="${poly}" fill="#000" fill-opacity="${(shade * op).toFixed(3)}" pointer-events="none"/>`;
+      // windows and doors: side by side in the middle of the wall part (their exact place is not stored)
+      opLayout(r, i, j)
+        .filter(x => x.o.h > 0)
+        .forEach(({ o, t0, t1 }) => {
+          const t = t0,
+            ow = t1 - t0,
+            top = zT(R, at(t + ow / 2)),
+            sill = opSill(o, top),
+            hh = Math.min(o.h, top - sill - 0.02);
+          if (hh <= 0) return;
+          const q = [
+            pr3(at(t), z0 + sill),
+            pr3(at(t + ow), z0 + sill),
+            pr3(at(t + ow), z0 + sill + hh),
+            pr3(at(t), z0 + sill + hh)
+          ];
+          const oc = heatView ? heatCol(surfLoss(r).open(i, j, o)) : 'var(--heat)';
+          g += `<polygon points="${q.map(pt3).join(' ')}" fill="${oc}" fill-opacity="${heatView ? (near ? 0.45 : 0.85) : near ? 0.25 : 0.55}" stroke="${heatView ? 'var(--ink)' : 'var(--heat)'}" stroke-opacity="${heatView ? 0.6 : 1}" stroke-width="1.2" pointer-events="none"/>`;
+        });
+      const isHov = top && hoverSeg && hoverSeg.r === r.id && hoverSeg.w === i && hoverSeg.s === j;
+      if (isSel || isHov)
+        g += `<polygon points="${poly}" fill="${isSel ? 'var(--heat)' : 'var(--accent)'}" fill-opacity=".25" stroke="${isSel ? 'var(--heat)' : 'var(--accent)'}" stroke-width="3" stroke-linejoin="round" pointer-events="none"/>`;
+      if (top)
+        g += near
+          ? `<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="none" stroke="transparent" stroke-width="8" pointer-events="stroke" style="cursor:pointer"/>`
+          : `<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="transparent" stroke="none" style="cursor:pointer"/>`;
+      items.push({ d: d + (near ? 0.0001 : 0), near, svg: g });
+    });
+  });
+  return items;
+}
+// 2.5D: one room on floor fi. Returns its floor (drawn first), the items that are sorted by depth with the rest of
+// the storey (walls, radiators, roofs) and its label (on the storey on view)
+function room3d(r, z0, ci, el, top) {
+  let out = '',
+    label = '';
+  const items = [];
+  const isSel = top && sel && sel.r === r.id,
+    selR = sel && sel.r && getRoom(sel.r),
+    zs = selR && zoneOf(selR),
+    inZone = zs && zs.multi && zs === zoneOf(r) && !isSel; // open connected to the selected room
+  const k = calcRoom(r);
+  // a vide or stairwell that runs on above the storey on view is cut off at the floor above it, like the other rooms
+  const cut = spans(r) && levelsOf(r)[1] > ci && P.floors[ci + 1] ? el[P.floors[ci + 1].id] - z0 : Infinity,
+    zT = (R, p) => Math.min(cut, zTop(r, R, p));
+  out += `<polygon points="${r.pts.map(p => pt3(pr3(p, z0))).join(' ')}" fill="var(--paper)" stroke="var(--line)" stroke-width="1" ${top ? '' : 'pointer-events="none"'}/>`;
+  out += `<polygon ${top ? `data-k3="room" data-r="${r.id}"` : 'pointer-events="none"'} points="${r.pts.map(p => pt3(pr3(p, z0))).join(' ')}" fill="${isSel ? 'var(--accent-soft-2)' : heatView && surfLoss(r).floor > 0.5 ? heatCol(surfLoss(r).floor) : 'var(--room)'}" ${heatView && !isSel && surfLoss(r).floor > 0.5 ? 'fill-opacity=".6"' : ''} stroke="none" style="cursor:pointer"/>`;
+  if (inZone || (isSel && zs && zs.multi))
+    out += `<polygon points="${r.pts.map(p => pt3(pr3(p, z0))).join(' ')}" fill="var(--accent)" fill-opacity="${isSel ? 0.2 : 0.3}" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`;
+  (layerOn('emit') ? r.emitters || [] : []).forEach(em => {
+    if (em.kind === 'vv') {
+      out += `<polygon points="${em.pts.map(p => pt3(pr3(p, z0 + 0.01))).join(' ')}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="1" stroke-dasharray="5 4" pointer-events="none"/>`;
+    } else {
+      const a = pr3(em.a, z0 + 0.35),
+        b = pr3(em.b, z0 + 0.35),
+        a2 = pr3(em.a, z0 + 0.85),
+        b2 = pr3(em.b, z0 + 0.85);
+      items.push({
+        mid: true,
+        d: (a.d + b.d) / 2 - 0.05,
+        svg: `<polygon points="${[a, b, b2, a2].map(pt3).join(' ')}" fill="var(--c-hp)" fill-opacity=".75" stroke="var(--c-hp)" stroke-width="1" pointer-events="none"/>`
+      });
+    }
+  });
+  if (top) {
+    const cc = pr3(labelPt(r.pts), z0);
+    label = `<text x="${cc.X}" y="${cc.Y - 4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y + 13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${k.unheated ? 'onverwarmd' : fmt(k.total / 1000, 2) + ' kW'}</text>`;
+  }
+  items.push(...roofs3d(r, z0, cut));
+  items.push(...roofItems3d(r, z0));
+  // walls, per wall part, with the top following a sloped roof (also over a vide that runs up under one)
+  const R = wallRoof(r);
+  // a room open connected to the selected one: its outline up to the ceiling or roof
+  if (inZone || (isSel && zs && zs.multi)) items.push(zoneOutline3d(r, z0, R, zT));
+  items.push(...walls3d(r, z0, R, zT, top));
+  if (R)
+    roofLines(R).forEach(cv => {
+      const sg = lineAcross(r, R, cv);
+      if (!sg) return;
+      const z = z0 + R.z(cv),
+        a = pr3(sg[0], z),
+        b = pr3(sg[1], z);
+      items.push({
+        d: (a.d + b.d) / 2,
+        svg: `<line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--heat)" stroke-width="2" stroke-dasharray="7 5" pointer-events="none"/>`
+      });
+    });
+
+  return { out, items, label };
+}
+function render3d() {
+  const ci = floorIdx(curFloor);
+  let out = '';
+  const labels = [];
+  const byFloor = {};
+  rooms3d().forEach(o => (byFloor[o.fi] = byFloor[o.fi] || []).push(o));
+  const el = floorElev(),
+    stairItems = stairs3d(ci, el);
   [...new Set([...Object.keys(byFloor), ...Object.keys(stairItems)].map(Number))]
     .sort((a, b) => a - b)
     .forEach(fi => {
@@ -479,304 +811,13 @@ function render3d() {
       const items = [];
       // staircases leading to this storey, and the pipes (with risers) on this floor
       if (layerOn('stairs')) items.push(...(stairItems[fi] || []));
-      if (P.floors[fi]) {
-        const fid = P.floors[fi].id;
-        (layerOn('pipes') ? P.pipes || [] : [])
-          .filter(pp => pp.floorId === fid)
-          .forEach(pp => {
-            const z = el[pp.floorId] + Math.max(0.12, pipeZ(pp)),
-              ps = pp.pts.map(p => P3(p, z)),
-              d = ps.reduce((a, p) => a + p.d, 0) / ps.length,
-              pl = ps.map(pt).join(' ');
-            items.push({
-              mid: true,
-              d,
-              svg: `<polyline points="${pl}" fill="none" stroke="var(--c-return)" stroke-width="5" stroke-linejoin="round" pointer-events="none"/><polyline points="${pl}" fill="none" stroke="var(--c-supply)" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`
-            });
-          });
-        // vertical pieces: risers starting on this floor (cut off at the floor above the one on view) and drops
-        if (layerOn('pipes') && ((P.pipes || []).length || (P.risers || []).length)) {
-          const N = network(),
-            topZ = P.floors[ci + 1] ? el[P.floors[ci + 1].id] : Infinity,
-            vline = (p, z0, z1) => {
-              const a = P3(p, z0),
-                b = P3(p, z1);
-              items.push({
-                mid: true,
-                d: (a.d + b.d) / 2,
-                svg: `<line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--c-return)" stroke-width="5" pointer-events="none"/><line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--c-supply)" stroke-width="2" pointer-events="none"/>`
-              });
-            };
-          N.risers
-            .filter(x => x.rs.from === fid)
-            .forEach(x => {
-              const z1 = Math.min(topZ, x.top);
-              if (z1 > x.bot) vline(x.rs, Math.max(x.bot, el[fid] + 0.12), z1);
-            });
-          N.edges
-            .filter(e => e.vert && e.a.f === fid && e.b.f === fid && !(e.pp && e.pp.from))
-            .forEach(e => vline(e.a, el[fid] + Math.max(0.12, e.a.z), el[fid] + Math.max(0.12, e.b.z)));
-        }
-      }
+      if (P.floors[fi]) items.push(...pipes3d(fi, ci, el));
       // floors
       list.forEach(({ r, z0 }) => {
-        const isSel = top && sel && sel.r === r.id,
-          selR = sel && sel.r && getRoom(sel.r),
-          zs = selR && zoneOf(selR),
-          inZone = zs && zs.multi && zs === zoneOf(r) && !isSel; // open connected to the selected room
-        const k = calcRoom(r);
-        // a vide or stairwell that runs on above the storey on view is cut off at the floor above it, like the other rooms
-        const cut = spans(r) && levelsOf(r)[1] > ci && P.floors[ci + 1] ? el[P.floors[ci + 1].id] - z0 : Infinity,
-          zT = (R, p) => Math.min(cut, zTop(r, R, p));
-        out += `<polygon points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="var(--paper)" stroke="var(--line)" stroke-width="1" ${top ? '' : 'pointer-events="none"'}/>`;
-        out += `<polygon ${top ? `data-k3="room" data-r="${r.id}"` : 'pointer-events="none"'} points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="${isSel ? 'var(--accent-soft-2)' : heatView && surfLoss(r).floor > 0.5 ? heatCol(surfLoss(r).floor) : 'var(--room)'}" ${heatView && !isSel && surfLoss(r).floor > 0.5 ? 'fill-opacity=".6"' : ''} stroke="none" style="cursor:pointer"/>`;
-        if (inZone || (isSel && zs && zs.multi))
-          out += `<polygon points="${r.pts.map(p => pt(P3(p, z0))).join(' ')}" fill="var(--accent)" fill-opacity="${isSel ? 0.2 : 0.3}" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" pointer-events="none"/>`;
-        (layerOn('emit') ? r.emitters || [] : []).forEach(em => {
-          if (em.kind === 'vv') {
-            out += `<polygon points="${em.pts.map(p => pt(P3(p, z0 + 0.01))).join(' ')}" fill="url(#vvhatch)" stroke="var(--c-hp)" stroke-width="1" stroke-dasharray="5 4" pointer-events="none"/>`;
-          } else {
-            const a = P3(em.a, z0 + 0.35),
-              b = P3(em.b, z0 + 0.35),
-              a2 = P3(em.a, z0 + 0.85),
-              b2 = P3(em.b, z0 + 0.85);
-            items.push({
-              mid: true,
-              d: (a.d + b.d) / 2 - 0.05,
-              svg: `<polygon points="${[a, b, b2, a2].map(pt).join(' ')}" fill="var(--c-hp)" fill-opacity=".75" stroke="var(--c-hp)" stroke-width="1" pointer-events="none"/>`
-            });
-          }
-        });
-        if (top) {
-          const cc = P3(labelPt(r.pts), z0);
-          labels.push(
-            `<text x="${cc.X}" y="${cc.Y - 4}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(r.name)}</text><text x="${cc.X}" y="${cc.Y + 13}" text-anchor="middle" class="rheat" font-size="14" pointer-events="none">${k.unheated ? 'onverwarmd' : fmt(k.total / 1000, 2) + ' kW'}</text>`
-          );
-        }
-        // sloped roof surfaces, see-through, so roof windows and dormers have something to sit on
-        {
-          const rp = roofParts(r),
-            VR = !rp && cut === Infinity && videRoof(r);
-          // a vide under a sloped roof: the same roof surface over it
-          if (VR)
-            roofStrips(r.pts, VR).forEach(poly => {
-              const q = poly.map(v => P3(v, z0 + VR.z(VR.sOf(v))));
-              items.push({
-                near: true,
-                d: q.reduce((a, v) => a + v.d, 0) / q.length,
-                svg: heatView
-                  ? `<polygon points="${q.map(pt).join(' ')}" fill="${heatCol(surfLoss(r).roof)}" fill-opacity=".45" stroke="var(--wall)" stroke-opacity=".5" stroke-width="1" pointer-events="none"/>`
-                  : `<polygon points="${q.map(pt).join(' ')}" fill="var(--muted)" fill-opacity=".1" stroke="var(--muted)" stroke-opacity=".45" stroke-width="1" pointer-events="none"/>`
-              });
-            });
-          if (rp)
-            rp.parts
-              .filter(p => p.kind === 'slope')
-              .forEach(p => {
-                const q = p.poly.map(v => P3(v, z0 + rp.R.z(rp.R.sOf(v))));
-                items.push({
-                  near: true,
-                  d: q.reduce((a, v) => a + v.d, 0) / q.length,
-                  svg: heatView
-                    ? `<polygon points="${q.map(pt).join(' ')}" fill="${heatCol(surfLoss(r).roof)}" fill-opacity=".45" stroke="var(--wall)" stroke-opacity=".5" stroke-width="1" pointer-events="none"/>`
-                    : `<polygon points="${q.map(pt).join(' ')}" fill="var(--muted)" fill-opacity=".1" stroke="var(--muted)" stroke-opacity=".45" stroke-width="1" pointer-events="none"/>`
-                });
-              });
-          // Warmtebeeld: a flat ceiling or flat roof with outside or an unheated space above it
-          const qc = heatView && cut === Infinity ? surfLoss(r).ceilOut : null;
-          if (qc != null) {
-            const polys = rp
-              ? rp.parts.filter(p => p.kind === 'cap').map(p => ({ poly: p.poly, z: p.z }))
-              : [{ poly: r.pts, z: r.height }];
-            polys.forEach(({ poly, z }) => {
-              const q = poly.map(v => P3(v, z0 + z));
-              items.push({
-                near: true,
-                d: q.reduce((a, v) => a + v.d, 0) / q.length,
-                svg: `<polygon points="${q.map(pt).join(' ')}" fill="${heatCol(qc)}" fill-opacity=".4" stroke="var(--wall)" stroke-opacity=".5" stroke-width="1" pointer-events="none"/>`
-              });
-            });
-          }
-        }
-        // roof windows (glass in the slope) and dormers (front with window, cheeks, flat roof)
-        roofItemGeom(r).forEach(g =>
-          g.polys.forEach(pl => {
-            const q = pl.pts.map(p => P3(p, z0 + p.z)),
-              fill = pl.kind === 'glass' ? 'var(--heat)' : pl.kind === 'roof' ? 'var(--muted)' : 'var(--surface)',
-              op = pl.kind === 'glass' ? 0.6 : 0.85;
-            items.push({
-              mid: true,
-              d: q.reduce((a, p) => a + p.d, 0) / q.length + 0.01,
-              svg: `<polygon points="${q.map(pt).join(' ')}" fill="${fill}" fill-opacity="${op}" stroke="${pl.kind === 'glass' ? 'var(--heat)' : 'var(--ink)'}" stroke-opacity=".8" stroke-width="1.2" stroke-linejoin="round" pointer-events="none"/>`
-            });
-          })
-        );
-        // knee walls: a low partition under the slope (dashed outline)
-        kneeSegs(r).forEach(sg => {
-          const h = r.roof.kneeH,
-            q = [P3(sg[0], z0), P3(sg[1], z0), P3(sg[1], z0 + h), P3(sg[0], z0 + h)];
-          items.push({
-            mid: true,
-            d: q.reduce((a, p) => a + p.d, 0) / 4,
-            svg: `<polygon points="${q.map(pt).join(' ')}" fill="var(--surface)" fill-opacity=".35" stroke="var(--ink)" stroke-opacity=".7" stroke-width="1.4" stroke-dasharray="6 4" pointer-events="none"/>`
-          });
-        });
-        // walls, per wall part, with the top following a sloped roof (also over a vide that runs up under one)
-        const R = wallRoof(r);
-        // a room open connected to the selected one: its outline up to the ceiling or roof, so the whole space stands out
-        if (inZone || (isSel && zs && zs.multi)) {
-          let d3 = '';
-          r.pts.forEach((_, i) => {
-            const e = edge(r, i);
-            if (e.L < 1e-6) return;
-            const at = t => ({ x: e.a.x + e.ux * t, y: e.a.y + e.uy * t }),
-              ts = [0, e.L];
-            if (R) {
-              const sa = R.sOf(e.a),
-                ds = e.ux * R.v.x + e.uy * R.v.y;
-              if (Math.abs(ds) > 1e-9)
-                R.crit.forEach(cv => {
-                  const t = (cv - sa) / ds;
-                  if (t > 0 && t < e.L) ts.push(t);
-                });
-            }
-            ts.sort((x, y) => x - y);
-            const q = ts.map(t => P3(at(t), z0 + zT(R, at(t)))),
-              b0 = P3(e.a, z0);
-            d3 += `M${b0.X.toFixed(1)} ${b0.Y.toFixed(1)}L${q.map(v => v.X.toFixed(1) + ' ' + v.Y.toFixed(1)).join('L')}`;
-          });
-          items.push({
-            near: true,
-            d: 1e9,
-            svg: `<path d="${d3}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-opacity=".9" stroke-linejoin="round" pointer-events="none"/>`
-          });
-        }
-        r.pts.forEach((_, i) => {
-          const e = edge(r, i);
-          if (e.L < 1e-6) return;
-          const b = bounds(r, i),
-            w = r.walls[i];
-          const nyr = e.nx * sn + e.ny * c,
-            near = nyr > 0.02,
-            lit = (e.nx * L.x + e.ny * L.y) / Ll;
-          const at = t => ({ x: e.a.x + e.ux * t, y: e.a.y + e.uy * t });
-          w.segs.forEach((sg, j) => {
-            const s0 = b[j],
-              s1 = b[j + 1];
-            if (s1 - s0 < 1e-4) return;
-            const ts = [s0, s1];
-            if (R) {
-              const sa = R.sOf(e.a),
-                ds = e.ux * R.v.x + e.uy * R.v.y;
-              if (Math.abs(ds) > 1e-9)
-                R.crit.forEach(cv => {
-                  const t = (cv - sa) / ds;
-                  if (t > s0 && t < s1) ts.push(t);
-                });
-            }
-            ts.sort((x, y) => x - y);
-            const bot = ts.map(t => P3(at(t), z0)),
-              tp = ts.map(t => P3(at(t), z0 + zT(R, at(t))));
-            const con = conById(sg.cid),
-              col = heatView ? heatCol(surfLoss(r).seg(i, j)) : con ? con.color : 'var(--warn)',
-              isSel = top && sel && sel.t === 'seg' && sel.r === r.id && sel.w === i && sel.s === j;
-            const poly = bot.concat(tp.slice().reverse()).map(pt).join(' ');
-            const d = bot.concat(tp).reduce((a, q) => a + q.d, 0) / (bot.length * 2);
-            // a vide through several floors: per floor a wall or an open connection, decided by the room next to it there
-            if (spans(r)) {
-              const el = floorElev(),
-                base = el[r.floorId] || 0,
-                [la, lb] = levelsOf(r),
-                sp = sharedParts(r, i, s0, s1),
-                bands = [];
-              for (let fi = la; fi <= lb; fi++) {
-                const fl = P.floors[fi],
-                  nbs = [...new Set(sp.filter(p => p.o.floorId === fl.id && !spans(p.o)).map(p => p.o))];
-                bands.push({
-                  lo: (el[fl.id] || 0) - base,
-                  hi: fi < lb ? (el[P.floors[fi + 1].id] || 0) - base : Infinity,
-                  open: nbs.length > 0 && nbs.every(o => videOpenShare(r, i, s0, s1, o) > 0.99)
-                });
-              }
-              if (bands.some(bd => bd.open)) {
-                bands.forEach(bd => {
-                  const tops = ts.map(t => Math.min(bd.hi, zT(R, at(t))));
-                  if (tops.every(z => z <= bd.lo + 1e-3)) return;
-                  const qb = ts.map(t => P3(at(t), z0 + bd.lo)),
-                    qt = ts.map((t, k) => P3(at(t), z0 + Math.max(bd.lo, tops[k]))),
-                    pl = qb.concat(qt.slice().reverse()).map(pt).join(' '),
-                    dd = qb.concat(qt).reduce((a, q) => a + q.d, 0) / (qb.length * 2);
-                  items.push({
-                    d: dd + (near ? 0.0001 : 0),
-                    near,
-                    svg: bd.open
-                      ? `<polygon points="${pl}" fill="none" stroke="var(--muted)" stroke-opacity=".6" stroke-width="1" stroke-dasharray="5 5" pointer-events="none"/>`
-                      : `<polygon points="${pl}" fill="${col}" fill-opacity="${!top ? (near ? 0.18 : 0.55) : near ? 0.22 : 0.9}" stroke="var(--wall)" stroke-opacity="${near ? 0.35 : 0.8}" stroke-width="1" stroke-linejoin="round" pointer-events="none"/>`
-                  });
-                });
-                if (top)
-                  items.push({
-                    d: d + 0.0002,
-                    near,
-                    svg: `<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="${isSel ? 'var(--heat)' : 'transparent'}" fill-opacity=".2" stroke="${isSel ? 'var(--heat)' : 'none'}" stroke-width="3" style="cursor:pointer"/>`
-                  });
-                return;
-              }
-            }
-            if (sg.adj === 'open' && !spans(r)) {
-              items.push({
-                d,
-                near: true,
-                svg: `<polygon ${top ? `data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}"` : ''} points="${poly}" fill="${isSel ? 'var(--heat)' : 'none'}" fill-opacity=".15" stroke="var(--muted)" stroke-opacity=".6" stroke-width="1" stroke-dasharray="5 5" pointer-events="${top ? 'stroke' : 'none'}" style="cursor:pointer"/>`
-              });
-              return;
-            }
-            const op = !top ? (near ? 0.18 : 0.55) : near ? 0.22 : 0.9;
-            const shade = Math.max(0, Math.min(0.45, 0.22 - 0.22 * lit));
-            let g = `<polygon points="${poly}" fill="${col}" fill-opacity="${op}" stroke="var(--wall)" stroke-opacity="${near ? 0.35 : 0.8}" stroke-width="1" stroke-linejoin="round" pointer-events="none"/>`;
-            if (!near)
-              g += `<polygon points="${poly}" fill="#000" fill-opacity="${(shade * op).toFixed(3)}" pointer-events="none"/>`;
-            // windows and doors: side by side in the middle of the wall part (their exact place is not stored)
-            opLayout(r, i, j)
-              .filter(x => x.o.h > 0)
-              .forEach(({ o, t0, t1 }) => {
-                const t = t0,
-                  ow = t1 - t0,
-                  top = zT(R, at(t + ow / 2)),
-                  sill = opSill(o, top),
-                  hh = Math.min(o.h, top - sill - 0.02);
-                if (hh <= 0) return;
-                const q = [
-                  P3(at(t), z0 + sill),
-                  P3(at(t + ow), z0 + sill),
-                  P3(at(t + ow), z0 + sill + hh),
-                  P3(at(t), z0 + sill + hh)
-                ];
-                const oc = heatView ? heatCol(surfLoss(r).open(i, j, o)) : 'var(--heat)';
-                g += `<polygon points="${q.map(pt).join(' ')}" fill="${oc}" fill-opacity="${heatView ? (near ? 0.45 : 0.85) : near ? 0.25 : 0.55}" stroke="${heatView ? 'var(--ink)' : 'var(--heat)'}" stroke-opacity="${heatView ? 0.6 : 1}" stroke-width="1.2" pointer-events="none"/>`;
-              });
-            const isHov = top && hoverSeg && hoverSeg.r === r.id && hoverSeg.w === i && hoverSeg.s === j;
-            if (isSel || isHov)
-              g += `<polygon points="${poly}" fill="${isSel ? 'var(--heat)' : 'var(--accent)'}" fill-opacity=".25" stroke="${isSel ? 'var(--heat)' : 'var(--accent)'}" stroke-width="3" stroke-linejoin="round" pointer-events="none"/>`;
-            if (top)
-              g += near
-                ? `<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="none" stroke="transparent" stroke-width="8" pointer-events="stroke" style="cursor:pointer"/>`
-                : `<polygon data-k3="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" points="${poly}" fill="transparent" stroke="none" style="cursor:pointer"/>`;
-            items.push({ d: d + (near ? 0.0001 : 0), near, svg: g });
-          });
-        });
-        if (R)
-          roofLines(R).forEach(cv => {
-            const sg = lineAcross(r, R, cv);
-            if (!sg) return;
-            const z = z0 + R.z(cv),
-              a = P3(sg[0], z),
-              b = P3(sg[1], z);
-            items.push({
-              d: (a.d + b.d) / 2,
-              svg: `<line x1="${a.X}" y1="${a.Y}" x2="${b.X}" y2="${b.Y}" stroke="var(--heat)" stroke-width="2" stroke-dasharray="7 5" pointer-events="none"/>`
-            });
-          });
+        const R3 = room3d(r, z0, ci, el, top);
+        out += R3.out;
+        items.push(...R3.items);
+        if (R3.label) labels.push(R3.label);
       });
       // far walls first, then what stands in the rooms (stairs, radiators), near walls (transparent) last so the rooms stay visible through them
       const grp = it => (it.near ? 2 : it.mid ? 1 : 0);

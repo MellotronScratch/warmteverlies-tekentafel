@@ -1059,37 +1059,553 @@ svg.addEventListener('contextmenu', e => e.preventDefault());
 svg.addEventListener('mousedown', e => {
   if (e.button === 1) e.preventDefault();
 }); // no autoscroll on the middle button
-svg.addEventListener('pointerdown', e => {
-  if (view3d) {
-    e.preventDefault();
-    const t3 = e.target.closest ? e.target.closest('[data-k3]') : null;
-    const rb = svg.getBoundingClientRect(),
-      X = e.clientX - rb.left,
-      Y = e.clientY - rb.top;
-    const rot = e.button === 1 || (e.button === 0 && e.shiftKey),
-      zc = floorElev()[curFloor] || 0;
-    drag3 = {
-      x: e.clientX,
-      y: e.clientY,
-      th: v3.th,
-      el: v3.el,
-      tx: v3.tx,
-      ty: v3.ty,
-      pan: !rot,
-      X,
-      Y,
-      zc,
-      pivot: rot ? unproject3(X, Y, zc) : null,
-      moved: false,
-      k: t3 && t3.dataset.k3,
-      r: t3 && t3.dataset.r,
-      w: t3 && +t3.dataset.w,
-      s: t3 && +t3.dataset.s
-    };
-    if (drag3.pan) stage.classList.add('panning');
+// pressing in the 2.5D view: start turning or moving it, or remember what was clicked (endPointer selects it)
+function down3d(e) {
+  e.preventDefault();
+  const t3 = e.target.closest ? e.target.closest('[data-k3]') : null;
+  const rb = svg.getBoundingClientRect(),
+    X = e.clientX - rb.left,
+    Y = e.clientY - rb.top;
+  const rot = e.button === 1 || (e.button === 0 && e.shiftKey),
+    zc = floorElev()[curFloor] || 0;
+  drag3 = {
+    x: e.clientX,
+    y: e.clientY,
+    th: v3.th,
+    el: v3.el,
+    tx: v3.tx,
+    ty: v3.ty,
+    pan: !rot,
+    X,
+    Y,
+    zc,
+    pivot: rot ? unproject3(X, Y, zc) : null,
+    moved: false,
+    k: t3 && t3.dataset.k3,
+    r: t3 && t3.dataset.r,
+    w: t3 && +t3.dataset.w,
+    s: t3 && +t3.dataset.s
+  };
+  if (drag3.pan) stage.classList.add('panning');
+  capture(e);
+  return;
+}
+// Pressing with the select tool on something in the drawing (its data-k): select it and start dragging. Returns true
+// when done; otherwise pointerdown goes on (deselect and move the drawing).
+const DOWN_SELECT = {
+  vtx(e, _wp, tgt) {
+    sel = { t: 'vtx', r: tgt.dataset.r, i: +tgt.dataset.i };
+    drag = { type: 'vtx', r: sel.r, i: sel.i, moved: false };
     capture(e);
-    return;
+    tab = 'sel';
+    renderAll();
+    return true;
+  },
+  vide(_e, _wp, tgt) {
+    const r = getRoom(tgt.dataset.r);
+    if (r) {
+      // stay on this floor: the stairwell or vide runs through it
+      sel = { t: 'room', r: r.id };
+      tab = 'sel';
+      renderAll();
+    }
+    return true;
+  },
+  vvpt(e, _wp, tgt, k) {
+    const r = getRoom(tgt.dataset.r),
+      em = r && (r.emitters || []).find(x => x.id === tgt.dataset.e);
+    if (!em) return true;
+    let i = +tgt.dataset.i;
+    if (k === 'vvmid') {
+      pushUndo();
+      const a = em.pts[i],
+        b = em.pts[(i + 1) % em.pts.length];
+      em.pts.splice(i + 1, 0, { x: r3((a.x + b.x) / 2), y: r3((a.y + b.y) / 2) });
+      drag = { type: 'vvpt', r: r.id, e: em.id, i: i + 1, moved: true };
+      capture(e);
+      renderCanvas();
+      return true;
+    }
+    const now = Date.now();
+    if (lastPtDown && lastPtDown.id === em.id && lastPtDown.i === i && now - lastPtDown.t < 400) {
+      lastPtDown = null;
+      if (em.pts.length > 3) {
+        pushUndo();
+        em.pts.splice(i, 1);
+        markDirty();
+        renderAll();
+      } else toast('Vloerverwarming heeft minstens drie hoekpunten.');
+      return true;
+    }
+    lastPtDown = { id: em.id, i, t: now };
+    drag = { type: 'vvpt', r: r.id, e: em.id, i, moved: false };
+    capture(e);
+    return true;
+  },
+  hp(e) {
+    sel = { t: 'hp' };
+    tab = 'sel';
+    drag = { type: 'hp', moved: false };
+    capture(e);
+    renderAll();
+    return true;
+  },
+  riser(e, _wp, tgt) {
+    const rs = (P.risers || []).find(x => x.id === tgt.dataset.q);
+    if (!rs) return true;
+    sel = { t: 'riser', q: rs.id };
+    tab = 'sel';
+    // the pipe points on it move along
+    const glued = [];
+    (P.pipes || []).forEach(pp => {
+      const fi = floorIdx(pp.floorId);
+      if (fi < floorIdx(rs.from) || fi > floorIdx(rs.to)) return;
+      pp.pts.forEach((p, i) => dist(p, rs) <= RISER_TOL && glued.push({ pp, i }));
+    });
+    drag = { type: 'riser', q: rs.id, glued, moved: false };
+    capture(e);
+    renderAll();
+    return true;
+  },
+  pipe(_e, _wp, tgt) {
+    sel = { t: 'pipe', p: tgt.dataset.p };
+    tab = 'sel';
+    renderAll();
+    return true;
+  },
+  pipept(e, _wp, tgt, k) {
+    const pp = P.pipes.find(x => x.id === tgt.dataset.p);
+    if (!pp) return true;
+    let i = +tgt.dataset.i;
+    if (k === 'pipemid') {
+      pushUndo();
+      const a = pp.pts[i],
+        b = pp.pts[i + 1];
+      pp.pts.splice(i + 1, 0, { x: r3((a.x + b.x) / 2), y: r3((a.y + b.y) / 2) });
+      drag = { type: 'pipept', p: pp.id, i: i + 1, moved: true };
+      capture(e);
+      renderCanvas();
+      return true;
+    }
+    const now = Date.now();
+    if (lastPtDown && lastPtDown.id === pp.id && lastPtDown.i === i && now - lastPtDown.t < 400) {
+      lastPtDown = null;
+      if (pp.pts.length > 2) {
+        pushUndo();
+        pp.pts.splice(i, 1);
+        markDirty();
+        renderAll();
+      }
+      return true;
+    }
+    lastPtDown = { id: pp.id, i, t: now };
+    drag = { type: 'pipept', p: pp.id, i, moved: false };
+    capture(e);
+    return true;
+  },
+  emend(e, _wp, tgt) {
+    drag = { type: 'emend', r: tgt.dataset.r, e: tgt.dataset.e, end: tgt.dataset.end, moved: false };
+    capture(e);
+    return true;
+  },
+  em(e, wp, tgt) {
+    const r = getRoom(tgt.dataset.r);
+    const em = (r.emitters || []).find(x => x.id === tgt.dataset.e);
+    if (!em) return true;
+    sel = { t: 'em', r: r.id, e: em.id };
+    tab = 'sel';
+    drag = { type: 'em', r: r.id, e: em.id, start: wp, orig: clone(em), moved: false };
+    capture(e);
+    renderAll();
+    return true;
+  },
+  op(e, wp, tgt) {
+    const r = getRoom(tgt.dataset.r),
+      i = +tgt.dataset.w,
+      j = +tgt.dataset.s;
+    const it = opLayout(r, i, j).find(x => x.o.id === tgt.dataset.o);
+    if (!it) return true;
+    const ed = edge(r, i);
+    sel = { t: 'seg', r: r.id, w: i, s: j };
+    tab = 'sel';
+    drag = {
+      type: 'op',
+      r: r.id,
+      w: i,
+      s: j,
+      o: it.o.id,
+      grab: (wp.x - ed.a.x) * ed.ux + (wp.y - ed.a.y) * ed.uy - it.t0,
+      moved: false
+    };
+    capture(e);
+    renderAll();
+    return true;
+  },
+  cut(e, _wp, tgt) {
+    drag = { type: 'cut', r: tgt.dataset.r, w: +tgt.dataset.w, c: +tgt.dataset.c, moved: false };
+    capture(e);
+    return true;
+  },
+  seg(e, wp, tgt) {
+    const r = tgt.dataset.r,
+      w = +tgt.dataset.w,
+      now = Date.now();
+    if (
+      lastSegDown &&
+      lastSegDown.r === r &&
+      lastSegDown.w === w &&
+      now - lastSegDown.t < 400 &&
+      Math.hypot(e.clientX - lastSegDown.x, e.clientY - lastSegDown.y) < 8
+    ) {
+      lastSegDown = null;
+      const room = getRoom(r);
+      const ed = edge(room, w);
+      let t = (wp.x - ed.a.x) * ed.ux + (wp.y - ed.a.y) * ed.uy;
+      const st = Math.max(0.001, P.settings.snap);
+      insertVertex(room, w, r3(Math.round(t / st) * st));
+      return true;
+    }
+    lastSegDown = { r, w, t: now, x: e.clientX, y: e.clientY };
+    sel = { t: 'seg', r, w, s: +tgt.dataset.s };
+    tab = 'sel';
+    renderAll();
+    return true;
+  },
+  room(e, wp, tgt) {
+    const r = getRoom(tgt.dataset.r);
+    if (!(sel && sel.r === r.id && sel.t === 'room')) {
+      sel = { t: 'room', r: r.id };
+      tab = 'sel';
+      renderAll();
+    }
+    drag = { type: 'room', r: r.id, start: wp, orig: clone(r.pts), oem: clone(r.emitters || []), moved: false };
+    capture(e);
+    return true;
   }
+};
+DOWN_SELECT['vvmid'] = DOWN_SELECT['vvpt'];
+DOWN_SELECT['pipemid'] = DOWN_SELECT['pipept'];
+// moving in the 2.5D view while the mouse is down: turn around the clicked point, or move the view
+function move3d(e) {
+  if (!drag3) return;
+  const dx = e.clientX - drag3.x,
+    dy = e.clientY - drag3.y;
+  if (!drag3.moved && Math.hypot(dx, dy) < 4) return;
+  drag3.moved = true;
+  if (drag3.pan) {
+    v3.tx = drag3.tx + dx;
+    v3.ty = drag3.ty + dy;
+  } else {
+    v3.th = drag3.th + dx * 0.008;
+    v3.el = Math.max(0.12, Math.min(1.5, drag3.el + dy * 0.006));
+    v3.tx = drag3.tx;
+    v3.ty = drag3.ty;
+    const q = pr3(drag3.pivot, drag3.zc);
+    v3.tx += drag3.X - q.X;
+    v3.ty += drag3.Y - q.Y;
+  } // keep the clicked point in place
+  renderCanvas();
+  return;
+}
+// Dragging (drag.type): move a corner, a room, an emitter, an opening, a pipe point, … Returns true when done.
+const DRAG = {
+  vtx(e, wp) {
+    const r = getRoom(drag.r);
+    const n = r.pts.length;
+    const p = snapPoint(wp, {
+      exclude: { r: r.id, i: drag.i },
+      prev: r.pts[(drag.i - 1 + n) % n],
+      next: r.pts[(drag.i + 1) % n],
+      alt: e.altKey
+    });
+    const cur = r.pts[drag.i];
+    if (cur.x === p.x && cur.y === p.y) return true;
+    if (!drag.moved) {
+      pushUndo();
+      drag.moved = true;
+    }
+    r.pts[drag.i] = { x: p.x, y: p.y };
+    renderCanvas();
+    return true;
+  },
+  room(e, wp) {
+    const r = getRoom(drag.r);
+    const st = e.altKey ? 0.001 : Math.max(0.001, P.settings.snap);
+    let dx = r3(Math.round((wp.x - drag.start.x) / st) * st),
+      dy = r3(Math.round((wp.y - drag.start.y) / st) * st);
+    // magnet: snap moved vertices to other rooms' vertices
+    if (!e.altKey) {
+      const tol = 10 / view.s;
+      let best = null,
+        bd = tol;
+      drag.orig.forEach(p => {
+        const q = { x: p.x + dx, y: p.y + dy };
+        snapRooms().forEach(o => {
+          if (o.id === r.id) return;
+          o.pts.forEach(v => {
+            const d = dist(v, q);
+            if (d < bd) {
+              bd = d;
+              best = { dx: v.x - p.x, dy: v.y - p.y };
+            }
+          });
+        });
+      });
+      if (best) {
+        dx = r3(best.dx);
+        dy = r3(best.dy);
+      }
+    }
+    if (!drag.moved && (dx || dy)) {
+      pushUndo();
+      drag.moved = true;
+    }
+    if (!drag.moved) return true;
+    r.pts = drag.orig.map(p => ({ x: r3(p.x + dx), y: r3(p.y + dy) }));
+    r.emitters = drag.oem.map(em => shiftEm(em, dx, dy));
+    renderCanvas();
+    return true;
+  },
+  em(e, wp) {
+    const r = getRoom(drag.r);
+    const st = e.altKey ? 0.001 : Math.max(0.001, P.settings.snap);
+    const dx = r3(Math.round((wp.x - drag.start.x) / st) * st),
+      dy = r3(Math.round((wp.y - drag.start.y) / st) * st);
+    if (!drag.moved && (dx || dy)) {
+      pushUndo();
+      drag.moved = true;
+    }
+    if (!drag.moved) return true;
+    const i = r.emitters.findIndex(x => x.id === drag.e);
+    if (i >= 0) r.emitters[i] = shiftEm(drag.orig, dx, dy);
+    renderCanvas();
+    return true;
+  },
+  op(e, wp) {
+    const r = getRoom(drag.r),
+      ed = edge(r, drag.w),
+      b = bounds(r, drag.w),
+      o = r.walls[drag.w].segs[drag.s].openings.find(x => x.id === drag.o);
+    if (!o) return true;
+    const st = e.altKey ? 0.001 : Math.max(0.001, P.settings.snap),
+      w = Math.min(o.w, b[drag.s + 1] - b[drag.s]);
+    let t = r3(Math.round(((wp.x - ed.a.x) * ed.ux + (wp.y - ed.a.y) * ed.uy - drag.grab) / st) * st);
+    t = r3(Math.max(b[drag.s], Math.min(b[drag.s + 1] - w, t)));
+    if (!drag.moved) {
+      if (Number.isFinite(o.at) && o.at === t) return true;
+      pushUndo();
+      drag.moved = true;
+      freezeOpenings(r, drag.w, drag.s);
+    }
+    o.at = t;
+    syncLinkedAt(o, r, drag.w);
+    renderCanvas();
+    return true;
+  },
+  hp(e, wp) {
+    const p = pipeSnap(wp, { alt: e.altKey });
+    if (P.hpPos.x === p.x && P.hpPos.y === p.y) return true;
+    if (!drag.moved) {
+      pushUndo();
+      drag.moved = true;
+    }
+    P.hpPos = { floorId: P.hpPos.floorId, x: p.x, y: p.y };
+    renderCanvas();
+    return true;
+  },
+  riser(e, wp) {
+    const rs = (P.risers || []).find(x => x.id === drag.q);
+    if (!rs) return true;
+    // like a pipe point: onto radiator ends, the heat pump, pipes; not onto the points that move along with it
+    const own = new Set(drag.glued.map(g => g.pp.id + ':' + g.i)),
+      p = pipeSnap(wp, { alt: e.altKey, skipRiser: rs.id, skipPt: own });
+    if (rs.x === p.x && rs.y === p.y) return true;
+    if (!drag.moved) {
+      pushUndo();
+      drag.moved = true;
+    }
+    rs.x = p.x;
+    rs.y = p.y;
+    drag.glued.forEach(g => (g.pp.pts[g.i] = { x: p.x, y: p.y }));
+    renderCanvas();
+    return true;
+  },
+  vvpt(e, wp) {
+    const pts =
+      drag.type === 'vvpt'
+        ? ((getRoom(drag.r).emitters || []).find(x => x.id === drag.e) || {}).pts
+        : (P.pipes.find(x => x.id === drag.p) || {}).pts;
+    if (!pts) return true;
+    const n = pts.length,
+      closed = drag.type === 'vvpt',
+      prev = closed ? pts[(drag.i - 1 + n) % n] : pts[drag.i - 1],
+      next = closed ? pts[(drag.i + 1) % n] : pts[drag.i + 1];
+    const p =
+      drag.type === 'pipept'
+        ? pipeSnap(wp, { prev, next, alt: e.altKey, skip: { p: drag.p, i: drag.i } })
+        : snapPoint(wp, { prev, next, alt: e.altKey });
+    const cur = pts[drag.i];
+    if (cur.x === p.x && cur.y === p.y) return true;
+    if (!drag.moved) {
+      pushUndo();
+      drag.moved = true;
+    }
+    pts[drag.i] = { x: p.x, y: p.y };
+    renderCanvas();
+    return true;
+  },
+  emend(e, wp) {
+    const r = getRoom(drag.r),
+      em = (r.emitters || []).find(x => x.id === drag.e);
+    if (!em) return true;
+    const other = drag.end === 'a' ? em.b : em.a;
+    const p = snapPoint(wp, { prev: other, alt: e.altKey });
+    if (dist(p, other) < 0.2) return true;
+    const cur = em[drag.end];
+    if (cur.x === p.x && cur.y === p.y) return true;
+    if (!drag.moved) {
+      pushUndo();
+      drag.moved = true;
+    }
+    em[drag.end] = { x: p.x, y: p.y };
+    if (RAD_TYPES[em.rt]) {
+      em.rl = Math.round(emLen(em) * 1000);
+      syncRad(em);
+    }
+    renderCanvas();
+    return true;
+  },
+  emline(e, wp) {
+    drag.p1 = snapPoint(wp, { prev: drag.p0, alt: e.altKey });
+    renderCanvas();
+    return true;
+  },
+  emrect(e, wp) {
+    drag.p1 = snapPoint(wp, { alt: e.altKey });
+    renderCanvas();
+    return true;
+  },
+  cut(e, wp) {
+    const r = getRoom(drag.r);
+    const w = r.walls[drag.w];
+    let t = splitT(r, drag.w, wp, e.altKey);
+    const lo = (drag.c > 0 ? w.cuts[drag.c - 1] : 0) + 0.02,
+      hi = (drag.c < w.cuts.length - 1 ? w.cuts[drag.c + 1] : edge(r, drag.w).L) - 0.02;
+    t = Math.max(lo, Math.min(hi, t));
+    if (t === w.cuts[drag.c]) return true;
+    if (!drag.moved) {
+      pushUndo();
+      drag.moved = true;
+    }
+    w.cuts[drag.c] = r3(t);
+    sel = { t: 'seg', r: r.id, w: drag.w, s: drag.c };
+    renderCanvas();
+    return true;
+  },
+  rect(e, wp) {
+    drag.p1 = snapPoint(wp, { alt: e.altKey });
+    renderCanvas();
+    return true;
+  }
+};
+DRAG['pipept'] = DRAG['vvpt'];
+// Pressing per tool (select: see DOWN_SELECT; drawing tools: add a point, start a rectangle, place the heat pump, …).
+// Returns true when done.
+const DOWN_TOOL = {
+  select(e, wp, tgt, k) {
+    if (Object.hasOwn(DOWN_SELECT, k) && DOWN_SELECT[k](e, wp, tgt, k)) return true;
+    if (sel) {
+      sel = null;
+      renderAll();
+    }
+    beginPan(e);
+    return true;
+  },
+  poly(e, wp) {
+    const p = snapPoint(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey });
+    if (drawPts.length >= 3 && dist(p, drawPts[0]) * view.s < 10) {
+      finishPoly();
+      return true;
+    }
+    const last = drawPts[drawPts.length - 1];
+    if (last && dist(p, last) < 1e-6) {
+      if (drawPts.length >= 3) finishPoly();
+      return true;
+    }
+    drawPts.push({ x: p.x, y: p.y });
+    renderCanvas();
+    return true;
+  },
+  rect(e, wp) {
+    const p = snapPoint(wp, { alt: e.altKey });
+    drag = { type: 'rect', p0: p, p1: p };
+    capture(e);
+    renderCanvas();
+    return true;
+  },
+  emit(e, wp) {
+    const p = snapPoint(wp, { alt: e.altKey });
+    drag = { type: 'emline', p0: p, p1: p };
+    capture(e);
+    renderCanvas();
+    return true;
+  },
+  hp(e, wp) {
+    const p = pipeSnap(wp, { alt: e.altKey });
+    pushUndo();
+    P.hpPos = { floorId: curFloor, x: p.x, y: p.y };
+    markDirty();
+    setTool('select');
+    renderAll();
+    toast('Warmtepomp geplaatst. Teken met Leiding (L) vanaf hier naar de verdeler en de radiatoren.');
+    return true;
+  },
+  vv(e, wp) {
+    const p =
+        tool === 'pipe'
+          ? pipeSnap(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey })
+          : snapPoint(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey }),
+      fin = tool === 'vv' ? finishVV : finishPipe;
+    if (drawPts.length) {
+      if (tool === 'vv' && drawPts.length >= 3 && dist(p, drawPts[0]) * view.s < 10) {
+        fin();
+        return true;
+      }
+      const last = drawPts[drawPts.length - 1];
+      if (dist(p, last) < 1e-6) {
+        fin();
+        return true;
+      }
+      drawPts.push({ x: p.x, y: p.y });
+      renderCanvas();
+      return true;
+    }
+    if (tool === 'vv') {
+      drag = { type: 'emrect', p0: p, p1: p };
+      capture(e);
+      renderCanvas();
+      return true;
+    } // drag = rectangle, click = start a polygon
+    drawPts.push({ x: p.x, y: p.y });
+    renderCanvas();
+    return true;
+  },
+  split(e, wp, tgt, k) {
+    if (k === 'seg') {
+      const r = getRoom(tgt.dataset.r);
+      const i = +tgt.dataset.w;
+      addCut(r, i, splitT(r, i, wp, e.altKey));
+    }
+    return true;
+  },
+  wall(e, wp) {
+    if (!pendSplit) wallClick(wallSnap(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey }));
+    return true;
+  }
+};
+DOWN_TOOL['pipe'] = DOWN_TOOL['vv'];
+svg.addEventListener('pointerdown', e => {
+  if (view3d) return down3d(e);
   const wp = toWorld(e);
   const tgt = e.target.closest ? e.target.closest('[data-k]') : null;
   const k = tgt && tgt.dataset.k;
@@ -1099,307 +1615,10 @@ svg.addEventListener('pointerdown', e => {
   }
   if (e.button !== 0) return;
   if (bgPointerDown(e, wp)) return;
-  if (tool === 'select') {
-    if (k === 'vtx') {
-      sel = { t: 'vtx', r: tgt.dataset.r, i: +tgt.dataset.i };
-      drag = { type: 'vtx', r: sel.r, i: sel.i, moved: false };
-      capture(e);
-      tab = 'sel';
-      renderAll();
-      return;
-    }
-    if (k === 'vide') {
-      const r = getRoom(tgt.dataset.r);
-      if (r) {
-        // stay on this floor: the stairwell or vide runs through it
-        sel = { t: 'room', r: r.id };
-        tab = 'sel';
-        renderAll();
-      }
-      return;
-    }
-    if (k === 'vvpt' || k === 'vvmid') {
-      const r = getRoom(tgt.dataset.r),
-        em = r && (r.emitters || []).find(x => x.id === tgt.dataset.e);
-      if (!em) return;
-      let i = +tgt.dataset.i;
-      if (k === 'vvmid') {
-        pushUndo();
-        const a = em.pts[i],
-          b = em.pts[(i + 1) % em.pts.length];
-        em.pts.splice(i + 1, 0, { x: r3((a.x + b.x) / 2), y: r3((a.y + b.y) / 2) });
-        drag = { type: 'vvpt', r: r.id, e: em.id, i: i + 1, moved: true };
-        capture(e);
-        renderCanvas();
-        return;
-      }
-      const now = Date.now();
-      if (lastPtDown && lastPtDown.id === em.id && lastPtDown.i === i && now - lastPtDown.t < 400) {
-        lastPtDown = null;
-        if (em.pts.length > 3) {
-          pushUndo();
-          em.pts.splice(i, 1);
-          markDirty();
-          renderAll();
-        } else toast('Vloerverwarming heeft minstens drie hoekpunten.');
-        return;
-      }
-      lastPtDown = { id: em.id, i, t: now };
-      drag = { type: 'vvpt', r: r.id, e: em.id, i, moved: false };
-      capture(e);
-      return;
-    }
-    if (k === 'hp') {
-      sel = { t: 'hp' };
-      tab = 'sel';
-      drag = { type: 'hp', moved: false };
-      capture(e);
-      renderAll();
-      return;
-    }
-    if (k === 'riser') {
-      const rs = (P.risers || []).find(x => x.id === tgt.dataset.q);
-      if (!rs) return;
-      sel = { t: 'riser', q: rs.id };
-      tab = 'sel';
-      // the pipe points on it move along
-      const glued = [];
-      (P.pipes || []).forEach(pp => {
-        const fi = floorIdx(pp.floorId);
-        if (fi < floorIdx(rs.from) || fi > floorIdx(rs.to)) return;
-        pp.pts.forEach((p, i) => dist(p, rs) <= RISER_TOL && glued.push({ pp, i }));
-      });
-      drag = { type: 'riser', q: rs.id, glued, moved: false };
-      capture(e);
-      renderAll();
-      return;
-    }
-    if (k === 'pipe') {
-      sel = { t: 'pipe', p: tgt.dataset.p };
-      tab = 'sel';
-      renderAll();
-      return;
-    }
-    if (k === 'pipept' || k === 'pipemid') {
-      const pp = P.pipes.find(x => x.id === tgt.dataset.p);
-      if (!pp) return;
-      let i = +tgt.dataset.i;
-      if (k === 'pipemid') {
-        pushUndo();
-        const a = pp.pts[i],
-          b = pp.pts[i + 1];
-        pp.pts.splice(i + 1, 0, { x: r3((a.x + b.x) / 2), y: r3((a.y + b.y) / 2) });
-        drag = { type: 'pipept', p: pp.id, i: i + 1, moved: true };
-        capture(e);
-        renderCanvas();
-        return;
-      }
-      const now = Date.now();
-      if (lastPtDown && lastPtDown.id === pp.id && lastPtDown.i === i && now - lastPtDown.t < 400) {
-        lastPtDown = null;
-        if (pp.pts.length > 2) {
-          pushUndo();
-          pp.pts.splice(i, 1);
-          markDirty();
-          renderAll();
-        }
-        return;
-      }
-      lastPtDown = { id: pp.id, i, t: now };
-      drag = { type: 'pipept', p: pp.id, i, moved: false };
-      capture(e);
-      return;
-    }
-    if (k === 'emend') {
-      drag = { type: 'emend', r: tgt.dataset.r, e: tgt.dataset.e, end: tgt.dataset.end, moved: false };
-      capture(e);
-      return;
-    }
-    if (k === 'em') {
-      const r = getRoom(tgt.dataset.r);
-      const em = (r.emitters || []).find(x => x.id === tgt.dataset.e);
-      if (!em) return;
-      sel = { t: 'em', r: r.id, e: em.id };
-      tab = 'sel';
-      drag = { type: 'em', r: r.id, e: em.id, start: wp, orig: clone(em), moved: false };
-      capture(e);
-      renderAll();
-      return;
-    }
-    if (k === 'op') {
-      const r = getRoom(tgt.dataset.r),
-        i = +tgt.dataset.w,
-        j = +tgt.dataset.s;
-      const it = opLayout(r, i, j).find(x => x.o.id === tgt.dataset.o);
-      if (!it) return;
-      const ed = edge(r, i);
-      sel = { t: 'seg', r: r.id, w: i, s: j };
-      tab = 'sel';
-      drag = {
-        type: 'op',
-        r: r.id,
-        w: i,
-        s: j,
-        o: it.o.id,
-        grab: (wp.x - ed.a.x) * ed.ux + (wp.y - ed.a.y) * ed.uy - it.t0,
-        moved: false
-      };
-      capture(e);
-      renderAll();
-      return;
-    }
-    if (k === 'cut') {
-      drag = { type: 'cut', r: tgt.dataset.r, w: +tgt.dataset.w, c: +tgt.dataset.c, moved: false };
-      capture(e);
-      return;
-    }
-    if (k === 'seg') {
-      const r = tgt.dataset.r,
-        w = +tgt.dataset.w,
-        now = Date.now();
-      if (
-        lastSegDown &&
-        lastSegDown.r === r &&
-        lastSegDown.w === w &&
-        now - lastSegDown.t < 400 &&
-        Math.hypot(e.clientX - lastSegDown.x, e.clientY - lastSegDown.y) < 8
-      ) {
-        lastSegDown = null;
-        const room = getRoom(r);
-        const ed = edge(room, w);
-        let t = (wp.x - ed.a.x) * ed.ux + (wp.y - ed.a.y) * ed.uy;
-        const st = Math.max(0.001, P.settings.snap);
-        insertVertex(room, w, r3(Math.round(t / st) * st));
-        return;
-      }
-      lastSegDown = { r, w, t: now, x: e.clientX, y: e.clientY };
-      sel = { t: 'seg', r, w, s: +tgt.dataset.s };
-      tab = 'sel';
-      renderAll();
-      return;
-    }
-    if (k === 'room') {
-      const r = getRoom(tgt.dataset.r);
-      if (!(sel && sel.r === r.id && sel.t === 'room')) {
-        sel = { t: 'room', r: r.id };
-        tab = 'sel';
-        renderAll();
-      }
-      drag = { type: 'room', r: r.id, start: wp, orig: clone(r.pts), oem: clone(r.emitters || []), moved: false };
-      capture(e);
-      return;
-    }
-    if (sel) {
-      sel = null;
-      renderAll();
-    }
-    beginPan(e);
-    return;
-  }
-  if (tool === 'poly') {
-    const p = snapPoint(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey });
-    if (drawPts.length >= 3 && dist(p, drawPts[0]) * view.s < 10) {
-      finishPoly();
-      return;
-    }
-    const last = drawPts[drawPts.length - 1];
-    if (last && dist(p, last) < 1e-6) {
-      if (drawPts.length >= 3) finishPoly();
-      return;
-    }
-    drawPts.push({ x: p.x, y: p.y });
-    renderCanvas();
-    return;
-  }
-  if (tool === 'rect') {
-    const p = snapPoint(wp, { alt: e.altKey });
-    drag = { type: 'rect', p0: p, p1: p };
-    capture(e);
-    renderCanvas();
-    return;
-  }
-  if (tool === 'emit') {
-    const p = snapPoint(wp, { alt: e.altKey });
-    drag = { type: 'emline', p0: p, p1: p };
-    capture(e);
-    renderCanvas();
-    return;
-  }
-  if (tool === 'hp') {
-    const p = pipeSnap(wp, { alt: e.altKey });
-    pushUndo();
-    P.hpPos = { floorId: curFloor, x: p.x, y: p.y };
-    markDirty();
-    setTool('select');
-    renderAll();
-    toast('Warmtepomp geplaatst. Teken met Leiding (L) vanaf hier naar de verdeler en de radiatoren.');
-    return;
-  }
-  if (tool === 'vv' || tool === 'pipe') {
-    const p =
-        tool === 'pipe'
-          ? pipeSnap(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey })
-          : snapPoint(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey }),
-      fin = tool === 'vv' ? finishVV : finishPipe;
-    if (drawPts.length) {
-      if (tool === 'vv' && drawPts.length >= 3 && dist(p, drawPts[0]) * view.s < 10) {
-        fin();
-        return;
-      }
-      const last = drawPts[drawPts.length - 1];
-      if (dist(p, last) < 1e-6) {
-        fin();
-        return;
-      }
-      drawPts.push({ x: p.x, y: p.y });
-      renderCanvas();
-      return;
-    }
-    if (tool === 'vv') {
-      drag = { type: 'emrect', p0: p, p1: p };
-      capture(e);
-      renderCanvas();
-      return;
-    } // drag = rectangle, click = start a polygon
-    drawPts.push({ x: p.x, y: p.y });
-    renderCanvas();
-    return;
-  }
-  if (tool === 'split') {
-    if (k === 'seg') {
-      const r = getRoom(tgt.dataset.r);
-      const i = +tgt.dataset.w;
-      addCut(r, i, splitT(r, i, wp, e.altKey));
-    }
-    return;
-  }
-  if (tool === 'wall') {
-    if (!pendSplit) wallClick(wallSnap(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey }));
-    return;
-  }
+  if (Object.hasOwn(DOWN_TOOL, tool)) DOWN_TOOL[tool](e, wp, tgt, k);
 });
 svg.addEventListener('pointermove', e => {
-  if (view3d) {
-    if (!drag3) return;
-    const dx = e.clientX - drag3.x,
-      dy = e.clientY - drag3.y;
-    if (!drag3.moved && Math.hypot(dx, dy) < 4) return;
-    drag3.moved = true;
-    if (drag3.pan) {
-      v3.tx = drag3.tx + dx;
-      v3.ty = drag3.ty + dy;
-    } else {
-      v3.th = drag3.th + dx * 0.008;
-      v3.el = Math.max(0.12, Math.min(1.5, drag3.el + dy * 0.006));
-      v3.tx = drag3.tx;
-      v3.ty = drag3.ty;
-      const q = pr3(drag3.pivot, drag3.zc);
-      v3.tx += drag3.X - q.X;
-      v3.ty += drag3.Y - q.Y;
-    } // keep the clicked point in place
-    renderCanvas();
-    return;
-  }
+  if (view3d) return move3d(e);
   const wp = toWorld(e);
   cursorW = wp;
   updateCoords();
@@ -1410,206 +1629,7 @@ svg.addEventListener('pointermove', e => {
     return;
   }
   if (bgPointerMove(wp)) return;
-  if (drag) {
-    if (drag.type === 'vtx') {
-      const r = getRoom(drag.r);
-      const n = r.pts.length;
-      const p = snapPoint(wp, {
-        exclude: { r: r.id, i: drag.i },
-        prev: r.pts[(drag.i - 1 + n) % n],
-        next: r.pts[(drag.i + 1) % n],
-        alt: e.altKey
-      });
-      const cur = r.pts[drag.i];
-      if (cur.x === p.x && cur.y === p.y) return;
-      if (!drag.moved) {
-        pushUndo();
-        drag.moved = true;
-      }
-      r.pts[drag.i] = { x: p.x, y: p.y };
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'room') {
-      const r = getRoom(drag.r);
-      const st = e.altKey ? 0.001 : Math.max(0.001, P.settings.snap);
-      let dx = r3(Math.round((wp.x - drag.start.x) / st) * st),
-        dy = r3(Math.round((wp.y - drag.start.y) / st) * st);
-      // magnet: snap moved vertices to other rooms' vertices
-      if (!e.altKey) {
-        const tol = 10 / view.s;
-        let best = null,
-          bd = tol;
-        drag.orig.forEach(p => {
-          const q = { x: p.x + dx, y: p.y + dy };
-          snapRooms().forEach(o => {
-            if (o.id === r.id) return;
-            o.pts.forEach(v => {
-              const d = dist(v, q);
-              if (d < bd) {
-                bd = d;
-                best = { dx: v.x - p.x, dy: v.y - p.y };
-              }
-            });
-          });
-        });
-        if (best) {
-          dx = r3(best.dx);
-          dy = r3(best.dy);
-        }
-      }
-      if (!drag.moved && (dx || dy)) {
-        pushUndo();
-        drag.moved = true;
-      }
-      if (!drag.moved) return;
-      r.pts = drag.orig.map(p => ({ x: r3(p.x + dx), y: r3(p.y + dy) }));
-      r.emitters = drag.oem.map(em => shiftEm(em, dx, dy));
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'em') {
-      const r = getRoom(drag.r);
-      const st = e.altKey ? 0.001 : Math.max(0.001, P.settings.snap);
-      const dx = r3(Math.round((wp.x - drag.start.x) / st) * st),
-        dy = r3(Math.round((wp.y - drag.start.y) / st) * st);
-      if (!drag.moved && (dx || dy)) {
-        pushUndo();
-        drag.moved = true;
-      }
-      if (!drag.moved) return;
-      const i = r.emitters.findIndex(x => x.id === drag.e);
-      if (i >= 0) r.emitters[i] = shiftEm(drag.orig, dx, dy);
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'op') {
-      const r = getRoom(drag.r),
-        ed = edge(r, drag.w),
-        b = bounds(r, drag.w),
-        o = r.walls[drag.w].segs[drag.s].openings.find(x => x.id === drag.o);
-      if (!o) return;
-      const st = e.altKey ? 0.001 : Math.max(0.001, P.settings.snap),
-        w = Math.min(o.w, b[drag.s + 1] - b[drag.s]);
-      let t = r3(Math.round(((wp.x - ed.a.x) * ed.ux + (wp.y - ed.a.y) * ed.uy - drag.grab) / st) * st);
-      t = r3(Math.max(b[drag.s], Math.min(b[drag.s + 1] - w, t)));
-      if (!drag.moved) {
-        if (Number.isFinite(o.at) && o.at === t) return;
-        pushUndo();
-        drag.moved = true;
-        freezeOpenings(r, drag.w, drag.s);
-      }
-      o.at = t;
-      syncLinkedAt(o, r, drag.w);
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'hp') {
-      const p = pipeSnap(wp, { alt: e.altKey });
-      if (P.hpPos.x === p.x && P.hpPos.y === p.y) return;
-      if (!drag.moved) {
-        pushUndo();
-        drag.moved = true;
-      }
-      P.hpPos = { floorId: P.hpPos.floorId, x: p.x, y: p.y };
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'riser') {
-      const rs = (P.risers || []).find(x => x.id === drag.q);
-      if (!rs) return;
-      // like a pipe point: onto radiator ends, the heat pump, pipes; not onto the points that move along with it
-      const own = new Set(drag.glued.map(g => g.pp.id + ':' + g.i)),
-        p = pipeSnap(wp, { alt: e.altKey, skipRiser: rs.id, skipPt: own });
-      if (rs.x === p.x && rs.y === p.y) return;
-      if (!drag.moved) {
-        pushUndo();
-        drag.moved = true;
-      }
-      rs.x = p.x;
-      rs.y = p.y;
-      drag.glued.forEach(g => (g.pp.pts[g.i] = { x: p.x, y: p.y }));
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'vvpt' || drag.type === 'pipept') {
-      const pts =
-        drag.type === 'vvpt'
-          ? ((getRoom(drag.r).emitters || []).find(x => x.id === drag.e) || {}).pts
-          : (P.pipes.find(x => x.id === drag.p) || {}).pts;
-      if (!pts) return;
-      const n = pts.length,
-        closed = drag.type === 'vvpt',
-        prev = closed ? pts[(drag.i - 1 + n) % n] : pts[drag.i - 1],
-        next = closed ? pts[(drag.i + 1) % n] : pts[drag.i + 1];
-      const p =
-        drag.type === 'pipept'
-          ? pipeSnap(wp, { prev, next, alt: e.altKey, skip: { p: drag.p, i: drag.i } })
-          : snapPoint(wp, { prev, next, alt: e.altKey });
-      const cur = pts[drag.i];
-      if (cur.x === p.x && cur.y === p.y) return;
-      if (!drag.moved) {
-        pushUndo();
-        drag.moved = true;
-      }
-      pts[drag.i] = { x: p.x, y: p.y };
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'emend') {
-      const r = getRoom(drag.r),
-        em = (r.emitters || []).find(x => x.id === drag.e);
-      if (!em) return;
-      const other = drag.end === 'a' ? em.b : em.a;
-      const p = snapPoint(wp, { prev: other, alt: e.altKey });
-      if (dist(p, other) < 0.2) return;
-      const cur = em[drag.end];
-      if (cur.x === p.x && cur.y === p.y) return;
-      if (!drag.moved) {
-        pushUndo();
-        drag.moved = true;
-      }
-      em[drag.end] = { x: p.x, y: p.y };
-      if (RAD_TYPES[em.rt]) {
-        em.rl = Math.round(emLen(em) * 1000);
-        syncRad(em);
-      }
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'emline') {
-      drag.p1 = snapPoint(wp, { prev: drag.p0, alt: e.altKey });
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'emrect') {
-      drag.p1 = snapPoint(wp, { alt: e.altKey });
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'cut') {
-      const r = getRoom(drag.r);
-      const w = r.walls[drag.w];
-      let t = splitT(r, drag.w, wp, e.altKey);
-      const lo = (drag.c > 0 ? w.cuts[drag.c - 1] : 0) + 0.02,
-        hi = (drag.c < w.cuts.length - 1 ? w.cuts[drag.c + 1] : edge(r, drag.w).L) - 0.02;
-      t = Math.max(lo, Math.min(hi, t));
-      if (t === w.cuts[drag.c]) return;
-      if (!drag.moved) {
-        pushUndo();
-        drag.moved = true;
-      }
-      w.cuts[drag.c] = r3(t);
-      sel = { t: 'seg', r: r.id, w: drag.w, s: drag.c };
-      renderCanvas();
-      return;
-    }
-    if (drag.type === 'rect') {
-      drag.p1 = snapPoint(wp, { alt: e.altKey });
-      renderCanvas();
-      return;
-    }
-  }
+  if (drag && Object.hasOwn(DRAG, drag.type) && DRAG[drag.type](e, wp)) return;
   if (tool === 'wall') {
     hover = pendSplit ? null : wallSnap(wp, { prev: drawPts[drawPts.length - 1], alt: e.altKey });
     renderCanvas();

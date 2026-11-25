@@ -53,6 +53,9 @@ jobs:
             sleep 20
           done
           command -v lftp
+      # Elk bestand gaat eerst onder een tijdelijke naam en wordt dan in één keer hernoemd (xfer:use-temp-file), zodat een
+      # bezoeker nooit een half geschreven script krijgt. index.html gaat als laatste: pas dan verwijst de pagina naar de
+      # nieuwe scripts, als die er al staan.
       - name: Uploaden
         if: env.FTP_SERVER != ''
         env:
@@ -69,6 +72,8 @@ jobs:
             set net:timeout 30;
             set net:max-retries 3;
             set net:reconnect-interval-base 5;
+            set xfer:use-temp-file yes;
             open --env-password -u \"$FTP_USERNAME\" \"$FTP_SERVER\";
-            mirror --reverse --verbose --parallel=3 -x '^\.git' -x '^\.prettierrc\.json$' -x '^tools/' -x '^docs/' -x '^node_modules/' . \"${FTP_DIR:-./}\"
+            mirror --reverse --verbose --parallel=3 -x '^\.git' -x '^\.prettierrc\.json$' -x '^tools/' -x '^docs/' -x '^node_modules/' -x '^index\.html$' . \"${FTP_DIR:-./}\";
+            put -O \"${FTP_DIR:-./}\" index.html
           "

@@ -7,15 +7,9 @@ header('X-Robots-Tag: noindex, nofollow');
 header('Cache-Control: no-store');
 header('Referrer-Policy: no-referrer');
 
-$cfgFile = null;
-foreach ([dirname(__DIR__, 2) . '/wpt-config.php', __DIR__ . '/config.php'] as $f) {
-  if (is_file($f)) {
-    $cfgFile = $f;
-    break;
-  }
-}
-$C = $cfgFile ? require $cfgFile : [];
-$to = is_array($C) ? trim((string) ($C['mail'] ?? '')) : '';
+require __DIR__ . '/load-config.php';
+$C = wpt_config() ?? [];
+$to = trim((string) ($C['mail'] ?? ''));
 
 if ($to === '' || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
   http_response_code(404);

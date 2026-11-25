@@ -17,16 +17,10 @@ function out(int $code, $body = null, string $type = 'application/json'): void
   exit();
 }
 
-$cfgFile = null;
-foreach ([dirname(__DIR__, 2) . '/wpt-config.php', __DIR__ . '/config.php'] as $f) {
-  if (is_file($f)) {
-    $cfgFile = $f;
-    break;
-  }
-}
-if (!$cfgFile) out(503, ['error' => 'niet ingesteld']);
-$C = require $cfgFile;
-$C += ['origins' => [], 'maxBytes' => 262144, 'perHour' => 30, 'days' => 400, 'salt' => ''];
+require __DIR__ . '/load-config.php';
+$C = wpt_config();
+if (!$C) out(503, ['error' => 'niet ingesteld']);
+$C += ['origins' => [], 'maxBytes' => 262144, 'perHour' => 30, 'perDay' => 2000, 'days' => 400, 'salt' => ''];
 
 // CORS: alleen de eigen sites
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -82,6 +76,9 @@ $who = substr(hash_hmac('sha256', $ip, (string) $C['salt']), 0, 16);
 $q = $db->prepare('SELECT COUNT(*) FROM wpt_share WHERE who = ? AND created > NOW() - INTERVAL 1 HOUR');
 $q->execute([$who]);
 if ((int) $q->fetchColumn() >= $C['perHour']) out(429, ['error' => 'te veel links, probeer het over een uur opnieuw']);
+// and for everyone together: a limit per day, so the database cannot be filled from many addresses at once
+$n = (int) $db->query('SELECT COUNT(*) FROM wpt_share WHERE created > NOW() - INTERVAL 1 DAY')->fetchColumn();
+if ($n >= $C['perDay']) out(429, ['error' => 'het maximum aantal links voor vandaag is bereikt, probeer het morgen opnieuw']);
 
 $ins = $db->prepare('INSERT INTO wpt_share (id, data, created, used, who) VALUES (?, ?, NOW(), NOW(), ?)');
 $id = null;

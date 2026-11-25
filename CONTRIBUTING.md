@@ -20,7 +20,7 @@ Lokaal bewaart de app projecten in de opslag van je browser, net als online. Een
 - `index.html`, `css/app.css` en de scripts in `js/`. Het zijn gewone scripts zonder modules of bundler: ze delen de globale scope en worden op volgorde geladen. Code die bij het laden meteen iets uitvoert, mag alleen functies uit eerdere bestanden gebruiken.
   - `js/analytics.js`: anonieme bezoekersstatistiek (GoatCounter). `js/data.js` laadt `data/*.json`; `js/core.js` bevat de toestand van de app, het voorbeeldproject en `normalizeProject` (migratie van opgeslagen projecten).
   - `js/geometry.js`, `js/calc.js`: geometrie, laagopbouw en het warmteverlies per ruimte.
-  - `js/render.js`, `js/interaction.js`, `js/underlay.js`: tekening (SVG, ook 2,5D), muis- en toetsenbordbediening en de onderlegger. `renderCanvas` zet de tekening samen uit losse delen (`canvasWalls`, `canvasPipes`, `canvasEmitters`, …), in de volgorde waarin ze over elkaar liggen.
+  - `js/render.js`, `js/interaction.js`, `js/underlay.js`: tekening (SVG, ook 2,5D), muis- en toetsenbordbediening en de onderlegger. `renderCanvas` zet de tekening samen uit losse delen (`canvasWalls`, `canvasPipes`, `canvasEmitters`, …), in de volgorde waarin ze over elkaar liggen. De 2,5D-weergave (`render3d`) werkt net zo, met `room3d`, `walls3d`, `roofs3d` en verder. De muis: `DOWN_TOOL` (indrukken per gereedschap), `DOWN_SELECT` (indrukken op iets in de tekening, per `data-k`) en `DRAG` (slepen, per soort).
   - `js/panel.js`, `js/views.js`: het paneel rechts met de tabbladen. Een veld met `data-f="em.p"` wordt afgehandeld door `FIELDS.em`, een knop met `data-act="addfloor"` door `ACTIONS.addfloor`; een nieuw veld of een nieuwe knop krijgt daar een eigen functie.
   - `js/emitters.js`, `js/sizing.js`, `js/hydraulics.js`, `js/schema.js`: afgifte, radiatoradvies en stooklijn, leidingnet en schema.
   - `js/heatpumps.js`, `js/annual.js`: warmtepompkeuze, verbeteradviezen, warm tapwater en jaarverbruik.
@@ -28,7 +28,7 @@ Lokaal bewaart de app projecten in de opslag van je browser, net als online. Een
 - Veiligheid: een project kan van iemand anders komen (deellink, bestand). `normalizeProject` haalt daarom aanhalingstekens en punthaken uit alle tekst behalve namen, en maakt van coördinaten getallen; namen toon je altijd met `esc()`. In `index.html` staat een Content-Security-Policy: alleen scripts van de site zelf (en GoatCounter), geen inline scripts of `onclick`-attributen. Laadt de app iets van een nieuw adres, pas die dan aan.
 - `data/*.json`: tabellen die je zonder programmeren kunt aanpassen. Elk bestand heeft een `toelichting`; het overzicht staat hieronder bij _Gegevens aanpassen_.
 - `docs/*.md` en `README.md`: de handleiding. Bij het uitrollen zet `tools/handleiding.mjs` ze om naar [warmtepomptekentafel.nl/handleiding](https://warmtepomptekentafel.nl/handleiding/), met een `sitemap.xml`.
-- `api/`: de PHP-scripts voor korte deellinks (`share.php`) en de doorstuurlink voor _Mail sturen_ (`mail.php`), met `schema.sql` voor de database. Wachtwoorden staan alleen op de server (zie `api/config.example.php`), nooit in de repo.
+- `api/`: de PHP-scripts voor korte deellinks (`share.php`) en de doorstuurlink voor _Mail sturen_ (`mail.php`); beide lezen hun instellingen via `load-config.php`. Met `schema.sql` voor de database. Wachtwoorden staan alleen op de server (zie `api/config.example.php`), nooit in de repo.
 - `.github/workflows/deploy.yml`: zet de site na elke push naar `main` op de hosting.
 
 ## Gegevens aanpassen
