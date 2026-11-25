@@ -371,6 +371,677 @@ function selSeg() {
   const r = selRoom();
   return r && sel.t === 'seg' && r.walls[sel.w] ? r.walls[sel.w].segs[sel.s] : null;
 }
+// Fields in the panel (data-f="room.name", "em.p", …): one function per first part of the name. It changes the project
+// and returns true when something changed (then applyField saves and redraws); false leaves everything as it was.
+const FIELDS = {
+  room({ f, parts, v, el, room }) {
+    let changed = false;
+    if (!room) return false;
+    const k = parts[1];
+    if (k === 'kind') {
+      room.kind = ['trap', 'vide'].includes(v) ? v : 'normaal';
+      if (room.kind !== 'normaal' && !spans(room)) {
+        const nf = P.floors[floorIdx(room.floorId) + 1];
+        if (nf) {
+          room.spanTo = nf.id;
+          room.height = r3(room.height * 2);
+        }
+      }
+      if (clipAbove(room)) {
+        toast('De vide is uitgeknipt uit de ruimtes op de verdieping(en) erboven.');
+        renderAll();
+      }
+      return true;
+    }
+    if (k === 'spanTo') {
+      const was = spans(room);
+      room.spanTo = v || null;
+      if (!spans(room)) room.spanTo = null;
+      else if (!was) {
+        const l = levelsOf(room);
+        room.height = r3(room.height * (l[1] - l[0] + 1));
+      }
+      if (clipAbove(room)) {
+        toast('De vide is uitgeknipt uit de ruimtes op de verdieping(en) erboven.');
+        renderAll();
+      }
+      return true;
+    }
+    if (k === 'stair') {
+      const st = (room.stair = stairOf(room)),
+        f2 = parts[2];
+      if (f2 === 'shape') {
+        if (!STAIR_SHAPES[v]) return false;
+        st.shape = v;
+      } else if (f2 === 'side') st.side = v === 'b' ? 'b' : 'a';
+      else if (f2 === 'edge') st.edge = Math.max(0, Math.min(room.pts.length - 1, parseInt(v, 10) || 0));
+      else if (f2 === 'w') {
+        const n = num(v);
+        if (n == null || n < 0.5 || n > 3) return false;
+        st.w = n;
+      }
+      return true;
+    }
+    if (k === 'name') {
+      room.name = v;
+      changed = true;
+    } else if (k === 'floorId') {
+      if (!P.floors.some(f => f.id === v) || v === room.floorId) return false;
+      room.floorId = v;
+      if (room.spanTo && floorIdx(room.spanTo) <= floorIdx(v)) room.spanTo = null;
+      setFloor(v, true);
+      markDirty();
+      renderAll();
+      toast(`${room.name} staat nu op ${P.floors[floorIdx(v)].name}.`, true);
+      return false;
+    } else if (k === 'heated') {
+      room.heated = el.checked;
+      changed = true;
+    } else if (k === 'go') {
+      room.go = el.checked;
+      changed = true;
+    } else if (k === 'roofFrom') {
+      room.roofFrom = v && getRoom(v) && v !== room.id ? v : '';
+      changed = true;
+    } else if (k === 'flowTo') {
+      room.flowTo = v && getRoom(v) && v !== room.id ? v : '';
+      changed = true;
+    } else {
+      const n = num(v);
+      if (n == null) return false;
+      if (k === 'height' && n <= 0) return false;
+      if ((k === 'sup' || k === 'ext') && n < 0) return false;
+      room[k] = n;
+      changed = true;
+    }
+    return changed;
+
+    return changed;
+  },
+  ri({ parts, v, room }) {
+    const it = room && (room.roof.items || []).find(x => x.id === parts[1]);
+    if (!it) return false;
+    const k = parts[2];
+    if (k === 'name' || k === 'cid' || k === 'cidW' || k === 'cidR' || k === 'wincid') it[k] = v;
+    else if (k === 'slope') it.slope = parseInt(v, 10) || 0;
+    else {
+      const n = num(v);
+      if (n == null || n < 0 || n > 100) return false;
+      if ((k === 'w' || k === 'h' || k === 'hf') && (n <= 0 || n > 30)) return false;
+      it[k] = n;
+    }
+    return true;
+
+    return false;
+  },
+  hp({ f, parts, v }) {
+    if (!P.hpPos || parts[1] !== 'floorId' || !P.floors.some(f => f.id === v)) return false;
+    P.hpPos = { ...P.hpPos, floorId: v };
+    setFloor(v, true);
+    markDirty();
+    renderAll();
+    toast(`De warmtepomp staat nu op ${P.floors[floorIdx(v)].name}.`, true);
+    return false;
+
+    return false;
+  },
+  pipe({ f, parts, v, el }) {
+    const pp = sel && sel.t === 'pipe' && P.pipes.find(x => x.id === sel.p);
+    if (!pp) return false;
+    const k = parts[1];
+    if (k === 'floorId') {
+      // to another floor: the drawing follows, so the pipe stays selected
+      if (!P.floors.some(f => f.id === v) || v === pp.floorId) return false;
+      pp.floorId = v;
+      setFloor(v, true);
+      markDirty();
+      renderAll();
+      toast(`${pp.name} staat nu op ${P.floors[floorIdx(v)].name}.`, true);
+      return false;
+    }
+    if (k === 'name') pp.name = v;
+    else if (k === 'hidden') {
+      if (el.checked) pp.hidden = true;
+      else delete pp.hidden;
+    } else if (k === 'mat') {
+      if (!PIPES[v]) return false;
+      pp.mat = v;
+      if (!PIPES[v].d[pp.dn]) pp.dn = v === 'pex' ? '26' : '22';
+    } else if (k === 'dn') {
+      if (!PIPES[pp.mat].d[v]) return false;
+      pp.dn = v;
+    } else if (k === 'extra') {
+      const n = num(v);
+      if (n == null || n < 0) return false;
+      pp.extra = n;
+    } else if (k === 'at') {
+      delete pp.at;
+      delete pp.z;
+      if (v === 'plafond' || v === 'invloer' || v === 'inplafond') pp.at = v;
+      if (v === 'invloer' || v === 'inplafond')
+        pp.hidden = true; // cast in: flow noise not audible
+      else if (v === 'hoogte') {
+        pp.at = 'hoogte';
+        pp.z = r3(pipeZ({ ...pp, at: 'plafond' }) / 2);
+      }
+      markDirty();
+      renderAll();
+      return false;
+    } else if (k === 'z') {
+      const n = num(v);
+      if (n == null || n < 0 || n > 20) return false;
+      pp.z = n;
+    }
+    lastPipeSpec = { mat: pp.mat, dn: pp.dn };
+    return true;
+
+    return false;
+  },
+  riser({ parts, v, el }) {
+    const rs = sel && sel.t === 'riser' && (P.risers || []).find(x => x.id === sel.q);
+    if (!rs) return false;
+    const k = parts[1];
+    if (k === 'from' || k === 'to') {
+      // the other end stays; a riser always spans at least two floors
+      const i = floorIdx(v),
+        o = floorIdx(k === 'from' ? rs.to : rs.from);
+      if (i < 0 || i === o) {
+        toast('Een stijgleiding loopt over minstens twee verdiepingen.');
+        renderPanel();
+        return false;
+      }
+      const ids = [P.floors[Math.min(i, o)].id, P.floors[Math.max(i, o)].id];
+      rs.from = ids[0];
+      rs.to = ids[1];
+      if (floorIdx(curFloor) < Math.min(i, o) || floorIdx(curFloor) > Math.max(i, o)) setFloor(v, true);
+      markDirty();
+      renderAll();
+      return false;
+    }
+    if (k === 'name') rs.name = v;
+    else if (k === 'hidden') {
+      if (el.checked) rs.hidden = true;
+      else delete rs.hidden;
+    } else if (k === 'mat') {
+      if (!PIPES[v]) return false;
+      rs.mat = v;
+      if (!PIPES[v].d[rs.dn]) rs.dn = v === 'pex' ? '26' : '22';
+    } else if (k === 'dn') {
+      if (!PIPES[rs.mat].d[v]) return false;
+      rs.dn = v;
+    }
+    return true;
+
+    return false;
+  },
+  seg({ parts, v, final, room }) {
+    const sg = selSeg();
+    if (!sg) return false;
+    const wasOpen = sg.adj === 'open';
+    if (parts[1] === 'adjT') {
+      const n = num(v);
+      if (n == null) return false;
+      sg.adjT = n;
+    } else sg[parts[1]] = v;
+    if (parts[1] === 'adj' && (v === 'open' || wasOpen)) {
+      // an open connection is the same on both sides
+      sg.adj = 'open';
+      const ps = isolatePartners(room, sel.w, sel.s);
+      sg.adj = v;
+      // only on the same floor: a vide running through several floors is open or closed per floor, decided by the room
+      // next to it there (the landing upstairs can be open while the hall below has a wall)
+      ps.filter(p => p.o.floorId === room.floorId).forEach(p => {
+        const x = p.o.walls[p.k].segs[p.jj];
+        if (v === 'open') x.adj = 'open';
+        else if (x.adj === 'open') x.adj = 'auto';
+      });
+    }
+    if (parts[1] === 'cid' && final)
+      isolatePartners(room, sel.w, sel.s).forEach(p => (p.o.walls[p.k].segs[p.jj].cid = v));
+    return true;
+
+    return false;
+  },
+  cut({ parts, v, final, room }) {
+    if (!final) return false;
+    const r = room;
+    const w = r.walls[sel.w];
+    const ci = +parts[1];
+    let n = num(v);
+    if (n == null) return false;
+    const L = edge(r, sel.w).L;
+    const lo = (ci > 0 ? w.cuts[ci - 1] : 0) + 0.02,
+      hi = (ci < w.cuts.length - 1 ? w.cuts[ci + 1] : L) - 0.02;
+    n = Math.max(lo, Math.min(hi, n));
+    w.cuts[ci] = r3(n);
+    return true;
+
+    return false;
+  },
+  op({ parts, v, final, room }) {
+    const sg = selSeg();
+    const o = sg && sg.openings.find(o => o.id === parts[1]);
+    if (!o) return false;
+    const k = parts[2];
+    if (k === 'name' || k === 'cid') o[k] = v;
+    else {
+      const n = num(v);
+      if (n == null || n < 0) return false;
+      o[k] = n;
+    }
+    if (k === 'at') {
+      if (!final) return false;
+      const b = bounds(room, sel.w);
+      freezeOpenings(room, sel.w, sel.s);
+      o.at = r3(Math.max(b[sel.s], Math.min(b[sel.s + 1] - Math.min(o.w, b[sel.s + 1] - b[sel.s]), o.at)));
+      syncLinkedAt(o, room, sel.w);
+      return true;
+    }
+    linkedOpenings(o.lk, x => {
+      x[k] = o[k];
+    });
+    if (k === 'w') syncLinkedAt(o, room, sel.w);
+    return true;
+
+    return false;
+  },
+  roof({ f, parts, v, el, final, room }) {
+    let changed = false;
+    if (!room) return false;
+    const r = room.roof,
+      k = parts[1];
+    if (k === 'pitch' || k === 'knee' || k === 'kneeH') {
+      const n = num(v);
+      if (n == null || n < 0) return false;
+      if (k === 'pitch' && (n < 1 || n > 80)) return false;
+      if (k === 'kneeH' && (n < 0.2 || n > 3)) return false;
+      r[k] = n;
+      return true;
+    }
+    if (k === 'edge') {
+      r.edge = Math.max(0, Math.min(room.pts.length - 1, parseInt(v, 10) || 0));
+      return true;
+    }
+    if (k === 'type') {
+      if (r.type === 'plat' && v !== 'plat') r.flat = false;
+      r.type = v;
+      return true;
+    } // a new sloped roof starts open to the ridge
+    if (k === 'low') {
+      r[k] = v;
+      return true;
+    }
+    if (k === 'flat') {
+      r.flat = el.checked;
+      return true;
+    }
+    if (k === 'kneeOn') {
+      r.kneeOn = el.checked;
+      return true;
+    }
+
+    // the rest works the same as floor
+    return FIELDS['floor']({ f, parts, v, el, final, room });
+  },
+  floor({ parts, v, room }) {
+    if (!room) return false;
+    const s = room[parts[0]];
+    if (parts[1] === 't') {
+      const n = num(v);
+      if (n == null) return false;
+      s.t = n;
+    } else s[parts[1]] = v;
+    return true;
+
+    return false;
+  },
+  con({ parts, v, el }) {
+    const c = conById(parts[1]);
+    if (!c) return false;
+    const k = parts[2];
+    if (k === 'name' || k === 'kind' || k === 'color') c[k] = v;
+    else if (k === 'inner') c.inner = el.checked;
+    else if (k === 'mode') c.mode = v === 'lagen' ? 'lagen' : 'U';
+    else if (k === 'U') {
+      if (c.mode === 'lagen') return false;
+      const n = num(v);
+      if (n == null || n <= 0) return false;
+      c.U = n;
+    } else if (k === 'Rc') {
+      if (c.mode === 'lagen') return false;
+      const n = num(v);
+      if (n == null || n < 0) return false;
+      c.U = Math.round(10000 / (RS[c.kind][0] + n + rseOf(c))) / 10000;
+    }
+    syncU(c);
+    return true;
+
+    return false;
+  },
+  lay({ parts, v }) {
+    const c = conById(parts[1]);
+    const l = c && c.layers.find(x => x.id === parts[2]);
+    if (!l) return false;
+    const k = parts[3];
+    if (k === 'mid' || k === 'vent') l[k] = v;
+    else if (k === 'mixmid') {
+      if (l.mix) l.mix.mid = v;
+    } else {
+      const n = num(v);
+      if (n == null || n < 0) return false;
+      if (k === 'd') l.d = n;
+      else if (k === 'mixpct') {
+        if (n > 100 || !l.mix) return false;
+        l.mix.pct = n;
+      }
+    }
+    syncU(c);
+    return true;
+
+    return false;
+  },
+  mat({ parts, v }) {
+    const m = matById(parts[1]);
+    if (!m) return false;
+    const k = parts[2];
+    if (k === 'name' || k === 'color') m[k] = v;
+    else if (k === 'type') m.type = ['lambda', 'R', 'spouw'].includes(v) ? v : 'lambda';
+    else {
+      const n = num(v);
+      if (n == null || n < 0) return false;
+      if (k === 'lambda' && n === 0) return false;
+      m[k] = n;
+    }
+    P.constructions.forEach(c => syncU(c));
+    return true;
+
+    return false;
+  },
+  set({ parts, v, el }) {
+    const k = parts[1];
+    if (k === 'trv') {
+      if (!TRV.kranen[v]) return false;
+      P.settings.trv = v;
+      return true;
+    }
+    if (k === 'dhwOn') {
+      P.settings.dhwOn = el.checked;
+      return true;
+    }
+    if (k === 'postcode') {
+      P.settings.postcode = String(v).replace(/\s/g, '').toUpperCase().slice(0, 6);
+      return true;
+    }
+    if (k === 'station') {
+      P.settings.station = CLIMATE.stations[v] ? v : '';
+      return true;
+    }
+    if (k === 'gasNet') {
+      P.settings.gasNet = GRID.gas[v] ? v : '';
+      if (GRID.gas[v]) P.settings.gasFix = +GRID.gas[v].perJaar || 0;
+      return true;
+    }
+    if (k === 'curveN') {
+      // how many points: a new one starts 5 degrees above the one before it
+      const n = Math.round(num(v));
+      if (!(n >= 2 && n <= 10)) return false;
+      const cp = (P.settings.curvePts || []).slice(0, n);
+      while (cp.length < n) {
+        const last = [...cp].reverse().find(t => t != null);
+        cp.push(last == null ? P.settings.te : Math.min(25, last + 5));
+      }
+      P.settings.curvePts = cp;
+      return true;
+    }
+    if (k === 'curvePt') {
+      // one of the points of the user's own heating curve; empty leaves it out
+      const i = +parts[2],
+        cp = (P.settings.curvePts || []).slice();
+      if (!(i >= 0 && i < cp.length)) return false;
+      const n = String(v).trim() === '' ? null : num(v);
+      if ((n == null && String(v).trim() !== '') || (n != null && (n < -30 || n > 25))) return false;
+      cp[i] = n;
+      P.settings.curvePts = cp;
+      return true;
+    }
+    if ((k === 'pEl' || k === 'pGas' || k === 'dhwHours') && String(v).trim() === '') {
+      P.settings[k] = null; // empty: back to the calculated or average value
+      return true;
+    }
+    if (k === 'ventSys' || k === 'infMode') {
+      P.settings[k] = v;
+      return true;
+    }
+    const n = num(v);
+    if (n == null) return false;
+    if ((k === 'eta' && (n < 0 || n > 1)) || ((k === 'qv10' || k === 'fInf') && n < 0)) return false;
+    if ((k === 'snap' || k === 'height') && n <= 0) return false;
+    if (k === 'maxWall' && n < 0) return false;
+    // temperatures that only make sense in a small range (a typo like 225 instead of 22,5 turns every result upside down)
+    const RANGE = {
+      tRet: [5, 35],
+      te: [-30, 15],
+      tGround: [-10, 25],
+      tUnheated: [-20, 30],
+      tNeighbour: [0, 30],
+      twSup: [20, 90],
+      twRet: [15, 85],
+      tMax: [30, 80],
+      flow: [0, 5000],
+      stook: [5, 22],
+      pEl: [0, 5],
+      pGas: [0, 10],
+      gasFix: [0, 2000],
+      etaGas: [0.5, 1.1],
+      dhwPers: [0, 20],
+      dhwKwh: [0, 3000],
+      dhwHours: [0, 8],
+      dhwVol: [0, 2000],
+      dhwTemp: [40, 70],
+      dhwLossW: [0, 300],
+      etaTap: [0.3, 1.1]
+    };
+    if (RANGE[k] && (n < RANGE[k][0] || n > RANGE[k][1])) {
+      toast(
+        `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${{ flow: 'l/h', pEl: '€/kWh', pGas: '€/m³', gasFix: '€', etaGas: '', dhwPers: 'personen', dhwKwh: 'kWh', dhwHours: 'uur', dhwVol: 'liter', dhwLossW: 'W', etaTap: '' }[k] ?? '°C'} en is niet overgenomen.`
+      );
+      return false;
+    }
+    P.settings[k] = n;
+    // an own amount: the network operator choice no longer applies
+    if (k === 'gasFix' && GRID.gas[P.settings.gasNet] && Math.abs(n - GRID.gas[P.settings.gasNet].perJaar) > 0.005)
+      P.settings.gasNet = '';
+    return true;
+
+    return false;
+  },
+  fit({ parts, v }) {
+    const f = (P.fittings || []).find(x => x.id === parts[1]);
+    if (!f) return false;
+    const k = parts[2];
+    if (k === 'type') {
+      if (!FITTINGS[v]) return false;
+      f.type = v;
+      f.kv = FITTINGS[v].kv; // a new type starts from its typical kv
+    } else {
+      const n = num(v);
+      if (n == null || !(n > 0)) return false;
+      if (k === 'n') f.n = Math.max(1, Math.round(n));
+      else if (k === 'kv') f.kv = n;
+      else return false;
+    }
+    return true;
+
+    return false;
+  },
+  proj({ v }) {
+    P.name = v;
+    return true;
+
+    return false;
+  },
+  tr({ parts, v }) {
+    const t = (P.transfers || []).find(x => x.id === parts[1]);
+    if (!t) return false;
+    const k = parts[2];
+    if (k === 'from' || k === 'to') {
+      if (!getRoom(v)) return false;
+      t[k] = v;
+    } else {
+      const n = num(v);
+      if (n == null || n < 0) return false;
+      t.q = n;
+    }
+    return true;
+
+    return false;
+  },
+  advsel({ parts, el }) {
+    if (el.checked) P.advSel[parts[1]] = true;
+    else delete P.advSel[parts[1]];
+    return true;
+
+    return false;
+  },
+  adv({ parts, v }) {
+    const r = P.settings.advice[parts[1]];
+    if (!r) return false;
+    const n = num(v);
+    if (n == null || n <= 0) return false;
+    r[parts[2]] = n;
+    return true;
+
+    return false;
+  },
+  em({ f, parts, v, el, final }) {
+    const em = selEm();
+    if (!em) return false;
+    const k = parts[1];
+    if (k === 'name') em.name = v;
+    else if (k === 'boost') em.boost = el.checked;
+    else if (k === 'boostMode') {
+      if (!['pct', 'fans', 'fab'].includes(v)) return false;
+      em.boostMode = v;
+      // built-in fans: the maker's exponent is much lower than for a passive convector
+      if (v === 'fab' && em.n === EM_N[em.kind]) em.n = 1.1;
+      else if (v !== 'fab' && em.n === 1.1) em.n = EM_N[em.kind];
+    } else if (k === 'fan') {
+      const f = em.fan;
+      if (parts[2] === 'model') {
+        if (!FANS.modellen[v]) return false;
+        f.model = v;
+      } else {
+        const n = num(v);
+        if (n == null || n < 0) return false;
+        if (parts[2] === 'count') {
+          if (n > 200) return false;
+          f.count = Math.round(n);
+        } else if (parts[2] === 'pct') {
+          if (n > 100) return false;
+          f.pct = n;
+        } else if (parts[2] === 'm3h') {
+          if (n <= 0 || n > 2000) return false;
+          f.m3h = n;
+        } else return false;
+      }
+    } else if (k === 'trv') {
+      if (v && !TRV.kranen[v]) return false;
+      em.trv = v;
+    } else if (k === 'kind') {
+      if (!EM_KINDS[v] || v === 'vv') return false;
+      em.kind = v;
+      em.n = EM_N[v];
+      syncRad(em);
+    } else if (k === 'rt') {
+      if (v && !RAD_TYPES[v]) return false;
+      em.rt = v;
+      if (v) em.rl = Math.max(100, Math.round(emLen(em) * 1000));
+      syncRad(em);
+    } else if (k === 'loops') {
+      const n = parseInt(v, 10);
+      if (![1, 2, 3, 4].includes(n)) return false;
+      em.loops = n;
+    } else if (k === 'len') {
+      if (!final) return false;
+      const n = num(v);
+      if (n == null || n < 200 || n > 6000) return false;
+      setEmLen(em, n);
+      if (RAD_TYPES[em.rt]) em.rl = n;
+      syncRad(em);
+    } else if (k === 'rh' || k === 'rl') {
+      const n = num(v);
+      const max = k === 'rh' ? 3000 : 6000; // tall vertical radiators go up to 2 m and more
+      if (n == null || n < 100 || n > max) {
+        if (final && n != null) toast(`${k === 'rh' ? 'Hoogte' : 'Lengte'} moet tussen 100 en ${fmtW(max)} mm liggen.`);
+        return false;
+      }
+      em[k] = n;
+      if (k === 'rl' && final && n >= 200) setEmLen(em, n);
+      syncRad(em);
+    } else if (k === 'cover') {
+      if (!VV_COVER[v]) return false;
+      em.cover = v;
+    } else if (k === 'spacing') em.spacing = [10, 15, 20].includes(+v) ? +v : 15;
+    else if (k === 'pipe') {
+      if (parts[2] === 'mat') {
+        if (!PIPES[v]) return false;
+        em.pipe.mat = v;
+        if (!PIPES[v].d[em.pipe.dn]) em.pipe.dn = v === 'pex' ? '16' : '15';
+      } else {
+        if (!PIPES[em.pipe.mat].d[v]) return false;
+        em.pipe.dn = v;
+      }
+    } else {
+      const n = num(v);
+      if (n == null || n < 0) return false;
+      if (k === 'n' && (n < 0.8 || n > 2)) return false;
+      if (k === 'boostPct' && n > 300) return false;
+      em[k] = n;
+    }
+    return true;
+
+    return false;
+  },
+  vr({ parts, v }) {
+    const r = getRoom(parts[1]);
+    if (!r) return false;
+    if (parts[2] === 'flowTo') {
+      r.flowTo = v && getRoom(v) && v !== r.id ? v : '';
+      return true;
+    }
+    const n = num(v);
+    if (n == null || n < 0) return false;
+    r[parts[2]] = n;
+    return true;
+
+    return false;
+  },
+  bg({ parts, v }) {
+    const bg = curBg(),
+      n = num(v);
+    if (!bg || n == null) return false;
+    if (parts[1] === 'rot') {
+      if (Math.abs(n) > 180) return false;
+      bg.rot = Math.round(n * 100) / 100; // around the centre of the image
+      if (!bg.rot) delete bg.rot;
+      return true;
+    }
+    bg.op = Math.min(1, Math.max(0.1, n / 100));
+    return true;
+
+    return false;
+  },
+  fl({ parts, v }) {
+    const f = P.floors.find(x => x.id === parts[1]);
+    if (!f) return false;
+    f.name = v;
+    renderFloorbar();
+    return true;
+
+    return false;
+  }
+};
+FIELDS['ceil'] = FIELDS['floor'];
 function applyField(el, final) {
   const f = el.dataset.f;
   if (!f) return;
@@ -391,669 +1062,7 @@ function applyField(el, final) {
     pushUndo();
     undoArmed = false;
   }
-  switch (parts[0]) {
-    case 'room': {
-      if (!room) return;
-      const k = parts[1];
-      if (k === 'kind') {
-        room.kind = ['trap', 'vide'].includes(v) ? v : 'normaal';
-        if (room.kind !== 'normaal' && !spans(room)) {
-          const nf = P.floors[floorIdx(room.floorId) + 1];
-          if (nf) {
-            room.spanTo = nf.id;
-            room.height = r3(room.height * 2);
-          }
-        }
-        if (clipAbove(room)) {
-          toast('De vide is uitgeknipt uit de ruimtes op de verdieping(en) erboven.');
-          renderAll();
-        }
-        changed = true;
-        break;
-      }
-      if (k === 'spanTo') {
-        const was = spans(room);
-        room.spanTo = v || null;
-        if (!spans(room)) room.spanTo = null;
-        else if (!was) {
-          const l = levelsOf(room);
-          room.height = r3(room.height * (l[1] - l[0] + 1));
-        }
-        if (clipAbove(room)) {
-          toast('De vide is uitgeknipt uit de ruimtes op de verdieping(en) erboven.');
-          renderAll();
-        }
-        changed = true;
-        break;
-      }
-      if (k === 'stair') {
-        const st = (room.stair = stairOf(room)),
-          f2 = parts[2];
-        if (f2 === 'shape') {
-          if (!STAIR_SHAPES[v]) return;
-          st.shape = v;
-        } else if (f2 === 'side') st.side = v === 'b' ? 'b' : 'a';
-        else if (f2 === 'edge') st.edge = Math.max(0, Math.min(room.pts.length - 1, parseInt(v, 10) || 0));
-        else if (f2 === 'w') {
-          const n = num(v);
-          if (n == null || n < 0.5 || n > 3) return;
-          st.w = n;
-        }
-        changed = true;
-        break;
-      }
-      if (k === 'name') {
-        room.name = v;
-        changed = true;
-      } else if (k === 'floorId') {
-        if (!P.floors.some(f => f.id === v) || v === room.floorId) return;
-        room.floorId = v;
-        if (room.spanTo && floorIdx(room.spanTo) <= floorIdx(v)) room.spanTo = null;
-        setFloor(v, true);
-        markDirty();
-        renderAll();
-        toast(`${room.name} staat nu op ${P.floors[floorIdx(v)].name}.`, true);
-        return;
-      } else if (k === 'heated') {
-        room.heated = el.checked;
-        changed = true;
-      } else if (k === 'go') {
-        room.go = el.checked;
-        changed = true;
-      } else if (k === 'roofFrom') {
-        room.roofFrom = v && getRoom(v) && v !== room.id ? v : '';
-        changed = true;
-      } else if (k === 'flowTo') {
-        room.flowTo = v && getRoom(v) && v !== room.id ? v : '';
-        changed = true;
-      } else {
-        const n = num(v);
-        if (n == null) return;
-        if (k === 'height' && n <= 0) return;
-        if ((k === 'sup' || k === 'ext') && n < 0) return;
-        room[k] = n;
-        changed = true;
-      }
-      break;
-    }
-    case 'ri': {
-      const it = room && (room.roof.items || []).find(x => x.id === parts[1]);
-      if (!it) return;
-      const k = parts[2];
-      if (k === 'name' || k === 'cid' || k === 'cidW' || k === 'cidR' || k === 'wincid') it[k] = v;
-      else if (k === 'slope') it.slope = parseInt(v, 10) || 0;
-      else {
-        const n = num(v);
-        if (n == null || n < 0 || n > 100) return;
-        if ((k === 'w' || k === 'h' || k === 'hf') && (n <= 0 || n > 30)) return;
-        it[k] = n;
-      }
-      changed = true;
-      break;
-    }
-    case 'hp': {
-      if (!P.hpPos || parts[1] !== 'floorId' || !P.floors.some(f => f.id === v)) return;
-      P.hpPos = { ...P.hpPos, floorId: v };
-      setFloor(v, true);
-      markDirty();
-      renderAll();
-      toast(`De warmtepomp staat nu op ${P.floors[floorIdx(v)].name}.`, true);
-      return;
-    }
-    case 'pipe': {
-      const pp = sel && sel.t === 'pipe' && P.pipes.find(x => x.id === sel.p);
-      if (!pp) return;
-      const k = parts[1];
-      if (k === 'floorId') {
-        // to another floor: the drawing follows, so the pipe stays selected
-        if (!P.floors.some(f => f.id === v) || v === pp.floorId) return;
-        pp.floorId = v;
-        setFloor(v, true);
-        markDirty();
-        renderAll();
-        toast(`${pp.name} staat nu op ${P.floors[floorIdx(v)].name}.`, true);
-        return;
-      }
-      if (k === 'name') pp.name = v;
-      else if (k === 'hidden') {
-        if (el.checked) pp.hidden = true;
-        else delete pp.hidden;
-      } else if (k === 'mat') {
-        if (!PIPES[v]) return;
-        pp.mat = v;
-        if (!PIPES[v].d[pp.dn]) pp.dn = v === 'pex' ? '26' : '22';
-      } else if (k === 'dn') {
-        if (!PIPES[pp.mat].d[v]) return;
-        pp.dn = v;
-      } else if (k === 'extra') {
-        const n = num(v);
-        if (n == null || n < 0) return;
-        pp.extra = n;
-      } else if (k === 'at') {
-        delete pp.at;
-        delete pp.z;
-        if (v === 'plafond' || v === 'invloer' || v === 'inplafond') pp.at = v;
-        if (v === 'invloer' || v === 'inplafond')
-          pp.hidden = true; // cast in: flow noise not audible
-        else if (v === 'hoogte') {
-          pp.at = 'hoogte';
-          pp.z = r3(pipeZ({ ...pp, at: 'plafond' }) / 2);
-        }
-        markDirty();
-        renderAll();
-        return;
-      } else if (k === 'z') {
-        const n = num(v);
-        if (n == null || n < 0 || n > 20) return;
-        pp.z = n;
-      }
-      lastPipeSpec = { mat: pp.mat, dn: pp.dn };
-      changed = true;
-      break;
-    }
-    case 'riser': {
-      const rs = sel && sel.t === 'riser' && (P.risers || []).find(x => x.id === sel.q);
-      if (!rs) return;
-      const k = parts[1];
-      if (k === 'from' || k === 'to') {
-        // the other end stays; a riser always spans at least two floors
-        const i = floorIdx(v),
-          o = floorIdx(k === 'from' ? rs.to : rs.from);
-        if (i < 0 || i === o) {
-          toast('Een stijgleiding loopt over minstens twee verdiepingen.');
-          renderPanel();
-          return;
-        }
-        const ids = [P.floors[Math.min(i, o)].id, P.floors[Math.max(i, o)].id];
-        rs.from = ids[0];
-        rs.to = ids[1];
-        if (floorIdx(curFloor) < Math.min(i, o) || floorIdx(curFloor) > Math.max(i, o)) setFloor(v, true);
-        markDirty();
-        renderAll();
-        return;
-      }
-      if (k === 'name') rs.name = v;
-      else if (k === 'hidden') {
-        if (el.checked) rs.hidden = true;
-        else delete rs.hidden;
-      } else if (k === 'mat') {
-        if (!PIPES[v]) return;
-        rs.mat = v;
-        if (!PIPES[v].d[rs.dn]) rs.dn = v === 'pex' ? '26' : '22';
-      } else if (k === 'dn') {
-        if (!PIPES[rs.mat].d[v]) return;
-        rs.dn = v;
-      }
-      changed = true;
-      break;
-    }
-    case 'seg': {
-      const sg = selSeg();
-      if (!sg) return;
-      const wasOpen = sg.adj === 'open';
-      if (parts[1] === 'adjT') {
-        const n = num(v);
-        if (n == null) return;
-        sg.adjT = n;
-      } else sg[parts[1]] = v;
-      if (parts[1] === 'adj' && (v === 'open' || wasOpen)) {
-        // an open connection is the same on both sides
-        sg.adj = 'open';
-        const ps = isolatePartners(room, sel.w, sel.s);
-        sg.adj = v;
-        // only on the same floor: a vide running through several floors is open or closed per floor, decided by the room
-        // next to it there (the landing upstairs can be open while the hall below has a wall)
-        ps.filter(p => p.o.floorId === room.floorId).forEach(p => {
-          const x = p.o.walls[p.k].segs[p.jj];
-          if (v === 'open') x.adj = 'open';
-          else if (x.adj === 'open') x.adj = 'auto';
-        });
-      }
-      if (parts[1] === 'cid' && final)
-        isolatePartners(room, sel.w, sel.s).forEach(p => (p.o.walls[p.k].segs[p.jj].cid = v));
-      changed = true;
-      break;
-    }
-    case 'cut': {
-      if (!final) return;
-      const r = room;
-      const w = r.walls[sel.w];
-      const ci = +parts[1];
-      let n = num(v);
-      if (n == null) return;
-      const L = edge(r, sel.w).L;
-      const lo = (ci > 0 ? w.cuts[ci - 1] : 0) + 0.02,
-        hi = (ci < w.cuts.length - 1 ? w.cuts[ci + 1] : L) - 0.02;
-      n = Math.max(lo, Math.min(hi, n));
-      w.cuts[ci] = r3(n);
-      changed = true;
-      break;
-    }
-    case 'op': {
-      const sg = selSeg();
-      const o = sg && sg.openings.find(o => o.id === parts[1]);
-      if (!o) return;
-      const k = parts[2];
-      if (k === 'name' || k === 'cid') o[k] = v;
-      else {
-        const n = num(v);
-        if (n == null || n < 0) return;
-        o[k] = n;
-      }
-      if (k === 'at') {
-        if (!final) return;
-        const b = bounds(room, sel.w);
-        freezeOpenings(room, sel.w, sel.s);
-        o.at = r3(Math.max(b[sel.s], Math.min(b[sel.s + 1] - Math.min(o.w, b[sel.s + 1] - b[sel.s]), o.at)));
-        syncLinkedAt(o, room, sel.w);
-        changed = true;
-        break;
-      }
-      linkedOpenings(o.lk, x => {
-        x[k] = o[k];
-      });
-      if (k === 'w') syncLinkedAt(o, room, sel.w);
-      changed = true;
-      break;
-    }
-    case 'roof': {
-      if (!room) return;
-      const r = room.roof,
-        k = parts[1];
-      if (k === 'pitch' || k === 'knee' || k === 'kneeH') {
-        const n = num(v);
-        if (n == null || n < 0) return;
-        if (k === 'pitch' && (n < 1 || n > 80)) return;
-        if (k === 'kneeH' && (n < 0.2 || n > 3)) return;
-        r[k] = n;
-        changed = true;
-        break;
-      }
-      if (k === 'edge') {
-        r.edge = Math.max(0, Math.min(room.pts.length - 1, parseInt(v, 10) || 0));
-        changed = true;
-        break;
-      }
-      if (k === 'type') {
-        if (r.type === 'plat' && v !== 'plat') r.flat = false;
-        r.type = v;
-        changed = true;
-        break;
-      } // a new sloped roof starts open to the ridge
-      if (k === 'low') {
-        r[k] = v;
-        changed = true;
-        break;
-      }
-      if (k === 'flat') {
-        r.flat = el.checked;
-        changed = true;
-        break;
-      }
-      if (k === 'kneeOn') {
-        r.kneeOn = el.checked;
-        changed = true;
-        break;
-      }
-    }
-    // falls through for cid / adj / t, which work the same as floor and ceiling
-    case 'floor':
-    case 'ceil': {
-      if (!room) return;
-      const s = room[parts[0]];
-      if (parts[1] === 't') {
-        const n = num(v);
-        if (n == null) return;
-        s.t = n;
-      } else s[parts[1]] = v;
-      changed = true;
-      break;
-    }
-    case 'con': {
-      const c = conById(parts[1]);
-      if (!c) return;
-      const k = parts[2];
-      if (k === 'name' || k === 'kind' || k === 'color') c[k] = v;
-      else if (k === 'inner') c.inner = el.checked;
-      else if (k === 'mode') c.mode = v === 'lagen' ? 'lagen' : 'U';
-      else if (k === 'U') {
-        if (c.mode === 'lagen') return;
-        const n = num(v);
-        if (n == null || n <= 0) return;
-        c.U = n;
-      } else if (k === 'Rc') {
-        if (c.mode === 'lagen') return;
-        const n = num(v);
-        if (n == null || n < 0) return;
-        c.U = Math.round(10000 / (RS[c.kind][0] + n + rseOf(c))) / 10000;
-      }
-      syncU(c);
-      changed = true;
-      break;
-    }
-    case 'lay': {
-      const c = conById(parts[1]);
-      const l = c && c.layers.find(x => x.id === parts[2]);
-      if (!l) return;
-      const k = parts[3];
-      if (k === 'mid' || k === 'vent') l[k] = v;
-      else if (k === 'mixmid') {
-        if (l.mix) l.mix.mid = v;
-      } else {
-        const n = num(v);
-        if (n == null || n < 0) return;
-        if (k === 'd') l.d = n;
-        else if (k === 'mixpct') {
-          if (n > 100 || !l.mix) return;
-          l.mix.pct = n;
-        }
-      }
-      syncU(c);
-      changed = true;
-      break;
-    }
-    case 'mat': {
-      const m = matById(parts[1]);
-      if (!m) return;
-      const k = parts[2];
-      if (k === 'name' || k === 'color') m[k] = v;
-      else if (k === 'type') m.type = ['lambda', 'R', 'spouw'].includes(v) ? v : 'lambda';
-      else {
-        const n = num(v);
-        if (n == null || n < 0) return;
-        if (k === 'lambda' && n === 0) return;
-        m[k] = n;
-      }
-      P.constructions.forEach(c => syncU(c));
-      changed = true;
-      break;
-    }
-    case 'set': {
-      const k = parts[1];
-      if (k === 'trv') {
-        if (!TRV.kranen[v]) return;
-        P.settings.trv = v;
-        changed = true;
-        break;
-      }
-      if (k === 'dhwOn') {
-        P.settings.dhwOn = el.checked;
-        changed = true;
-        break;
-      }
-      if (k === 'postcode') {
-        P.settings.postcode = String(v).replace(/\s/g, '').toUpperCase().slice(0, 6);
-        changed = true;
-        break;
-      }
-      if (k === 'station') {
-        P.settings.station = CLIMATE.stations[v] ? v : '';
-        changed = true;
-        break;
-      }
-      if (k === 'gasNet') {
-        P.settings.gasNet = GRID.gas[v] ? v : '';
-        if (GRID.gas[v]) P.settings.gasFix = +GRID.gas[v].perJaar || 0;
-        changed = true;
-        break;
-      }
-      if (k === 'curveN') {
-        // how many points: a new one starts 5 degrees above the one before it
-        const n = Math.round(num(v));
-        if (!(n >= 2 && n <= 10)) return;
-        const cp = (P.settings.curvePts || []).slice(0, n);
-        while (cp.length < n) {
-          const last = [...cp].reverse().find(t => t != null);
-          cp.push(last == null ? P.settings.te : Math.min(25, last + 5));
-        }
-        P.settings.curvePts = cp;
-        changed = true;
-        break;
-      }
-      if (k === 'curvePt') {
-        // one of the points of the user's own heating curve; empty leaves it out
-        const i = +parts[2],
-          cp = (P.settings.curvePts || []).slice();
-        if (!(i >= 0 && i < cp.length)) return;
-        const n = String(v).trim() === '' ? null : num(v);
-        if ((n == null && String(v).trim() !== '') || (n != null && (n < -30 || n > 25))) return;
-        cp[i] = n;
-        P.settings.curvePts = cp;
-        changed = true;
-        break;
-      }
-      if ((k === 'pEl' || k === 'pGas' || k === 'dhwHours') && String(v).trim() === '') {
-        P.settings[k] = null; // empty: back to the calculated or average value
-        changed = true;
-        break;
-      }
-      if (k === 'ventSys' || k === 'infMode') {
-        P.settings[k] = v;
-        changed = true;
-        break;
-      }
-      const n = num(v);
-      if (n == null) return;
-      if ((k === 'eta' && (n < 0 || n > 1)) || ((k === 'qv10' || k === 'fInf') && n < 0)) return;
-      if ((k === 'snap' || k === 'height') && n <= 0) return;
-      if (k === 'maxWall' && n < 0) return;
-      // temperatures that only make sense in a small range (a typo like 225 instead of 22,5 turns every result upside down)
-      const RANGE = {
-        tRet: [5, 35],
-        te: [-30, 15],
-        tGround: [-10, 25],
-        tUnheated: [-20, 30],
-        tNeighbour: [0, 30],
-        twSup: [20, 90],
-        twRet: [15, 85],
-        tMax: [30, 80],
-        flow: [0, 5000],
-        stook: [5, 22],
-        pEl: [0, 5],
-        pGas: [0, 10],
-        gasFix: [0, 2000],
-        etaGas: [0.5, 1.1],
-        dhwPers: [0, 20],
-        dhwKwh: [0, 3000],
-        dhwHours: [0, 8],
-        dhwVol: [0, 2000],
-        dhwTemp: [40, 70],
-        dhwLossW: [0, 300],
-        etaTap: [0.3, 1.1]
-      };
-      if (RANGE[k] && (n < RANGE[k][0] || n > RANGE[k][1])) {
-        toast(
-          `Die waarde valt buiten ${RANGE[k][0]} tot ${RANGE[k][1]} ${{ flow: 'l/h', pEl: '€/kWh', pGas: '€/m³', gasFix: '€', etaGas: '', dhwPers: 'personen', dhwKwh: 'kWh', dhwHours: 'uur', dhwVol: 'liter', dhwLossW: 'W', etaTap: '' }[k] ?? '°C'} en is niet overgenomen.`
-        );
-        return;
-      }
-      P.settings[k] = n;
-      // an own amount: the network operator choice no longer applies
-      if (k === 'gasFix' && GRID.gas[P.settings.gasNet] && Math.abs(n - GRID.gas[P.settings.gasNet].perJaar) > 0.005)
-        P.settings.gasNet = '';
-      changed = true;
-      break;
-    }
-    case 'fit': {
-      const f = (P.fittings || []).find(x => x.id === parts[1]);
-      if (!f) return;
-      const k = parts[2];
-      if (k === 'type') {
-        if (!FITTINGS[v]) return;
-        f.type = v;
-        f.kv = FITTINGS[v].kv; // a new type starts from its typical kv
-      } else {
-        const n = num(v);
-        if (n == null || !(n > 0)) return;
-        if (k === 'n') f.n = Math.max(1, Math.round(n));
-        else if (k === 'kv') f.kv = n;
-        else return;
-      }
-      changed = true;
-      break;
-    }
-    case 'proj': {
-      P.name = v;
-      changed = true;
-      break;
-    }
-    case 'tr': {
-      const t = (P.transfers || []).find(x => x.id === parts[1]);
-      if (!t) return;
-      const k = parts[2];
-      if (k === 'from' || k === 'to') {
-        if (!getRoom(v)) return;
-        t[k] = v;
-      } else {
-        const n = num(v);
-        if (n == null || n < 0) return;
-        t.q = n;
-      }
-      changed = true;
-      break;
-    }
-    case 'advsel': {
-      if (el.checked) P.advSel[parts[1]] = true;
-      else delete P.advSel[parts[1]];
-      changed = true;
-      break;
-    }
-    case 'adv': {
-      const r = P.settings.advice[parts[1]];
-      if (!r) return;
-      const n = num(v);
-      if (n == null || n <= 0) return;
-      r[parts[2]] = n;
-      changed = true;
-      break;
-    }
-    case 'em': {
-      const em = selEm();
-      if (!em) return;
-      const k = parts[1];
-      if (k === 'name') em.name = v;
-      else if (k === 'boost') em.boost = el.checked;
-      else if (k === 'boostMode') {
-        if (!['pct', 'fans', 'fab'].includes(v)) return;
-        em.boostMode = v;
-        // built-in fans: the maker's exponent is much lower than for a passive convector
-        if (v === 'fab' && em.n === EM_N[em.kind]) em.n = 1.1;
-        else if (v !== 'fab' && em.n === 1.1) em.n = EM_N[em.kind];
-      } else if (k === 'fan') {
-        const f = em.fan;
-        if (parts[2] === 'model') {
-          if (!FANS.modellen[v]) return;
-          f.model = v;
-        } else {
-          const n = num(v);
-          if (n == null || n < 0) return;
-          if (parts[2] === 'count') {
-            if (n > 200) return;
-            f.count = Math.round(n);
-          } else if (parts[2] === 'pct') {
-            if (n > 100) return;
-            f.pct = n;
-          } else if (parts[2] === 'm3h') {
-            if (n <= 0 || n > 2000) return;
-            f.m3h = n;
-          } else return;
-        }
-      } else if (k === 'trv') {
-        if (v && !TRV.kranen[v]) return;
-        em.trv = v;
-      } else if (k === 'kind') {
-        if (!EM_KINDS[v] || v === 'vv') return;
-        em.kind = v;
-        em.n = EM_N[v];
-        syncRad(em);
-      } else if (k === 'rt') {
-        if (v && !RAD_TYPES[v]) return;
-        em.rt = v;
-        if (v) em.rl = Math.max(100, Math.round(emLen(em) * 1000));
-        syncRad(em);
-      } else if (k === 'loops') {
-        const n = parseInt(v, 10);
-        if (![1, 2, 3, 4].includes(n)) return;
-        em.loops = n;
-      } else if (k === 'len') {
-        if (!final) return;
-        const n = num(v);
-        if (n == null || n < 200 || n > 6000) return;
-        setEmLen(em, n);
-        if (RAD_TYPES[em.rt]) em.rl = n;
-        syncRad(em);
-      } else if (k === 'rh' || k === 'rl') {
-        const n = num(v);
-        const max = k === 'rh' ? 3000 : 6000; // tall vertical radiators go up to 2 m and more
-        if (n == null || n < 100 || n > max) {
-          if (final && n != null)
-            toast(`${k === 'rh' ? 'Hoogte' : 'Lengte'} moet tussen 100 en ${fmtW(max)} mm liggen.`);
-          return;
-        }
-        em[k] = n;
-        if (k === 'rl' && final && n >= 200) setEmLen(em, n);
-        syncRad(em);
-      } else if (k === 'cover') {
-        if (!VV_COVER[v]) return;
-        em.cover = v;
-      } else if (k === 'spacing') em.spacing = [10, 15, 20].includes(+v) ? +v : 15;
-      else if (k === 'pipe') {
-        if (parts[2] === 'mat') {
-          if (!PIPES[v]) return;
-          em.pipe.mat = v;
-          if (!PIPES[v].d[em.pipe.dn]) em.pipe.dn = v === 'pex' ? '16' : '15';
-        } else {
-          if (!PIPES[em.pipe.mat].d[v]) return;
-          em.pipe.dn = v;
-        }
-      } else {
-        const n = num(v);
-        if (n == null || n < 0) return;
-        if (k === 'n' && (n < 0.8 || n > 2)) return;
-        if (k === 'boostPct' && n > 300) return;
-        em[k] = n;
-      }
-      changed = true;
-      break;
-    }
-    case 'vr': {
-      const r = getRoom(parts[1]);
-      if (!r) return;
-      if (parts[2] === 'flowTo') {
-        r.flowTo = v && getRoom(v) && v !== r.id ? v : '';
-        changed = true;
-        break;
-      }
-      const n = num(v);
-      if (n == null || n < 0) return;
-      r[parts[2]] = n;
-      changed = true;
-      break;
-    }
-    case 'bg': {
-      const bg = curBg(),
-        n = num(v);
-      if (!bg || n == null) return;
-      if (parts[1] === 'rot') {
-        if (Math.abs(n) > 180) return;
-        bg.rot = Math.round(n * 100) / 100; // around the centre of the image
-        if (!bg.rot) delete bg.rot;
-        changed = true;
-        break;
-      }
-      bg.op = Math.min(1, Math.max(0.1, n / 100));
-      changed = true;
-      break;
-    }
-    case 'fl': {
-      const f = P.floors.find(x => x.id === parts[1]);
-      if (!f) return;
-      f.name = v;
-      renderFloorbar();
-      changed = true;
-      break;
-    }
-  }
+  if (Object.hasOwn(FIELDS, parts[0])) changed = FIELDS[parts[0]]({ f, parts, v, el, final, room });
   if (!changed) return;
   markDirty();
   renderCanvas();
@@ -1159,720 +1168,679 @@ pbody.addEventListener('click', e => {
   if (!b || b.disabled) return;
   act(b.dataset.act, b);
 });
-function act(a, b) {
-  const room = selRoom();
-  switch (a) {
-    case 'desel':
-      sel = null;
-      renderAll();
-      break;
-    case 'selem': {
-      const r = getRoom(b.dataset.r);
-      if (!r) return;
-      if (r.floorId !== curFloor) {
-        curFloor = r.floorId;
-      }
-      sel = { t: 'em', r: r.id, e: b.dataset.e };
-      tab = 'sel';
-      closeSchema();
-      renderAll();
-      break;
+// Buttons in the panel (data-act): one function per action, called by act() with the button and the selected room.
+const ACTIONS = {
+  desel() {
+    sel = null;
+    renderAll();
+  },
+  selem(b) {
+    const r = getRoom(b.dataset.r);
+    if (!r) return;
+    if (r.floorId !== curFloor) {
+      curFloor = r.floorId;
     }
-    case 'delem':
-      deleteSelection();
-      break;
-    case 'addtr': {
-      if (P.rooms.length < 2) return;
-      pushUndo();
-      // sensible default: from a room with air to spare to a room that is short of air
-      const bal = P.rooms.map(r => ({ r, a: airBalance(r) }));
-      const from = (bal.find(x => x.a.surplus > 0) || bal.find(x => x.r.sup > 0) || bal[0]).r;
-      const to = (
-        bal.find(x => x.r !== from && x.a.rest > 0) ||
-        bal.find(x => x.r !== from && x.r.ext > 0) ||
-        bal.find(x => x.r !== from)
-      ).r;
-      const q = Math.max(5, Math.round(Math.min(airBalance(from).surplus || 25, airBalance(to).rest || 25)));
-      P.transfers.push({ id: rid(), from: from.id, to: to.id, q });
-      markDirty();
-      renderAll();
-      break;
+    sel = { t: 'em', r: r.id, e: b.dataset.e };
+    tab = 'sel';
+    closeSchema();
+    renderAll();
+  },
+  delem() {
+    deleteSelection();
+  },
+  addtr() {
+    if (P.rooms.length < 2) return;
+    pushUndo();
+    // sensible default: from a room with air to spare to a room that is short of air
+    const bal = P.rooms.map(r => ({ r, a: airBalance(r) }));
+    const from = (bal.find(x => x.a.surplus > 0) || bal.find(x => x.r.sup > 0) || bal[0]).r;
+    const to = (
+      bal.find(x => x.r !== from && x.a.rest > 0) ||
+      bal.find(x => x.r !== from && x.r.ext > 0) ||
+      bal.find(x => x.r !== from)
+    ).r;
+    const q = Math.max(5, Math.round(Math.min(airBalance(from).surplus || 25, airBalance(to).rest || 25)));
+    P.transfers.push({ id: rid(), from: from.id, to: to.id, q });
+    markDirty();
+    renderAll();
+  },
+  deltr(b) {
+    pushUndo();
+    P.transfers = P.transfers.filter(t => t.id !== b.dataset.t);
+    markDirty();
+    renderAll();
+  },
+  zone3d() {
+    // show the whole open-connected space: from the highest storey it reaches, with its rooms lit up
+    const r = sel && sel.r && getRoom(sel.r),
+      z = r && zoneOf(r);
+    if (!z) return;
+    const hi = P.floors[Math.max(...z.rooms.map(o => levelsOf(o)[1]))].id;
+    // the selection has to be on the storey on view: the room itself if it reaches up there, otherwise one of the others
+    if (!presentOn(r, hi)) sel = { t: 'room', r: z.rooms.find(o => presentOn(o, hi)).id };
+    setFloor(hi, true);
+    if (!view3d) set3d(true);
+    renderAll();
+  },
+  gotab(b) {
+    tab = b.dataset.tab;
+    confirmDel = false;
+    renderPanel();
+    renderCanvas();
+    pbody.scrollTop = 0;
+  },
+  selroom(b, _room, a) {
+    const r = getRoom(b.dataset.r);
+    if (!r) return;
+    // a room that runs through the current floor can be shown here; for one of its walls go to its own floor
+    if (r.floorId !== curFloor && !(a === 'selroom' && presentOn(r, curFloor))) {
+      curFloor = r.floorId;
+      try {
+        localStorage.setItem('wvt.floor.' + P.id, curFloor);
+      } catch (_) {}
     }
-    case 'deltr': {
-      pushUndo();
-      P.transfers = P.transfers.filter(t => t.id !== b.dataset.t);
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'zone3d': {
-      // show the whole open-connected space: from the highest storey it reaches, with its rooms lit up
-      const r = sel && sel.r && getRoom(sel.r),
-        z = r && zoneOf(r);
-      if (!z) break;
-      const hi = P.floors[Math.max(...z.rooms.map(o => levelsOf(o)[1]))].id;
-      // the selection has to be on the storey on view: the room itself if it reaches up there, otherwise one of the others
-      if (!presentOn(r, hi)) sel = { t: 'room', r: z.rooms.find(o => presentOn(o, hi)).id };
-      setFloor(hi, true);
-      if (!view3d) set3d(true);
-      renderAll();
-      break;
-    }
-    case 'gotab':
-      tab = b.dataset.tab;
-      confirmDel = false;
-      renderPanel();
-      renderCanvas();
-      pbody.scrollTop = 0;
-      break;
-    case 'selroom':
-    case 'selseg': {
-      const r = getRoom(b.dataset.r);
-      if (!r) return;
-      // a room that runs through the current floor can be shown here; for one of its walls go to its own floor
-      if (r.floorId !== curFloor && !(a === 'selroom' && presentOn(r, curFloor))) {
-        curFloor = r.floorId;
-        try {
-          localStorage.setItem('wvt.floor.' + P.id, curFloor);
-        } catch (_) {}
-      }
-      sel = a === 'selroom' ? { t: 'room', r: r.id } : { t: 'seg', r: r.id, w: +b.dataset.w, s: +b.dataset.s };
-      tab = 'sel';
-      renderAll();
-      break;
-    }
-    case 'fixinner': {
-      const r = b.dataset.r && getRoom(b.dataset.r);
-      let list = innerOutside(r || null);
-      if (b.dataset.w != null) list = list.filter(x => x.w === +b.dataset.w && x.s === +b.dataset.s);
-      pushUndo();
-      const n = innerToNeighbour(list);
-      validateSel();
-      markDirty();
-      renderAll();
-      toast(
-        n ? `${n} ${n > 1 ? 'wanddelen staan' : 'wanddeel staat'} nu op Buurwoning.` : 'Er is niets veranderd.',
-        !!n
-      );
-      break;
-    }
-    case 'addri': {
-      if (!room) return;
-      pushUndo();
-      const raam = b.dataset.k === 'raam',
-        wall = (P.constructions.find(c => c.kind === 'wand' && !c.inner) || {}).id || defaultCid('wand');
-      room.roof.items = room.roof.items || [];
-      const n = room.roof.items.filter(x => x.kind === (raam ? 'raam' : 'kapel')).length + 1;
-      room.roof.items.push(
-        raam
-          ? { id: rid(), kind: 'raam', name: 'Dakraam ' + n, slope: 0, w: 0.78, h: 1.4, cid: defaultCid('raam') }
-          : {
-              id: rid(),
-              kind: 'kapel',
-              name: 'Dakkapel ' + n,
-              slope: 0,
-              w: 2.4,
-              hf: 1.5,
-              cidW: wall,
-              cidR: room.roof.cid || defaultCid('dak'),
-              winw: 1.8,
-              winh: 1.0,
-              wincid: defaultCid('raam')
-            }
-      );
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'delri': {
-      if (!room) return;
-      pushUndo();
-      room.roof.items = (room.roof.items || []).filter(x => x.id !== b.dataset.i);
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'delhp':
-      deleteSelection();
-      break;
-    case 'selpipe': {
-      const pp = (P.pipes || []).find(x => x.id === b.dataset.p);
-      if (!pp) return;
-      curFloor = pp.floorId;
-      sel = { t: 'pipe', p: pp.id };
-      tab = 'sel';
-      closeSchema();
-      renderAll();
-      break;
-    }
-    case 'schema':
-      track('schema');
-      openSchema();
-      break;
-    case 'itip': {
-      const id = b.dataset.tip,
-        box = $('itx-' + id),
-        open = !OPEN_TIPS.has(id);
-      if (open) OPEN_TIPS.add(id);
-      else OPEN_TIPS.delete(id);
-      b.setAttribute('aria-expanded', open);
-      if (box) box.hidden = !open;
-      break;
-    }
-    case 'pricesavg':
-      pushUndo();
-      P.settings.pEl = null;
-      P.settings.pGas = null;
-      markDirty();
-      renderAll();
-      break;
-    case 'bgpick':
-      $('bg-in').value = '';
-      $('bg-in').click();
-      break;
-    case 'bgscale':
-      setBgMode(bgMode === 'scale' ? null : 'scale');
-      break;
-    case 'bgmove':
-      setBgMode(bgMode === 'move' ? null : 'move');
-      break;
-    case 'bgdel':
-      removeBg();
-      break;
-    case 'bgflip': {
-      // mirror as seen on screen: left-right turns the angle around, top-bottom is left-right plus a half turn
-      const bg = curBg();
-      if (!bg) return;
-      pushUndo();
-      const r0 = bg.rot || 0,
-        r1 = b.dataset.v === 'v' ? 180 - r0 : -r0,
-        rot = Math.round((((((r1 + 180) % 360) + 360) % 360) - 180) * 100) / 100;
-      if (Math.abs(rot) >= 0.005) bg.rot = rot === -180 ? 180 : rot;
-      else delete bg.rot;
-      if (bg.flip) delete bg.flip;
-      else bg.flip = true;
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'bgturn': {
-      // turn around the centre of the image, keeping the angle between -180 and 180
-      const bg = curBg();
-      if (!bg) return;
-      pushUndo();
-      const rot = Math.round((((((bg.rot || 0) + +b.dataset.v + 180) % 360) + 360) % 360) * 100) / 100 - 180;
-      if (Math.abs(rot) >= 0.005) bg.rot = rot === -180 ? 180 : rot;
-      else delete bg.rot;
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'report':
-      track('rapport');
-      openReport();
-      break;
-    case 'inregel':
-      track('inregelstaat');
-      openReport('inregel');
-      break;
-    case 'addfloor':
-      addFloor();
-      break;
-    case 'addbelow':
-      addBelow(b.dataset.k);
-      break;
-    case 'vvfill': {
-      const r = getRoom(b.dataset.r);
-      if (!r) return;
-      const pts = insetPoly(r.pts, 0.1) || r.pts.map(p => ({ x: p.x, y: p.y }));
-      pushUndo();
-      r.emitters = r.emitters || [];
-      const n = r.emitters.filter(x => x.kind === 'vv').length + 1;
-      const em = {
-        id: rid(),
-        kind: 'vv',
-        name: 'Vloerverwarming' + (n > 1 ? ' ' + n : ''),
-        pts,
-        spacing: 15,
-        cover: 'tegels',
-        p: 0,
-        n: 1,
-        pipe: { mat: 'pex', dn: '16' }
-      };
-      r.emitters.push(em);
-      sel = { t: 'em', r: r.id, e: em.id };
-      tab = 'sel';
-      markDirty();
-      renderAll();
-      toast(
-        `Vloerverwarming over de hele ${r.name} (10 cm van de wanden). Sleep de hoekpunten om de vorm aan te passen.`
-      );
-      break;
-    }
-    case 'selriser': {
-      sel = { t: 'riser', q: b.dataset.q };
-      tab = 'sel';
-      renderAll();
-      break;
-    }
-    case 'addriser': {
-      const pp = sel && sel.t === 'pipe' && P.pipes.find(x => x.id === sel.p);
-      if (!pp) return;
-      const q = b.dataset.end === 'begin' ? pp.pts[0] : pp.pts[pp.pts.length - 1],
-        fi = floorIdx(pp.floorId),
-        oi = P.floors[fi + 1] ? fi + 1 : fi - 1;
-      if (!P.floors[oi]) return;
-      pushUndo();
-      const rs = {
-        id: rid(),
-        x: q.x,
-        y: q.y,
-        from: P.floors[Math.min(fi, oi)].id,
-        to: P.floors[Math.max(fi, oi)].id,
-        mat: pp.mat,
-        dn: pp.dn,
-        name: 'Stijgleiding ' + (P.risers.length + 1),
-        ...(pp.hidden ? { hidden: true } : {})
-      };
-      P.risers.push(rs);
-      sel = { t: 'riser', q: rs.id };
-      markDirty();
-      renderAll();
-      toast(
-        `${rs.name} naar ${P.floors[oi].name}. Ga naar die verdieping en teken daar een leiding vanaf het ↕-teken.`,
-        true
-      );
-      break;
-    }
-    case 'delriser': {
-      deleteSelection();
-      break;
-    }
-    case 'delpipe': {
-      pushUndo();
-      P.pipes = P.pipes.filter(x => x.id !== sel.p);
-      sel = null;
-      markDirty();
-      renderAll();
-      toast('Leiding verwijderd.', true);
-      break;
-    }
-    case 'autoall': {
-      pushUndo();
-      let n = 0;
-      P.rooms.forEach(r =>
-        ['floor', 'ceil'].forEach(k => {
-          if (r[k] && r[k].adj !== 'auto') {
-            r[k].adj = 'auto';
-            n++;
+    sel = a === 'selroom' ? { t: 'room', r: r.id } : { t: 'seg', r: r.id, w: +b.dataset.w, s: +b.dataset.s };
+    tab = 'sel';
+    renderAll();
+  },
+  fixinner(b) {
+    const r = b.dataset.r && getRoom(b.dataset.r);
+    let list = innerOutside(r || null);
+    if (b.dataset.w != null) list = list.filter(x => x.w === +b.dataset.w && x.s === +b.dataset.s);
+    pushUndo();
+    const n = innerToNeighbour(list);
+    validateSel();
+    markDirty();
+    renderAll();
+    toast(n ? `${n} ${n > 1 ? 'wanddelen staan' : 'wanddeel staat'} nu op Buurwoning.` : 'Er is niets veranderd.', !!n);
+  },
+  addri(b, room) {
+    if (!room) return;
+    pushUndo();
+    const raam = b.dataset.k === 'raam',
+      wall = (P.constructions.find(c => c.kind === 'wand' && !c.inner) || {}).id || defaultCid('wand');
+    room.roof.items = room.roof.items || [];
+    const n = room.roof.items.filter(x => x.kind === (raam ? 'raam' : 'kapel')).length + 1;
+    room.roof.items.push(
+      raam
+        ? { id: rid(), kind: 'raam', name: 'Dakraam ' + n, slope: 0, w: 0.78, h: 1.4, cid: defaultCid('raam') }
+        : {
+            id: rid(),
+            kind: 'kapel',
+            name: 'Dakkapel ' + n,
+            slope: 0,
+            w: 2.4,
+            hf: 1.5,
+            cidW: wall,
+            cidR: room.roof.cid || defaultCid('dak'),
+            winw: 1.8,
+            winh: 1.0,
+            wincid: defaultCid('raam')
           }
-        })
-      );
-      markDirty();
-      renderAll();
-      toast(
-        n ? `${n} vloeren en plafonds staan nu op automatisch.` : 'Alle vloeren en plafonds stonden al op automatisch.',
-        !!n
-      );
-      break;
-    }
-    case 'floormove': {
-      const i = floorIdx(b.dataset.f),
-        j = i + +b.dataset.dir;
-      if (i < 0 || j < 0 || j >= P.floors.length) return;
-      pushUndo();
-      [P.floors[i], P.floors[j]] = [P.floors[j], P.floors[i]];
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'delfloor': {
-      // remove a floor with everything on it: rooms, pipes, the heat pump; can be undone
-      const fid = b.dataset.f,
-        i = floorIdx(fid);
-      if (i < 0 || P.floors.length < 2) return;
-      const fl = P.floors[i],
-        gone = new Set(P.rooms.filter(r => r.floorId === fid).map(r => r.id)),
-        np = (P.pipes || []).filter(x => x.floorId === fid).length;
-      pushUndo();
-      P.rooms = P.rooms.filter(r => !gone.has(r.id));
-      P.pipes = (P.pipes || []).filter(x => x.floorId !== fid);
-      // a riser that started or ended on this floor now starts or ends on the floor next to it inside its range
-      P.risers = (P.risers || []).filter(rs => {
-        const ids = P.floors
-          .slice(floorIdx(rs.from), floorIdx(rs.to) + 1)
-          .map(f => f.id)
-          .filter(id => id !== fid);
-        rs.from = ids[0];
-        rs.to = ids[ids.length - 1];
-        return ids.length >= 2;
-      });
-      if (P.hpPos && P.hpPos.floorId === fid) P.hpPos = null;
-      P.transfers = (P.transfers || []).filter(t => !gone.has(t.from) && !gone.has(t.to));
-      P.floors.splice(i, 1);
-      P.rooms.forEach(r => {
-        if (gone.has(r.flowTo)) r.flowTo = '';
-        if (gone.has(r.roofFrom)) r.roofFrom = '';
-        // a stairwell or vide that ran up to this floor now stops one floor lower
-        if (r.spanTo === fid) {
-          const below = P.floors[i - 1];
-          r.spanTo = below && below.id !== r.floorId ? below.id : null;
+    );
+    markDirty();
+    renderAll();
+  },
+  delri(b, room) {
+    if (!room) return;
+    pushUndo();
+    room.roof.items = (room.roof.items || []).filter(x => x.id !== b.dataset.i);
+    markDirty();
+    renderAll();
+  },
+  delhp() {
+    deleteSelection();
+  },
+  selpipe(b) {
+    const pp = (P.pipes || []).find(x => x.id === b.dataset.p);
+    if (!pp) return;
+    curFloor = pp.floorId;
+    sel = { t: 'pipe', p: pp.id };
+    tab = 'sel';
+    closeSchema();
+    renderAll();
+  },
+  schema() {
+    track('schema');
+    openSchema();
+  },
+  itip(b) {
+    const id = b.dataset.tip,
+      box = $('itx-' + id),
+      open = !OPEN_TIPS.has(id);
+    if (open) OPEN_TIPS.add(id);
+    else OPEN_TIPS.delete(id);
+    b.setAttribute('aria-expanded', open);
+    if (box) box.hidden = !open;
+  },
+  pricesavg() {
+    pushUndo();
+    P.settings.pEl = null;
+    P.settings.pGas = null;
+    markDirty();
+    renderAll();
+  },
+  bgpick() {
+    $('bg-in').value = '';
+    $('bg-in').click();
+  },
+  bgscale() {
+    setBgMode(bgMode === 'scale' ? null : 'scale');
+  },
+  bgmove() {
+    setBgMode(bgMode === 'move' ? null : 'move');
+  },
+  bgdel() {
+    removeBg();
+  },
+  bgflip(b) {
+    // mirror as seen on screen: left-right turns the angle around, top-bottom is left-right plus a half turn
+    const bg = curBg();
+    if (!bg) return;
+    pushUndo();
+    const r0 = bg.rot || 0,
+      r1 = b.dataset.v === 'v' ? 180 - r0 : -r0,
+      rot = Math.round((((((r1 + 180) % 360) + 360) % 360) - 180) * 100) / 100;
+    if (Math.abs(rot) >= 0.005) bg.rot = rot === -180 ? 180 : rot;
+    else delete bg.rot;
+    if (bg.flip) delete bg.flip;
+    else bg.flip = true;
+    markDirty();
+    renderAll();
+  },
+  bgturn(b) {
+    // turn around the centre of the image, keeping the angle between -180 and 180
+    const bg = curBg();
+    if (!bg) return;
+    pushUndo();
+    const rot = Math.round((((((bg.rot || 0) + +b.dataset.v + 180) % 360) + 360) % 360) * 100) / 100 - 180;
+    if (Math.abs(rot) >= 0.005) bg.rot = rot === -180 ? 180 : rot;
+    else delete bg.rot;
+    markDirty();
+    renderAll();
+  },
+  report() {
+    track('rapport');
+    openReport();
+  },
+  inregel() {
+    track('inregelstaat');
+    openReport('inregel');
+  },
+  addfloor() {
+    addFloor();
+  },
+  addbelow(b) {
+    addBelow(b.dataset.k);
+  },
+  vvfill(b) {
+    const r = getRoom(b.dataset.r);
+    if (!r) return;
+    const pts = insetPoly(r.pts, 0.1) || r.pts.map(p => ({ x: p.x, y: p.y }));
+    pushUndo();
+    r.emitters = r.emitters || [];
+    const n = r.emitters.filter(x => x.kind === 'vv').length + 1;
+    const em = {
+      id: rid(),
+      kind: 'vv',
+      name: 'Vloerverwarming' + (n > 1 ? ' ' + n : ''),
+      pts,
+      spacing: 15,
+      cover: 'tegels',
+      p: 0,
+      n: 1,
+      pipe: { mat: 'pex', dn: '16' }
+    };
+    r.emitters.push(em);
+    sel = { t: 'em', r: r.id, e: em.id };
+    tab = 'sel';
+    markDirty();
+    renderAll();
+    toast(
+      `Vloerverwarming over de hele ${r.name} (10 cm van de wanden). Sleep de hoekpunten om de vorm aan te passen.`
+    );
+  },
+  selriser(b) {
+    sel = { t: 'riser', q: b.dataset.q };
+    tab = 'sel';
+    renderAll();
+  },
+  addriser(b) {
+    const pp = sel && sel.t === 'pipe' && P.pipes.find(x => x.id === sel.p);
+    if (!pp) return;
+    const q = b.dataset.end === 'begin' ? pp.pts[0] : pp.pts[pp.pts.length - 1],
+      fi = floorIdx(pp.floorId),
+      oi = P.floors[fi + 1] ? fi + 1 : fi - 1;
+    if (!P.floors[oi]) return;
+    pushUndo();
+    const rs = {
+      id: rid(),
+      x: q.x,
+      y: q.y,
+      from: P.floors[Math.min(fi, oi)].id,
+      to: P.floors[Math.max(fi, oi)].id,
+      mat: pp.mat,
+      dn: pp.dn,
+      name: 'Stijgleiding ' + (P.risers.length + 1),
+      ...(pp.hidden ? { hidden: true } : {})
+    };
+    P.risers.push(rs);
+    sel = { t: 'riser', q: rs.id };
+    markDirty();
+    renderAll();
+    toast(
+      `${rs.name} naar ${P.floors[oi].name}. Ga naar die verdieping en teken daar een leiding vanaf het ↕-teken.`,
+      true
+    );
+  },
+  delriser() {
+    deleteSelection();
+  },
+  delpipe() {
+    pushUndo();
+    P.pipes = P.pipes.filter(x => x.id !== sel.p);
+    sel = null;
+    markDirty();
+    renderAll();
+    toast('Leiding verwijderd.', true);
+  },
+  autoall() {
+    pushUndo();
+    let n = 0;
+    P.rooms.forEach(r =>
+      ['floor', 'ceil'].forEach(k => {
+        if (r[k] && r[k].adj !== 'auto') {
+          r[k].adj = 'auto';
+          n++;
         }
-      });
-      if (curFloor === fid) curFloor = P.floors[Math.max(0, i - 1)].id;
-      if (sel && !getRoom(sel.r) && sel.t !== 'hp' && sel.t !== 'pipe' && sel.t !== 'riser') sel = null;
-      validateSel();
-      markDirty();
-      renderAll();
-      toast(
-        `${fl.name} verwijderd${gone.size || np ? ` met ${[gone.size ? gone.size + (gone.size === 1 ? ' ruimte' : ' ruimtes') : '', np ? np + (np === 1 ? ' leiding' : ' leidingen') : ''].filter(Boolean).join(' en ')}` : ''}.`,
-        true
-      );
-      break;
-    }
-    case 'delroom':
-      deleteSelection();
-      break;
-    case 'gocon':
-      tab = 'con';
-      conFocus = b.dataset.c || null;
-      renderPanel();
-      break;
-    case 'addcut': {
-      const inp = $('f-newcut');
-      const n = num(inp && inp.value !== '' ? inp.value : inp && inp.placeholder);
-      if (n == null || !room) return;
-      addCut(room, sel.w, n);
-      break;
-    }
-    case 'splitmid': {
-      if (!room) return;
-      const bb = bounds(room, sel.w);
-      addCut(room, sel.w, r3((bb[sel.s] + bb[sel.s + 1]) / 2));
-      break;
-    }
-    case 'delcut':
-      if (room) removeCut(room, sel.w, +b.dataset.c);
-      break;
-    case 'addop': {
-      const sg = selSeg();
-      if (!sg) return;
-      pushUndo();
-      const o = opening('Raam ' + (sg.openings.length + 1), 1.2, 1.4, defaultCid('raam'));
-      sg.openings.push(o);
-      const m = mirrorPartner(room, sel.w, sel.s);
-      if (m) {
-        o.name = 'Binnendeur ' + sg.openings.length;
-        o.w = 0.9;
-        o.h = 2.1;
-        o.lk = rid();
-        o.cid = (P.constructions.find(c => c.kind === 'raam' && c.inner) || {}).id || o.cid;
-        m.o.walls[m.k].segs[m.jj].openings.push({ ...o, id: rid() });
+      })
+    );
+    markDirty();
+    renderAll();
+    toast(
+      n ? `${n} vloeren en plafonds staan nu op automatisch.` : 'Alle vloeren en plafonds stonden al op automatisch.',
+      !!n
+    );
+  },
+  floormove(b) {
+    const i = floorIdx(b.dataset.f),
+      j = i + +b.dataset.dir;
+    if (i < 0 || j < 0 || j >= P.floors.length) return;
+    pushUndo();
+    [P.floors[i], P.floors[j]] = [P.floors[j], P.floors[i]];
+    markDirty();
+    renderAll();
+  },
+  delfloor(b) {
+    // remove a floor with everything on it: rooms, pipes, the heat pump; can be undone
+    const fid = b.dataset.f,
+      i = floorIdx(fid);
+    if (i < 0 || P.floors.length < 2) return;
+    const fl = P.floors[i],
+      gone = new Set(P.rooms.filter(r => r.floorId === fid).map(r => r.id)),
+      np = (P.pipes || []).filter(x => x.floorId === fid).length;
+    pushUndo();
+    P.rooms = P.rooms.filter(r => !gone.has(r.id));
+    P.pipes = (P.pipes || []).filter(x => x.floorId !== fid);
+    // a riser that started or ended on this floor now starts or ends on the floor next to it inside its range
+    P.risers = (P.risers || []).filter(rs => {
+      const ids = P.floors
+        .slice(floorIdx(rs.from), floorIdx(rs.to) + 1)
+        .map(f => f.id)
+        .filter(id => id !== fid);
+      rs.from = ids[0];
+      rs.to = ids[ids.length - 1];
+      return ids.length >= 2;
+    });
+    if (P.hpPos && P.hpPos.floorId === fid) P.hpPos = null;
+    P.transfers = (P.transfers || []).filter(t => !gone.has(t.from) && !gone.has(t.to));
+    P.floors.splice(i, 1);
+    P.rooms.forEach(r => {
+      if (gone.has(r.flowTo)) r.flowTo = '';
+      if (gone.has(r.roofFrom)) r.roofFrom = '';
+      // a stairwell or vide that ran up to this floor now stops one floor lower
+      if (r.spanTo === fid) {
+        const below = P.floors[i - 1];
+        r.spanTo = below && below.id !== r.floorId ? below.id : null;
       }
-      markDirty();
-      renderAll();
-      break;
+    });
+    if (curFloor === fid) curFloor = P.floors[Math.max(0, i - 1)].id;
+    if (sel && !getRoom(sel.r) && sel.t !== 'hp' && sel.t !== 'pipe' && sel.t !== 'riser') sel = null;
+    validateSel();
+    markDirty();
+    renderAll();
+    toast(
+      `${fl.name} verwijderd${gone.size || np ? ` met ${[gone.size ? gone.size + (gone.size === 1 ? ' ruimte' : ' ruimtes') : '', np ? np + (np === 1 ? ' leiding' : ' leidingen') : ''].filter(Boolean).join(' en ')}` : ''}.`,
+      true
+    );
+  },
+  delroom() {
+    deleteSelection();
+  },
+  gocon(b) {
+    tab = 'con';
+    conFocus = b.dataset.c || null;
+    renderPanel();
+  },
+  addcut(_b, room) {
+    const inp = $('f-newcut');
+    const n = num(inp && inp.value !== '' ? inp.value : inp && inp.placeholder);
+    if (n == null || !room) return;
+    addCut(room, sel.w, n);
+  },
+  splitmid(_b, room) {
+    if (!room) return;
+    const bb = bounds(room, sel.w);
+    addCut(room, sel.w, r3((bb[sel.s] + bb[sel.s + 1]) / 2));
+  },
+  delcut(b, room) {
+    if (room) removeCut(room, sel.w, +b.dataset.c);
+  },
+  addop(_b, room) {
+    const sg = selSeg();
+    if (!sg) return;
+    pushUndo();
+    const o = opening('Raam ' + (sg.openings.length + 1), 1.2, 1.4, defaultCid('raam'));
+    sg.openings.push(o);
+    const m = mirrorPartner(room, sel.w, sel.s);
+    if (m) {
+      o.name = 'Binnendeur ' + sg.openings.length;
+      o.w = 0.9;
+      o.h = 2.1;
+      o.lk = rid();
+      o.cid = (P.constructions.find(c => c.kind === 'raam' && c.inner) || {}).id || o.cid;
+      m.o.walls[m.k].segs[m.jj].openings.push({ ...o, id: rid() });
     }
-    case 'delop': {
-      const sg = selSeg();
-      if (!sg) return;
-      pushUndo();
-      const o = sg.openings.find(x => x.id === b.dataset.o);
-      sg.openings = sg.openings.filter(x => x.id !== b.dataset.o);
-      if (o && o.lk)
-        P.rooms.forEach(r =>
-          r.walls.forEach(w =>
-            w.segs.forEach(s2 => {
-              s2.openings = s2.openings.filter(x => x.lk !== o.lk);
-            })
-          )
-        );
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'syncseg': {
-      const sg = selSeg();
-      if (!sg) return;
-      pushUndo();
-      isolatePartners(room, sel.w, sel.s).forEach(p => (p.o.walls[p.k].segs[p.jj].cid = sg.cid));
-      markDirty();
-      renderAll();
-      toast('Constructie overgenomen in de aangrenzende ruimte.');
-      break;
-    }
-    case 'alignseg': {
-      const sg = selSeg();
-      if (!sg) return;
-      pushUndo();
-      const ps = partnersOf(room, sel.w, sel.s);
-      const t0 = ps.length ? ps[0].t0 : 0,
-        t1 = ps.length ? ps[0].t1 : 0;
-      ps.forEach(p => {
-        cutAt(room, sel.w, p.t0);
-        cutAt(room, sel.w, p.t1);
-      });
-      const bb = bounds(room, sel.w),
-        mid = (t0 + t1) / 2;
-      let jj = 0;
-      while (jj < bb.length - 2 && mid > bb[jj + 1]) jj++;
-      sel.s = jj;
-      isolatePartners(room, sel.w, sel.s).forEach(
-        p => (p.o.walls[p.k].segs[p.jj].cid = room.walls[sel.w].segs[sel.s].cid)
-      );
-      markDirty();
-      renderAll();
-      toast('Wand gesplitst op de grens met de aangrenzende ruimte.');
-      break;
-    }
-    case 'addcon': {
-      pushUndo();
-      const k = b.dataset.kind;
-      const c = {
-        id: rid(),
-        name: 'Nieuwe ' + KINDS[k].toLowerCase(),
-        kind: k,
-        U: k === 'raam' ? 1.8 : 0.25,
-        color: PALETTE[P.constructions.length % PALETTE.length],
-        mode: k === 'raam' ? 'U' : 'lagen',
-        inner: false,
-        layers: []
-      };
-      P.constructions.push(c);
-      conFocus = c.id;
-      markDirty();
-      renderAll();
-      setTimeout(() => {
-        const el = $('f-con-' + c.id + '-n');
-        if (el) {
-          el.focus();
-          el.select();
-        }
-      }, 0);
-      break;
-    }
-    case 'dupcon': {
-      const src = conById(b.dataset.c);
-      if (!src) return;
-      pushUndo();
-      const c = clone(src);
-      c.id = rid();
-      c.name = src.name + ' (kopie)';
-      c.color = PALETTE[P.constructions.length % PALETTE.length];
-      c.layers.forEach(l => (l.id = rid()));
-      // directly below the original, so it is easy to find
-      P.constructions.splice(P.constructions.indexOf(src) + 1, 0, c);
-      conFocus = c.id;
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'togglecon':
-      conOpen = conOpen === b.dataset.c ? null : b.dataset.c;
-      renderPanel();
-      break;
-    case 'addlayer': {
-      const c = conById(b.dataset.c);
-      if (!c) return;
-      pushUndo();
-      const def =
-        P.materials.find(m => m.id === 'm-glaswol') || P.materials.find(m => m.type === 'lambda') || P.materials[0];
-      c.layers.push({ id: rid(), mid: def ? def.id : '', d: 100, vent: 'niet', mix: null });
-      syncU(c);
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'laydel':
-    case 'laymove':
-    case 'addmix':
-    case 'delmix': {
-      const c = conById(b.dataset.c);
-      const i = c ? c.layers.findIndex(l => l.id === b.dataset.l) : -1;
-      if (i < 0) return;
-      pushUndo();
-      const l = c.layers[i];
-      if (a === 'laydel') c.layers.splice(i, 1);
-      else if (a === 'laymove') {
-        const j = i + +b.dataset.dir;
-        if (j < 0 || j >= c.layers.length) return;
-        [c.layers[i], c.layers[j]] = [c.layers[j], c.layers[i]];
-      } else if (a === 'addmix') {
-        const mm = P.materials.find(m => m.id === 'm-hout') || P.materials.find(m => m.type === 'lambda');
-        l.mix = { mid: mm ? mm.id : '', pct: 12 };
-      } else l.mix = null;
-      syncU(c);
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'addmat': {
-      pushUndo();
-      const m = { id: rid(), name: 'Nieuw materiaal', type: 'lambda', lambda: 0.04, R: 0, color: '#BBBBBB' };
-      P.materials.push(m);
-      markDirty();
-      renderAll();
-      setTimeout(() => {
-        const el = $('f-mat-' + m.id + '-n');
-        if (el) {
-          el.focus();
-          el.select();
-        }
-      }, 0);
-      break;
-    }
-    case 'delmat': {
-      pushUndo();
-      P.materials = P.materials.filter(m => m.id !== b.dataset.m);
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'delcon': {
-      pushUndo();
-      P.constructions = P.constructions.filter(c => c.id !== b.dataset.c);
-      markDirty();
-      renderAll();
-      break;
-    }
-    case 'csv':
-      track('csv');
-      exportCsv();
-      break;
-    case 'newproj': {
-      const p = emptyProject('Nieuw project');
-      all[p.id] = p;
-      openProject(p.id);
-      tab = 'set';
-      renderAll();
-      toast('Leeg project aangemaakt. De constructies van het voorbeeld zijn meegekopieerd.');
-      markDirty();
-      break;
-    }
-    case 'dupproj': {
-      const p = clone(P);
-      p.id = 'p' + rid();
-      p.name = P.name + ' (kopie)';
-      p.example = false;
-      all[p.id] = p;
-      openProject(p.id);
-      markDirty();
-      renderAll();
-      toast('Kopie gemaakt.');
-      break;
-    }
-    case 'openproj':
-      openProject(b.dataset.p);
-      renderAll();
-      break;
-    case 'delproj':
-      confirmDel = true;
-      renderPanel();
-      break;
-    case 'delproj-no':
-      confirmDel = false;
-      renderPanel();
-      break;
-    case 'delproj-yes': {
-      confirmDel = false;
-      const id = P.id;
-      delete all[id];
-      removeRemote(id);
-      const next = Object.values(all).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
-      openProject(next.id);
-      saveLocal();
-      renderAll();
-      toast('Project verwijderd.');
-      break;
-    }
-    case 'import':
-      $('file-in').click();
-      break;
-    case 'export':
-      track('export-json');
-      exportJson();
-      break;
-    case 'share':
-      track('deellink');
-      makeShareLink();
-      break;
-    case 'share-long':
-      track('deellink-lang');
-      makeShareLink(true);
-      break;
-    case 'export-hljs':
-      track('export-heatlossjs');
-      exportHeatlossjs();
-      break;
-    case 'advrules':
-      advRulesOpen = !advRulesOpen;
-      renderPanel();
-      break;
-    case 'addfit': {
-      pushUndo();
-      const t = FITTINGS.vuilfilter ? 'vuilfilter' : Object.keys(FITTINGS)[0] || 'anders';
-      P.fittings = P.fittings || [];
-      P.fittings.push({ id: rid(), type: t, n: 1, kv: (FITTINGS[t] || {}).kv || 10 });
-      markDirty();
-      renderPanel();
-      break;
-    }
-    case 'fanpct': {
-      const em = selEm(),
-        v = +b.dataset.v;
-      if (!em || !(v >= 0 && v <= 100)) break;
-      pushUndo();
-      em.fan.pct = v;
-      markDirty();
-      renderCanvas();
-      renderPanel();
-      break;
-    }
-    case 'delfit':
-      pushUndo();
-      P.fittings = (P.fittings || []).filter(x => x.id !== b.dataset.f);
-      markDirty();
-      renderPanel();
-      break;
-    case 'hpsel':
-      hpSel = b.dataset.h;
-      renderPanel();
-      break;
-    case 'hpexport':
-      saveFile(
-        'warmtepompen.json',
-        JSON.stringify(
-          {
-            versie: 1,
-            toelichting:
-              "Per warmtepomp: minimaal en maximaal verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal twee punten, bij voorkeur -10 en +7 of +10 °C. Kopieer een blok om er een toe te voegen.",
-            warmtepompen: hpList || []
-          },
-          null,
-          2
+    markDirty();
+    renderAll();
+  },
+  delop(b) {
+    const sg = selSeg();
+    if (!sg) return;
+    pushUndo();
+    const o = sg.openings.find(x => x.id === b.dataset.o);
+    sg.openings = sg.openings.filter(x => x.id !== b.dataset.o);
+    if (o && o.lk)
+      P.rooms.forEach(r =>
+        r.walls.forEach(w =>
+          w.segs.forEach(s2 => {
+            s2.openings = s2.openings.filter(x => x.lk !== o.lk);
+          })
         )
       );
-      break;
-    case 'hpimport':
-      $('file-in').click();
-      break;
-    case 'hpreset': {
-      try {
-        localStorage.removeItem(HP_LS);
-      } catch (_) {}
-      if (storeMode === 'db') {
-        db.collection('data/users/' + uid)
-          .doc('hplist')
-          .delete()
-          .catch(() => {});
+    markDirty();
+    renderAll();
+  },
+  syncseg(_b, room) {
+    const sg = selSeg();
+    if (!sg) return;
+    pushUndo();
+    isolatePartners(room, sel.w, sel.s).forEach(p => (p.o.walls[p.k].segs[p.jj].cid = sg.cid));
+    markDirty();
+    renderAll();
+    toast('Constructie overgenomen in de aangrenzende ruimte.');
+  },
+  alignseg(_b, room) {
+    const sg = selSeg();
+    if (!sg) return;
+    pushUndo();
+    const ps = partnersOf(room, sel.w, sel.s);
+    const t0 = ps.length ? ps[0].t0 : 0,
+      t1 = ps.length ? ps[0].t1 : 0;
+    ps.forEach(p => {
+      cutAt(room, sel.w, p.t0);
+      cutAt(room, sel.w, p.t1);
+    });
+    const bb = bounds(room, sel.w),
+      mid = (t0 + t1) / 2;
+    let jj = 0;
+    while (jj < bb.length - 2 && mid > bb[jj + 1]) jj++;
+    sel.s = jj;
+    isolatePartners(room, sel.w, sel.s).forEach(
+      p => (p.o.walls[p.k].segs[p.jj].cid = room.walls[sel.w].segs[sel.s].cid)
+    );
+    markDirty();
+    renderAll();
+    toast('Wand gesplitst op de grens met de aangrenzende ruimte.');
+  },
+  addcon(b) {
+    pushUndo();
+    const k = b.dataset.kind;
+    const c = {
+      id: rid(),
+      name: 'Nieuwe ' + KINDS[k].toLowerCase(),
+      kind: k,
+      U: k === 'raam' ? 1.8 : 0.25,
+      color: PALETTE[P.constructions.length % PALETTE.length],
+      mode: k === 'raam' ? 'U' : 'lagen',
+      inner: false,
+      layers: []
+    };
+    P.constructions.push(c);
+    conFocus = c.id;
+    markDirty();
+    renderAll();
+    setTimeout(() => {
+      const el = $('f-con-' + c.id + '-n');
+      if (el) {
+        el.focus();
+        el.select();
       }
-      hpList = null;
-      hpErr = '';
-      loadHpList();
-      toast('Standaardlijst met warmtepompen teruggezet.');
-      break;
+    }, 0);
+  },
+  dupcon(b) {
+    const src = conById(b.dataset.c);
+    if (!src) return;
+    pushUndo();
+    const c = clone(src);
+    c.id = rid();
+    c.name = src.name + ' (kopie)';
+    c.color = PALETTE[P.constructions.length % PALETTE.length];
+    c.layers.forEach(l => (l.id = rid()));
+    // directly below the original, so it is easy to find
+    P.constructions.splice(P.constructions.indexOf(src) + 1, 0, c);
+    conFocus = c.id;
+    markDirty();
+    renderAll();
+  },
+  togglecon(b) {
+    conOpen = conOpen === b.dataset.c ? null : b.dataset.c;
+    renderPanel();
+  },
+  addlayer(b) {
+    const c = conById(b.dataset.c);
+    if (!c) return;
+    pushUndo();
+    const def =
+      P.materials.find(m => m.id === 'm-glaswol') || P.materials.find(m => m.type === 'lambda') || P.materials[0];
+    c.layers.push({ id: rid(), mid: def ? def.id : '', d: 100, vent: 'niet', mix: null });
+    syncU(c);
+    markDirty();
+    renderAll();
+  },
+  laydel(b, _room, a) {
+    const c = conById(b.dataset.c);
+    const i = c ? c.layers.findIndex(l => l.id === b.dataset.l) : -1;
+    if (i < 0) return;
+    pushUndo();
+    const l = c.layers[i];
+    if (a === 'laydel') c.layers.splice(i, 1);
+    else if (a === 'laymove') {
+      const j = i + +b.dataset.dir;
+      if (j < 0 || j >= c.layers.length) return;
+      [c.layers[i], c.layers[j]] = [c.layers[j], c.layers[i]];
+    } else if (a === 'addmix') {
+      const mm = P.materials.find(m => m.id === 'm-hout') || P.materials.find(m => m.type === 'lambda');
+      l.mix = { mid: mm ? mm.id : '', pct: 12 };
+    } else l.mix = null;
+    syncU(c);
+    markDirty();
+    renderAll();
+  },
+  addmat() {
+    pushUndo();
+    const m = { id: rid(), name: 'Nieuw materiaal', type: 'lambda', lambda: 0.04, R: 0, color: '#BBBBBB' };
+    P.materials.push(m);
+    markDirty();
+    renderAll();
+    setTimeout(() => {
+      const el = $('f-mat-' + m.id + '-n');
+      if (el) {
+        el.focus();
+        el.select();
+      }
+    }, 0);
+  },
+  delmat(b) {
+    pushUndo();
+    P.materials = P.materials.filter(m => m.id !== b.dataset.m);
+    markDirty();
+    renderAll();
+  },
+  delcon(b) {
+    pushUndo();
+    P.constructions = P.constructions.filter(c => c.id !== b.dataset.c);
+    markDirty();
+    renderAll();
+  },
+  csv() {
+    track('csv');
+    exportCsv();
+  },
+  newproj() {
+    const p = emptyProject('Nieuw project');
+    all[p.id] = p;
+    openProject(p.id);
+    tab = 'set';
+    renderAll();
+    toast('Leeg project aangemaakt. De constructies van het voorbeeld zijn meegekopieerd.');
+    markDirty();
+  },
+  dupproj() {
+    const p = clone(P);
+    p.id = 'p' + rid();
+    p.name = P.name + ' (kopie)';
+    p.example = false;
+    all[p.id] = p;
+    openProject(p.id);
+    markDirty();
+    renderAll();
+    toast('Kopie gemaakt.');
+  },
+  openproj(b) {
+    openProject(b.dataset.p);
+    renderAll();
+  },
+  delproj() {
+    confirmDel = true;
+    renderPanel();
+  },
+  'delproj-no'() {
+    confirmDel = false;
+    renderPanel();
+  },
+  'delproj-yes'(b, _room, a) {
+    confirmDel = false;
+    const id = P.id;
+    delete all[id];
+    removeRemote(id);
+    const next = Object.values(all).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+    openProject(next.id);
+    saveLocal();
+    renderAll();
+    toast('Project verwijderd.');
+  },
+  import() {
+    $('file-in').click();
+  },
+  export() {
+    track('export-json');
+    exportJson();
+  },
+  share() {
+    track('deellink');
+    makeShareLink();
+  },
+  'share-long'() {
+    track('deellink-lang');
+    makeShareLink(true);
+  },
+  'export-hljs'() {
+    track('export-heatlossjs');
+    exportHeatlossjs();
+  },
+  advrules() {
+    advRulesOpen = !advRulesOpen;
+    renderPanel();
+  },
+  addfit() {
+    pushUndo();
+    const t = FITTINGS.vuilfilter ? 'vuilfilter' : Object.keys(FITTINGS)[0] || 'anders';
+    P.fittings = P.fittings || [];
+    P.fittings.push({ id: rid(), type: t, n: 1, kv: (FITTINGS[t] || {}).kv || 10 });
+    markDirty();
+    renderPanel();
+  },
+  fanpct(b) {
+    const em = selEm(),
+      v = +b.dataset.v;
+    if (!em || !(v >= 0 && v <= 100)) return;
+    pushUndo();
+    em.fan.pct = v;
+    markDirty();
+    renderCanvas();
+    renderPanel();
+  },
+  delfit(b) {
+    pushUndo();
+    P.fittings = (P.fittings || []).filter(x => x.id !== b.dataset.f);
+    markDirty();
+    renderPanel();
+  },
+  hpsel(b) {
+    hpSel = b.dataset.h;
+    renderPanel();
+  },
+  hpexport() {
+    saveFile(
+      'warmtepompen.json',
+      JSON.stringify(
+        {
+          versie: 1,
+          toelichting:
+            "Per warmtepomp: minimaal en maximaal verwarmingsvermogen (kW) bij een buitentemperatuur (°C), bij de aanvoertemperatuur in 'aanvoer'. Minimaal twee punten, bij voorkeur -10 en +7 of +10 °C. Kopieer een blok om er een toe te voegen.",
+          warmtepompen: hpList || []
+        },
+        null,
+        2
+      )
+    );
+  },
+  hpimport() {
+    $('file-in').click();
+  },
+  hpreset() {
+    try {
+      localStorage.removeItem(HP_LS);
+    } catch (_) {}
+    if (storeMode === 'db') {
+      db.collection('data/users/' + uid)
+        .doc('hplist')
+        .delete()
+        .catch(() => {});
     }
+    hpList = null;
+    hpErr = '';
+    loadHpList();
+    toast('Standaardlijst met warmtepompen teruggezet.');
   }
+};
+ACTIONS['selseg'] = ACTIONS['selroom'];
+ACTIONS['laymove'] = ACTIONS['laydel'];
+ACTIONS['addmix'] = ACTIONS['laydel'];
+ACTIONS['delmix'] = ACTIONS['laydel'];
+function act(a, b) {
+  if (Object.hasOwn(ACTIONS, a)) ACTIONS[a](b, selRoom(), a);
 }
 $('proj-sel').onchange = e => {
   const v = e.target.value;

@@ -20,8 +20,8 @@ Lokaal bewaart de app projecten in de opslag van je browser, net als online. Een
 - `index.html`, `css/app.css` en de scripts in `js/`. Het zijn gewone scripts zonder modules of bundler: ze delen de globale scope en worden op volgorde geladen. Code die bij het laden meteen iets uitvoert, mag alleen functies uit eerdere bestanden gebruiken.
   - `js/analytics.js`: anonieme bezoekersstatistiek (GoatCounter). `js/data.js` laadt `data/*.json`; `js/core.js` bevat de toestand van de app, het voorbeeldproject en `normalizeProject` (migratie van opgeslagen projecten).
   - `js/geometry.js`, `js/calc.js`: geometrie, laagopbouw en het warmteverlies per ruimte.
-  - `js/render.js`, `js/interaction.js`, `js/underlay.js`: tekening (SVG, ook 2,5D), muis- en toetsenbordbediening en de onderlegger.
-  - `js/panel.js`, `js/views.js`: het paneel rechts met de tabbladen.
+  - `js/render.js`, `js/interaction.js`, `js/underlay.js`: tekening (SVG, ook 2,5D), muis- en toetsenbordbediening en de onderlegger. `renderCanvas` zet de tekening samen uit losse delen (`canvasWalls`, `canvasPipes`, `canvasEmitters`, …), in de volgorde waarin ze over elkaar liggen.
+  - `js/panel.js`, `js/views.js`: het paneel rechts met de tabbladen. Een veld met `data-f="em.p"` wordt afgehandeld door `FIELDS.em`, een knop met `data-act="addfloor"` door `ACTIONS.addfloor`; een nieuw veld of een nieuwe knop krijgt daar een eigen functie.
   - `js/emitters.js`, `js/sizing.js`, `js/hydraulics.js`, `js/schema.js`: afgifte, radiatoradvies en stooklijn, leidingnet en schema.
   - `js/heatpumps.js`, `js/annual.js`: warmtepompkeuze, verbeteradviezen, warm tapwater en jaarverbruik.
   - `js/report.js`, `js/io.js`, `js/storage.js`, `js/share.js`, `js/about.js`, `js/theme.js` (met `js/boot.js` in de `<head>`), `js/main.js`: rapport, import en export, opslaan, delen, het venster _Over_, licht en donker, en het opstarten.

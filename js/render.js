@@ -784,28 +784,9 @@ function render3d() {
     });
   return out + labels.join('');
 }
-function renderCanvas() {
-  if (!P) return;
-  const W = stage.clientWidth,
-    H = stage.clientHeight;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  if (!P.floors.some(f => f.id === curFloor)) {
-    let saved = null;
-    try {
-      saved = localStorage.getItem('wvt.floor.' + P.id);
-    } catch (_) {}
-    curFloor = P.floors.some(f => f.id === saved) ? saved : P.floors[0].id;
-  }
-  if (view3d) {
-    svg.innerHTML =
-      '<defs><pattern id="vvhatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--c-hp)" stroke-width="1.3" stroke-opacity=".45"/></pattern></defs>' +
-      render3d();
-    renderLegend();
-    return;
-  }
-  const calc = {};
-  curRooms().forEach(r => (calc[r.id] = calcRoom(r)));
-  // labels: room labels go first; other texts try a few spots and are left out when they would overlap
+// Placing texts in the drawing: room labels go first; other texts try a few spots and are left out when they
+// would overlap. One placer per drawing, shared by all parts (lbPlace(candidates, w, h, force), txtW(text, size)).
+function canvasLabels(W, H) {
   const LB = [],
     WALLS = curRooms().flatMap(r => r.pts.map((p, i) => [S(p), S(r.pts[(i + 1) % r.pts.length])])),
     segBox = ([a, b], o) => {
@@ -864,12 +845,15 @@ function renderCanvas() {
       return { x: c.x - w / 2, y: c.y - 27, w, h: full ? 63 : 38 };
     };
   curRooms().forEach(r => LB.push(roomBox(r)));
-  let out =
-    gridSvg(W, H) +
-    '<defs><pattern id="vvhatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--c-hp)" stroke-width="1.3" stroke-opacity=".45"/></pattern><marker id="airhead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--c-air)"/></marker><pattern id="videhatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0M-2 2L2 -2M8 12L12 8" stroke="var(--muted)" stroke-width="1" stroke-opacity=".4"/></pattern></defs>';
-  out += bgSvg();
-  const off = 6 / view.s;
-  const selR = sel && sel.r;
+  return { lbPlace, txtW };
+}
+
+// a point on edge e of a room: t metres along it, o metres to the inside (in screen coordinates)
+const edgePt = (e, t, o) => S({ x: e.a.x + e.ux * t - e.nx * o, y: e.a.y + e.uy * t - e.ny * o });
+
+// the floor below in light grey, and its pipes (while drawing pipes also those of the floor above)
+function canvasUnder() {
+  let out = '';
   // underlay: floor below in light grey
   underRooms().forEach(r => {
     const pts = r.pts
@@ -899,6 +883,12 @@ function renderCanvas() {
     if (uf) ghost(uf, false);
     if (tool === 'pipe' && above && above !== uf) ghost(above, true);
   }
+  return out;
+}
+
+// rooms from a lower floor that continue through this one: hatched, with a label
+function canvasVides(lb) {
+  let out = '';
   // rooms from a lower floor that continue through this one
   videRooms().forEach(r => {
     const pts = r.pts
@@ -913,10 +903,10 @@ function renderCanvas() {
     const t1 = `${r.kind === 'trap' ? 'Trappenhuis' : 'Vide'} · ${r.name}`,
       t2 = `loopt door vanaf ${base.name}`,
       xs = r.pts.map(p => p.x),
-      w = Math.max(txtW(t1, 10.5) * 1.15, txtW(t2, 10)),
+      w = Math.max(lb.txtW(t1, 10.5) * 1.15, lb.txtW(t2, 10)),
       at =
         (Math.max(...xs) - Math.min(...xs)) * view.s >= w * 0.8 &&
-        lbPlace(
+        lb.lbPlace(
           [0, -22, 22, -44, 44]
             .map(d => ({ x: c.x, y: c.y + 12 + d }))
             .filter(q => {
@@ -930,6 +920,12 @@ function renderCanvas() {
     if (at)
       out += `<text x="${at.x}" y="${at.y - 16}" text-anchor="middle" class="rname" font-size="10.5" pointer-events="none">${esc(t1)}</text><text x="${at.x}" y="${at.y}" text-anchor="middle" class="rsub" font-size="10" pointer-events="none">${esc(t2)}</text>`;
   });
+  return out;
+}
+
+// room fills (the selected room in light blue); they are also what you click on
+function canvasFills(selR) {
+  let out = '';
   // room fills
   curRooms().forEach(r => {
     const pts = r.pts
@@ -938,8 +934,13 @@ function renderCanvas() {
       .join(' ');
     out += `<polygon class="room" data-k="room" data-r="${r.id}" points="${pts}" fill="${selR === r.id ? 'var(--accent-soft-2)' : 'var(--room)'}" stroke="none"/>`;
   });
+  return out;
+}
+
+// walls, wall parts with their construction colour, openings and cut markers
+function canvasWalls(selR, off) {
+  let out = '';
   // walls: dark architectural line on the drawn outline (shared walls coincide), construction colour as a strip on the room side
-  const P2 = (e, t, o) => S({ x: e.a.x + e.ux * t - e.nx * o, y: e.a.y + e.uy * t - e.ny * o });
   curRooms().forEach(r => {
     const pts = r.pts
       .map(S)
@@ -957,10 +958,10 @@ function renderCanvas() {
         const s0 = b[j],
           s1 = b[j + 1];
         if (s1 - s0 < 1e-4) return;
-        const a = P2(e, s0 + 3 / view.s, off),
-          bb = P2(e, s1 - 3 / view.s, off),
-          w0 = P2(e, s0, 0),
-          w1 = P2(e, s1, 0);
+        const a = edgePt(e, s0 + 3 / view.s, off),
+          bb = edgePt(e, s1 - 3 / view.s, off),
+          w0 = edgePt(e, s0, 0),
+          w1 = edgePt(e, s1, 0);
         const con = conById(sg.cid);
         const isSel = sel && sel.t === 'seg' && sel.r === r.id && sel.w === i && sel.s === j,
           isHov = hoverSeg && hoverSeg.r === r.id && hoverSeg.w === i && hoverSeg.s === j;
@@ -987,14 +988,14 @@ function renderCanvas() {
         out += `<line class="hit" data-k="seg" data-r="${r.id}" data-w="${i}" data-s="${j}" x1="${w0.x}" y1="${w0.y}" x2="${w1.x}" y2="${w1.y}" stroke-width="18"/>`;
         // windows and doors: orange in the wall, each at its own place; drag them along the wall
         opLayout(r, i, j).forEach(({ o, t0, t1 }) => {
-          const p0 = P2(e, t0 + 0.02, 0),
-            p1 = P2(e, t1 - 0.02, 0),
+          const p0 = edgePt(e, t0 + 0.02, 0),
+            p1 = edgePt(e, t1 - 0.02, 0),
             moving = drag && drag.type === 'op' && drag.o === o.id;
           out += `<line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="${heatView ? heatCol(surfLoss(r).open(i, j, o)) : 'var(--heat)'}" stroke-width="${moving ? 9 : 7}"/><line x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke="var(--paper)" stroke-width="1.2"/>`;
           if (tool === 'select')
             out += `<line class="hit" data-k="op" data-r="${r.id}" data-w="${i}" data-s="${j}" data-o="${o.id}" x1="${p0.x}" y1="${p0.y}" x2="${p1.x}" y2="${p1.y}" stroke-width="16" style="cursor:grab"><title>${esc(o.name)}: sleep om te verplaatsen</title></line>`;
           if (moving) {
-            const m = P2(e, (t0 + t1) / 2, -22 / view.s);
+            const m = edgePt(e, (t0 + t1) / 2, -22 / view.s);
             out += `<text x="${m.x}" y="${m.y + 4}" text-anchor="middle" class="dim" pointer-events="none">${fmt(t0 - s0)} | ${esc(o.name)} | ${fmt(s1 - t1)} m</text>`;
           }
         });
@@ -1002,7 +1003,7 @@ function renderCanvas() {
       // cut markers
       w.cuts.forEach((c, ci) => {
         if (c <= 0 || c >= e.L) return;
-        const m = P2(e, c, off / 2);
+        const m = edgePt(e, c, off / 2);
         const big = selR === r.id;
         const tx = e.nx * 9,
           ty = e.ny * 9;
@@ -1012,6 +1013,12 @@ function renderCanvas() {
       });
     });
   });
+  return out;
+}
+
+// the other side of a selected shared wall part
+function canvasPartners() {
+  let out = '';
   // the other side of a selected shared wall part lights up too
   if (sel && sel.t === 'seg') {
     const sr = getRoom(sel.r);
@@ -1024,8 +1031,13 @@ function renderCanvas() {
         out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--heat)" stroke-opacity=".35" stroke-width="12" stroke-dasharray="10 6" pointer-events="none"/>`;
       });
   }
+  return out;
+}
+
+// pipe network: index circuit (orange glow) and pipes that are too small (purple)
+function canvasPipeMarks(NET) {
+  let out = '';
   // pipe network: index circuit (orange glow) and risers
-  const NET = layerOn('pipes') && ((P.pipes || []).length || P.hpPos) ? network() : null;
   if (NET) {
     // each piece fully opaque inside a group that is transparent as a whole: where the round ends of two pieces
     // overlap at a bend, the colour does not get darker
@@ -1047,6 +1059,13 @@ function renderCanvas() {
         : '';
     out += grp(g.warn, PIPE_FAST, 0.35, 22) + grp(g.bad, PIPE_FAST, 0.75, 22) + grp(g.idx, 'var(--c-index)', 0.55, 15);
   }
+  return out;
+}
+
+// pipes: supply (red) on return (blue); handles of the selected pipe and the labels come back separately,
+// because they are drawn later (handles above the risers, labels after the emitters)
+function canvasPipes(NET, lb) {
+  let out = '';
   // pipe network: one line = supply (red) and return (blue)
   const pipeLabels = [];
   let pipeHandles = '';
@@ -1088,9 +1107,10 @@ function renderCanvas() {
             y = pa.y + (pb.y - pa.y) * t;
           cands.push({ x, y: y - 9 }, { x, y: y + 18 }, { x, y: y - 22 }, { x, y: y + 31 });
         });
-        const at = lbPlace(cands, txtW(ptxt, 10), 13, isSel);
-        if (at)
-          out += `<text x="${at.x}" y="${at.y}" text-anchor="middle" class="dim" font-size="10" pointer-events="none" ${vState(mv, pp) !== 'ok' ? 'style="fill:var(--warn)"' : ''}>${esc(ptxt)}</text>`;
+        const at = lb.lbPlace(cands, lb.txtW(ptxt, 10), 13, isSel);
+        return at
+          ? `<text x="${at.x}" y="${at.y}" text-anchor="middle" class="dim" font-size="10" pointer-events="none" ${vState(mv, pp) !== 'ok' ? 'style="fill:var(--warn)"' : ''}>${esc(ptxt)}</text>`
+          : '';
       });
       if (isSel && tool === 'select') {
         pp.pts.forEach((p, i) => {
@@ -1103,6 +1123,12 @@ function renderCanvas() {
         });
       }
     });
+  return { out, handles: pipeHandles, labels: pipeLabels };
+}
+
+// risers: a marker on every floor they pass
+function canvasRisers() {
+  let out = '';
   // risers: a marker on every floor they pass; click to edit, drag to move (the pipe points on it move along)
   if (layerOn('pipes'))
     (P.risers || []).forEach(rs => {
@@ -1117,7 +1143,12 @@ function renderCanvas() {
       if (tool === 'select')
         out += `<circle data-k="riser" data-q="${rs.id}" cx="${q.x}" cy="${q.y}" r="11" fill="transparent" style="cursor:grab"><title>${esc(rs.name)}: klik om te bewerken, sleep om te verplaatsen</title></circle>`;
     });
-  out += pipeHandles;
+  return out;
+}
+
+// staircases: treads and an arrow pointing up
+function canvasStairs() {
+  let out = '';
   // staircases: treads and an arrow pointing up
   curRooms().forEach(r => {
     if (r.kind !== 'trap' || !spans(r) || !layerOn('stairs')) return;
@@ -1140,6 +1171,12 @@ function renderCanvas() {
     out += `<path d="M${b.x} ${b.y}L${b.x - hd * Math.cos(ang - 0.45)} ${b.y - hd * Math.sin(ang - 0.45)}M${b.x} ${b.y}L${b.x - hd * Math.cos(ang + 0.45)} ${b.y - hd * Math.sin(ang + 0.45)}" stroke="var(--muted)" stroke-width="1.4" pointer-events="none"/>`;
     out += `<circle cx="${mids[0].x}" cy="${mids[0].y}" r="2.5" fill="var(--muted)" pointer-events="none"/>`;
   });
+  return out;
+}
+
+// heat emitters: radiators etc. as thick blue bars, underfloor heating as a hatched area
+function canvasEmitters(lb) {
+  let out = '';
   // heat emitters: radiators etc. as thick blue bars, underfloor heating as a hatched area
   const netN = (P.pipes || []).length ? network() : null;
   curRooms().forEach(r =>
@@ -1191,9 +1228,9 @@ function renderCanvas() {
           dy = c.y - m.y,
           dd = Math.hypot(dx, dy) || 1;
         const etxt = `${pipeBad(pc) ? '⚠ ' : ''}${fmt(o / 1000, 2)} kW${em.boost ? ' ⟳' : ''}`,
-          at = lbPlace(
+          at = lb.lbPlace(
             [16, 30, -16, 44].map(k => ({ x: m.x + (dx / dd) * k, y: m.y + (dy / dd) * k + 3 })),
-            txtW(etxt, 10),
+            lb.txtW(etxt, 10),
             13,
             true
           );
@@ -1201,7 +1238,12 @@ function renderCanvas() {
       }
     })
   );
-  pipeLabels.forEach(f => f());
+  return out;
+}
+
+// drawing an emitter: the line or rectangle being dragged, the point under the mouse
+function canvasEmDraw() {
+  let out = '';
   if (drag && drag.type === 'emline') {
     const a = S(drag.p0),
       b = S(drag.p1);
@@ -1220,6 +1262,12 @@ function renderCanvas() {
     const q = S(hover);
     out += `<circle cx="${q.x}" cy="${q.y}" r="4" fill="none" stroke="var(--c-hp)" stroke-width="1.8"/>`;
   }
+  return out;
+}
+
+// heat pump: start of the pipe network (and where it goes while placing it)
+function canvasHp() {
+  let out = '';
   // heat pump: start of the pipe network
   const hpMark = (p, ghost) => {
     const q = S(p);
@@ -1241,15 +1289,21 @@ function renderCanvas() {
     if (hover.kind === 'riser')
       out += `<text x="${q.x + 10}" y="${q.y - 8}" class="dim" font-size="10" fill="var(--c-supply)">stijgleiding</text>`;
   }
+  return out;
+}
+
+// roofs: roof windows and dormers, knee walls, ridge and eaves with their heights
+function canvasRoofs(lb) {
+  let out = '';
   // roof windows and dormers: their outline in the plan (dashed)
   curRooms().forEach(r =>
     roofItemGeom(r).forEach(g => {
       const q = g.plan.map(S),
         c = { x: q.reduce((a, p) => a + p.x, 0) / q.length, y: q.reduce((a, p) => a + p.y, 0) / q.length };
       out += `<polygon points="${q.map(p => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ')}" fill="${g.it.kind === 'raam' ? 'var(--heat)' : 'none'}" fill-opacity=".12" stroke="var(--heat)" stroke-width="1.4" stroke-dasharray="4 3" pointer-events="none"/>`;
-      const at = lbPlace(
+      const at = lb.lbPlace(
         [0, -13, 13, -26, 26].map(d => ({ x: c.x, y: c.y + 3 + d })),
-        txtW(g.it.name, 9.5),
+        lb.txtW(g.it.name, 9.5),
         12
       );
       if (at)
@@ -1271,13 +1325,13 @@ function renderCanvas() {
         d = Math.hypot(dx, dy) || 1;
       out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="var(--ink)" stroke-opacity=".75" stroke-width="2.2" stroke-dasharray="8 5" pointer-events="none"/>`;
       const ktxt = `knieschot ${fmt(r.roof.kneeH, 2)} m`,
-        at = lbPlace(
+        at = lb.lbPlace(
           [0.5, 0.2, 0.8, 0.35, 0.65].flatMap(t => {
             const x = a.x + (b.x - a.x) * t,
               y = a.y + (b.y - a.y) * t;
             return [14, -14].map(k => ({ x: x + (dx / d) * k, y: y + (dy / d) * k + 3 }));
           }),
-          txtW(ktxt, 10),
+          lb.txtW(ktxt, 10),
           13
         );
       if (at)
@@ -1296,8 +1350,8 @@ function renderCanvas() {
       const ridge = R.type === 'zadel' && R.wc === 0;
       out += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${ridge ? 'var(--heat)' : 'var(--muted)'}" stroke-width="1.6" stroke-dasharray="7 5" pointer-events="none"/>`;
       const ntxt = `${ridge ? 'nok' : 'plafond'} ${fmt(R.z(c), 2)} m`,
-        nw = txtW(ntxt, 10),
-        at = lbPlace(
+        nw = lb.txtW(ntxt, 10),
+        at = lb.lbPlace(
           [0.12, 0.3, 0.7, 0.88].flatMap(t => {
             const x = a.x + (b.x - a.x) * t + nw / 2,
               y = a.y + (b.y - a.y) * t;
@@ -1325,6 +1379,12 @@ function renderCanvas() {
       out += `<text x="${m.x + (dx / d) * 18}" y="${m.y + (dy / d) * 18 + 3}" text-anchor="middle" class="dim" font-size="10" style="fill:var(--muted)" pointer-events="none">${fmt(R.knee, 2)} m</text>`;
     });
   });
+  return out;
+}
+
+// air flows between rooms
+function canvasAir() {
+  let out = '';
   // air flows between rooms: moving arrows, in the Ventilatie tab for all rooms, otherwise for the selected room.
   // Texts are placed so they do not cover the room labels or each other.
   if (layerOn('air') && (tab === 'vent' || (sel && sel.t === 'room')) && P.rooms.length > 1) {
@@ -1409,6 +1469,12 @@ function renderCanvas() {
       });
     out += labels;
   }
+  return out;
+}
+
+// room labels: name and area, heat load, breakdown bar, temperature
+function canvasRoomLabels(calc) {
+  let out = '';
   // labels: small caps name + area, heat load in kW, breakdown bar, temperature
   curRooms().forEach(r => {
     const c = S(labelPt(r.pts));
@@ -1449,6 +1515,12 @@ function renderCanvas() {
       out += `<text x="${c.x}" y="${c.y + 32}" text-anchor="middle" class="rsub" font-size="10.5" pointer-events="none">${nv(r.temp, 1)} °C</text>`;
     }
   });
+  return out;
+}
+
+// the selected room: dimension lines with their lengths, and its corner points
+function canvasSelRoom(selR) {
+  let out = '';
   // selected room: dimension lines with pill labels + vertices
   const room = selR && getRoom(selR);
   if (room) {
@@ -1456,11 +1528,11 @@ function renderCanvas() {
       const e = edge(room, i);
       if (e.L * view.s < 36) return;
       const o = -24 / view.s;
-      const d0 = P2(e, 0, o),
-        d1 = P2(e, e.L, o),
-        w0 = P2(e, 0, -4 / view.s),
-        w1 = P2(e, e.L, -4 / view.s),
-        m = P2(e, e.L / 2, o);
+      const d0 = edgePt(e, 0, o),
+        d1 = edgePt(e, e.L, o),
+        w0 = edgePt(e, 0, -4 / view.s),
+        w1 = edgePt(e, e.L, -4 / view.s),
+        m = edgePt(e, e.L / 2, o);
       const tk = 5,
         nx = e.nx * tk,
         ny = e.ny * tk;
@@ -1476,6 +1548,12 @@ function renderCanvas() {
       out += `<circle data-k="vtx" data-r="${room.id}" data-i="${i}" cx="${q.x}" cy="${q.y}" r="${isV ? 7 : 5.5}" fill="${isV ? 'var(--heat)' : 'var(--surface)'}" stroke="var(--heat)" stroke-width="2" style="cursor:grab"/>`;
     });
   }
+  return out;
+}
+
+// what the drawing tools show while you draw: split point, wall line, new room, pipe
+function canvasToolDraw(off) {
+  let out = '';
   // split hover
   if (tool === 'split' && hoverSplit) {
     const r = getRoom(hoverSplit.r);
@@ -1556,6 +1634,43 @@ function renderCanvas() {
     const h = S(hover);
     out += `<circle cx="${h.x}" cy="${h.y}" r="${hover.kind === 'vtx' ? 7 : 3.5}" fill="none" stroke="var(--accent)" stroke-width="1.8"/>`;
   }
+  return out;
+}
+function renderCanvas() {
+  if (!P) return;
+  const W = stage.clientWidth,
+    H = stage.clientHeight;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  if (!P.floors.some(f => f.id === curFloor)) {
+    let saved = null;
+    try {
+      saved = localStorage.getItem('wvt.floor.' + P.id);
+    } catch (_) {}
+    curFloor = P.floors.some(f => f.id === saved) ? saved : P.floors[0].id;
+  }
+  if (view3d) {
+    svg.innerHTML =
+      '<defs><pattern id="vvhatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--c-hp)" stroke-width="1.3" stroke-opacity=".45"/></pattern></defs>' +
+      render3d();
+    renderLegend();
+    return;
+  }
+  const calc = {};
+  curRooms().forEach(r => (calc[r.id] = calcRoom(r)));
+  const lb = canvasLabels(W, H);
+  let out =
+    gridSvg(W, H) +
+    '<defs><pattern id="vvhatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="var(--c-hp)" stroke-width="1.3" stroke-opacity=".45"/></pattern><marker id="airhead" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--c-air)"/></marker><pattern id="videhatch" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M0 10L10 0M-2 2L2 -2M8 12L12 8" stroke="var(--muted)" stroke-width="1" stroke-opacity=".4"/></pattern></defs>';
+  out += bgSvg();
+  const off = 6 / view.s;
+  const selR = sel && sel.r;
+  out += canvasUnder() + canvasVides(lb) + canvasFills(selR) + canvasWalls(selR, off) + canvasPartners();
+  const NET = layerOn('pipes') && ((P.pipes || []).length || P.hpPos) ? network() : null;
+  const pipes = canvasPipes(NET, lb);
+  out += canvasPipeMarks(NET) + pipes.out + canvasRisers() + pipes.handles + canvasStairs() + canvasEmitters(lb);
+  out += pipes.labels.map(f => f()).join('');
+  out += canvasEmDraw() + canvasHp() + canvasRoofs(lb) + canvasAir() + canvasRoomLabels(calc) + canvasSelRoom(selR);
+  out += canvasToolDraw(off);
   out += bgScaleSvg();
   svg.innerHTML = out;
   renderScale();
