@@ -47,7 +47,9 @@ function syncRad(em) {
   if (em.kind === 'rad' && RAD_TYPES[em.rt]) em.p = radP(em.rt, em.rh, em.rl);
 }
 // older projects used threaded gas pipe sizes for steel: map them to the steel tube with the nearest bore
-const OLD_STEEL = { '3/8"': '15', '1/2"': '18', '3/4"': '22', '1"': '28', '1 1/4"': '35' };
+// (also without the inch mark: normalizeProject takes quotes out of everything except names)
+const OLD_STEEL = { '3/8': '15', '1/2': '18', '3/4': '22', 1: '28', '1 1/4': '35' };
+Object.keys(OLD_STEEL).forEach(k => (OLD_STEEL[k + '"'] = OLD_STEEL[k]));
 // "32×3 mm" for (alu)pex, "22×1 mm" for copper, "22×1,2 mm" for steel
 function dnLabel(mat, dn) {
   const m = PIPES[mat] || PIPES.koper,

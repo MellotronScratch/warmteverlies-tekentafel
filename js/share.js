@@ -35,8 +35,25 @@ async function packBytes(p) {
   return pipeBytes(new TextEncoder().encode(JSON.stringify(o)), new CompressionStream('deflate-raw'));
 }
 const packProject = async p => b64url(await packBytes(p));
-const unpackBytes = async bytes =>
-  JSON.parse(new TextDecoder().decode(await pipeBytes(bytes, new DecompressionStream('deflate-raw'))));
+// unpacking stops at 20 MB: a few kB in a crafted link could otherwise grow into gigabytes and freeze the tab
+const MAX_UNPACKED = 20e6;
+async function unpackBytes(bytes) {
+  const rd = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader(),
+    dec = new TextDecoder();
+  let n = 0,
+    txt = '';
+  for (;;) {
+    const { done, value } = await rd.read();
+    if (done) break;
+    n += value.length;
+    if (n > MAX_UNPACKED) {
+      rd.cancel();
+      throw new Error('te groot');
+    }
+    txt += dec.decode(value, { stream: true });
+  }
+  return JSON.parse(txt + dec.decode());
+}
 const unpackProject = code => unpackBytes(unb64url(code));
 
 // short link: encrypt in the browser, store the bytes on the server, return "code.key"
@@ -111,7 +128,7 @@ function shareHtml() {
     <div class="row"><button class="btn small" data-act="share">Link maken</button><button class="btn small" data-act="share-long">Lange link zonder server</button></div>`;
   if (shareInfo && shareInfo.id === P.id) {
     const long = shareInfo.url.length > 8000;
-    h += `<label class="f" for="f-share">Link${shareInfo.copied ? ' <span class="u">gekopieerd naar het klembord</span>' : ''}<input class="in" id="f-share" readonly value="${esc(shareInfo.url)}" onfocus="this.select()"></label>`;
+    h += `<label class="f" for="f-share">Link${shareInfo.copied ? ' <span class="u">gekopieerd naar het klembord</span>' : ''}<input class="in" id="f-share" readonly value="${esc(shareInfo.url)}"></label>`;
     if (shareInfo.failed)
       h += `<div class="warnbox">De server voor korte links was niet bereikbaar. Dit is daarom de lange link, met het hele project erin.</div>`;
     h += `<p class="note">${

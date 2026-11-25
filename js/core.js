@@ -403,8 +403,33 @@ function emptyProject(name) {
     rooms: []
   });
 }
+/* A project can come from anywhere: a shared link, an imported file, the browser storage. Much of it ends up in HTML
+   and SVG attributes (ids, kinds, colours, coordinates), and only names are escaped everywhere. So before anything
+   else: no quotes or angle brackets in any text except names, numbers for coordinates, real colours and images.
+   Without this a crafted link could run its own script on the site. */
+const FREE_TEXT = new Set(['name', 'label']); // escaped with esc() wherever they are shown
+const NUM_KEYS = new Set(['x', 'y', 'z']);
+const COLOR_RE = /^#[0-9a-f]{3,8}$/i;
+const IMAGE_RE = /^data:image\/[a-z0-9.+-]+;base64,[a-z0-9+/]+=*$/i;
+function scrubProject(o, depth = 0) {
+  if (depth > 40 || !o || typeof o !== 'object') return;
+  for (const k of Object.keys(o)) {
+    const v = o[k];
+    if (/[^\w.-]/.test(k) || k === '__proto__') delete o[k];
+    else if (typeof v === 'string') {
+      if (k === 'color') o[k] = COLOR_RE.test(v) ? v : '';
+      else if (NUM_KEYS.has(k)) o[k] = Number.isFinite(+v) ? +v : 0;
+      else if (!FREE_TEXT.has(k)) o[k] = v.replace(/[<>"'`&\\\u0000-\u001f]/g, '');
+    } else if (v && typeof v === 'object') scrubProject(v, depth + 1);
+    else if (NUM_KEYS.has(k) && typeof v !== 'number') o[k] = Number.isFinite(+v) ? +v : 0;
+  }
+}
 function normalizeProject(p) {
   if (!p || typeof p !== 'object') return null;
+  const imgs = p.images && typeof p.images === 'object' ? p.images : {};
+  delete p.images; // checked on their own below: the base64 in them must stay as it is
+  scrubProject(p);
+  p.images = imgs;
   p.id = String(p.id || 'p' + rid()).replace(/[^A-Za-z0-9_-]/g, '') || 'p' + rid();
   p.name = String(p.name || 'Project');
   if (typeof p.shared !== 'string') delete p.shared; // fingerprint of the share link this copy came from (js/share.js)
@@ -526,8 +551,9 @@ function normalizeProject(p) {
   // images that no floor uses any more (removed or replaced underlays) are dropped when a project is opened
   Object.keys(p.images).forEach(k => {
     if (
+      /[^\w.-]/.test(k) ||
       typeof p.images[k] !== 'string' ||
-      !p.images[k].startsWith('data:image/') ||
+      !IMAGE_RE.test(p.images[k]) ||
       !p.floors.some(f => f.bg && f.bg.img === k)
     )
       delete p.images[k];
@@ -758,7 +784,8 @@ function normalizeProject(p) {
     r.roof.kneeOn = !!r.roof.kneeOn;
     r.roof.kneeH = +r.roof.kneeH > 0 ? +r.roof.kneeH : 1;
     if (!ROOF_TYPES[r.roof.type]) r.roof.type = 'plat';
-    if (typeof r.roof.flat !== 'boolean') r.roof.flat = true; // older projects: the room height always acted as a flat ceiling under a sloped roofr.roof.edge=Math.max(0,Math.min(r.pts.length-1,r.roof.edge|0));
+    if (typeof r.roof.flat !== 'boolean') r.roof.flat = true; // older projects: the room height always acted as a flat ceiling under a sloped roof
+    r.roof.edge = Math.max(0, Math.min(r.pts.length - 1, r.roof.edge | 0));
     r.walls = Array.isArray(r.walls) ? r.walls : [];
     while (r.walls.length < r.pts.length) r.walls.push({ cuts: [], segs: [seg('', 'auto')] });
     r.walls.length = r.pts.length;

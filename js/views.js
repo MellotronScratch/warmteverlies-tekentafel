@@ -1060,8 +1060,9 @@ function applyField(el, final) {
   if (final) schedulePanel();
   else liveUpdate();
 }
-pbody.addEventListener('focusin', () => {
+pbody.addEventListener('focusin', e => {
   undoArmed = true;
+  if (e.target.id === 'f-share') e.target.select(); // the share link: select all, ready to copy
 });
 pbody.addEventListener('mouseover', e => {
   const t = e.target.closest('[data-act="selseg"]');

@@ -809,11 +809,6 @@ input.title:focus {
 .segbtn.cur {
   box-shadow: inset 0 0 0 3px var(--ink);
 }
-.wallrow {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 .segrow {
   display: flex;
   align-items: center;
@@ -851,17 +846,6 @@ input.title:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.wallrow .meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.wallrow .meta b {
-  color: var(--ink);
-  font-weight: 500;
 }
 .scale {
   display: flex;
@@ -1091,6 +1075,7 @@ svg .pilltxt {
 .stage.t-rect,
 .stage.t-split,
 .stage.t-wall,
+.stage.t-emit,
 .stage.t-vv,
 .stage.t-pipe,
 .stage.t-hp {

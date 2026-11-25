@@ -1,5 +1,5 @@
-// Weergave: automatisch (volgt het systeem), licht of donker. De keuze staat in de browser (wvt.theme); een klein
-// script in de <head> van index.html past haar al toe voordat de pagina getekend wordt.
+// Weergave: automatisch (volgt het systeem), licht of donker. De keuze staat in de browser (wvt.theme); js/boot.js
+// in de <head> van index.html past haar al toe voordat de pagina getekend wordt.
 'use strict';
 const THEMES = ['auto', 'light', 'dark'];
 const THEME_LABEL = { auto: 'automatisch (volgt je systeem)', light: 'licht', dark: 'donker' };

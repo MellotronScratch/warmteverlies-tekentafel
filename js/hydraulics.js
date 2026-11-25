@@ -21,7 +21,6 @@ const RISER_TOL = 0.05; // m: een leidingpunt zo dicht bij een stijgleiding is e
 const EM_Z = 0.1; // m boven de vloer: waar een radiator of convector is aangesloten
 
 const nodeKey = (f, p) => f + '|' + Math.round(p.x * 100) + '|' + Math.round(p.y * 100);
-const lerpP = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 const lhOf = (W, dT) => W / (1.163 * Math.max(0.5, dT)); // l/h bij vermogen W en ΔT K
 const kvDp = (lh, kv) => (kv > 0 ? 100 * Math.pow(lh / 1000 / kv, 2) : 0); // kPa over een kv bij lh l/h
 

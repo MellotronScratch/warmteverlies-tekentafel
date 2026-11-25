@@ -2,13 +2,16 @@
 <html lang="nl">
   <head>
     <meta charset="utf-8" />
-    <script>
-      // chosen theme before the page is drawn (js/theme.js), so it does not flash in the wrong colours
-      try {
-        var t = localStorage.getItem('wvt.theme');
-        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
-      } catch (e) {}
-    </script>
+    <!--
+      Only scripts from this site (and the statistics of GoatCounter) may run, no inline scripts or event attributes:
+      if a crafted project ever slipped some HTML into the page, it could not run anything. Inline styles are allowed
+      (the drawing uses them everywhere). Adjust this when the app loads something from a new address.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' https://gc.zgo.at; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.goatcounter.com; connect-src 'self' https://warmtepomptekentafel.nl https://*.goatcounter.com; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <script src="js/boot.js"></script>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <title>Warmtepomp Tekentafel</title>
     <meta

@@ -24,7 +24,8 @@ Lokaal bewaart de app projecten in de opslag van je browser, net als online. Een
   - `js/panel.js`, `js/views.js`: het paneel rechts met de tabbladen.
   - `js/emitters.js`, `js/sizing.js`, `js/hydraulics.js`, `js/schema.js`: afgifte, radiatoradvies en stooklijn, leidingnet en schema.
   - `js/heatpumps.js`, `js/annual.js`: warmtepompkeuze, verbeteradviezen, warm tapwater en jaarverbruik.
-  - `js/report.js`, `js/io.js`, `js/storage.js`, `js/share.js`, `js/about.js`, `js/theme.js`, `js/main.js`: rapport, import en export, opslaan, delen, het venster _Over_, licht en donker, en het opstarten.
+  - `js/report.js`, `js/io.js`, `js/storage.js`, `js/share.js`, `js/about.js`, `js/theme.js` (met `js/boot.js` in de `<head>`), `js/main.js`: rapport, import en export, opslaan, delen, het venster _Over_, licht en donker, en het opstarten.
+- Veiligheid: een project kan van iemand anders komen (deellink, bestand). `normalizeProject` haalt daarom aanhalingstekens en punthaken uit alle tekst behalve namen, en maakt van coördinaten getallen; namen toon je altijd met `esc()`. In `index.html` staat een Content-Security-Policy: alleen scripts van de site zelf (en GoatCounter), geen inline scripts of `onclick`-attributen. Laadt de app iets van een nieuw adres, pas die dan aan.
 - `data/*.json`: tabellen die je zonder programmeren kunt aanpassen. Elk bestand heeft een `toelichting`; het overzicht staat hieronder bij _Gegevens aanpassen_.
 - `docs/*.md` en `README.md`: de handleiding. Bij het uitrollen zet `tools/handleiding.mjs` ze om naar [warmtepomptekentafel.nl/handleiding](https://warmtepomptekentafel.nl/handleiding/), met een `sitemap.xml`.
 - `api/`: de PHP-scripts voor korte deellinks (`share.php`) en de doorstuurlink voor _Mail sturen_ (`mail.php`), met `schema.sql` voor de database. Wachtwoorden staan alleen op de server (zie `api/config.example.php`), nooit in de repo.
